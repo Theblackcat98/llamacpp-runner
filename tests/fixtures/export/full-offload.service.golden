@@ -1,0 +1,11 @@
+[Unit]
+Description=llama-deck: Qwen 2.5 Coder 32B (Full Offload)
+
+[Service]
+Type=simple
+Restart=on-failure
+Environment="CUDA_VISIBLE_DEVICES=0"
+ExecStart=llama-server -m "~/models/llm/qwen2.5-coder-32b-q4_k_m.gguf" -ngl 65 -c 32768 -b 2048 -ub 512 -t 8 --flash-attn -ctk q8_0 -ctv q8_0 --host 127.0.0.1 --port 8080 -a qwen2.5-coder --slots --metrics
+
+[Install]
+WantedBy=default.target
