@@ -1,0 +1,22 @@
+┌─MODELS (/models/llm)─────────────────────────────────────┐┌─METADATA INSPECTOR───────────────────┐
+│NAME                           SIZE     QUANT   ARCH      ││File: qwen25-7b-q4km.gguf             │
+│qwen25-7b-q4km.gguf              4.4 GB Q4_K_M  qwen2     ││Arch: qwen2                           │
+│tinyllama-1.1b-q8_0.gguf         1.1 GB Q8_0    llama     ││Context Max: 131,072                  │
+│                                                          ││Params (exact): 6.52B                 │
+│                                                          ││Quant: Q4_K_M (~5.8 bpw)              │
+│                                                          ││Est. VRAM: 13.7 GB-14.1 GB            │
+│                                                          ││(estimated range)                     │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+│                                                          ││                                      │
+└──────────────────────────────────────────────────────────┘└──────────────────────────────────────┘
+┌─QUICK LAUNCH COMMAND PREVIEW─────────────────────────────────────────────────────────────────────┐
+│llama-server -m /models/llm/qwen25-7b-q4km.gguf                                                   │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘

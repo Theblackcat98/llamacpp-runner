@@ -21,6 +21,7 @@ import {
 	TAB_COUNT,
 } from "./logic/shell-state";
 import { Catalog } from "./screens/catalog";
+import { Explorer } from "./screens/explorer";
 import type { Theme } from "./themes";
 
 const TAB_LABELS = [
@@ -32,6 +33,15 @@ const TAB_LABELS = [
 ];
 const PANE_COUNT = 5;
 const DRAWER_HEIGHT = 6;
+
+export interface ExplorerControl {
+	entries: import("../core/models/types").ModelEntry[];
+	scanning: boolean;
+	modelsDir: string | null;
+	scanError?: string;
+	onRescan: () => void;
+	onUseDefaultDir: (dir: string) => void;
+}
 
 export interface DrawerControl {
 	state: DrawerState;
@@ -45,6 +55,7 @@ export interface AppProps {
 	onKill?: () => void;
 	onKillOrphan?: () => void;
 	drawerControl?: DrawerControl;
+	explorerControl?: ExplorerControl;
 }
 
 export function App({
@@ -54,6 +65,7 @@ export function App({
 	onKill,
 	onKillOrphan,
 	drawerControl,
+	explorerControl,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -94,6 +106,15 @@ export function App({
 		}
 		if (key.name === "o") {
 			setCollapsed((c) => !c);
+			return;
+		}
+		if (key.name === "r" && explorerControl && tab === 0) {
+			explorerControl.onRescan();
+			return;
+		}
+		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {
+			const home = process.env.HOME ?? "~";
+			explorerControl.onUseDefaultDir(`${home}/models/llm`);
 			return;
 		}
 		if (key.name === "tab") {
@@ -182,6 +203,14 @@ export function App({
 			>
 				{tab === 4 ? (
 					<Catalog theme={theme} />
+				) : tab === 0 && explorerControl ? (
+					<Explorer
+						theme={theme}
+						entries={explorerControl.entries}
+						scanning={explorerControl.scanning}
+						modelsDir={explorerControl.modelsDir}
+						scanError={explorerControl.scanError}
+					/>
 				) : (
 					<text
 						fg={focusPane === 2 ? theme.fg : theme.muted}
