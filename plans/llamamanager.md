@@ -11,6 +11,8 @@ v1 → v2 REVISION SUMMARY
  * Log drawer: \r (carriage-return) line assembler specified; PTY-default with pipe fallback.
  * Storage: atomic writes, schema migrations, lastSession state; JSON confirmed over SQLite.
  * Added: error-state inventory, testing strategy, terminal compat matrix, decision log.
+ * Roadmap v2.1: work items resized to branch granularity; §7 error states ship with
+   their owning component/phase instead of being deferred wholesale to Phase 5.
  * Consistency: all paths standardized to ~/.config/llama-deck/ and $XDG_STATE_HOME/llama-deck/.
 
 1. System Architecture
@@ -393,44 +395,67 @@ v1 → v2 REVISION SUMMARY
 
  Every phase ends with an explicit EXIT CRITERION. The walking skeleton lands in Phase 1:
  end-to-end truth in week one beats four perfect phases meeting for the first time in
- month two.
+ month two. Each bullet below is a branch-sized WORK ITEM — one branch, one mergeable
+ deliverable. The full branch/commit/merge/verify loop is specified in AGENTS.md.
 
- ┌────────────────────────────────────────────────────────────────────────┐
- │ DEVELOPMENT ROADMAP v2                                                │
- ├────────────────────────────────────────────────────────────────────────┤
- │ Phase 1: Walking Skeleton + Safety Net                                │
- │ ├─ Bun + @opentui/react scaffold; theme tokens from opentui.html      │
- │ ├─ Minimal shell: tabs, status bar, console drawer                    │
- │ ├─ Core skeleton: bus, supervisor (PTY + \r assembler + ring buffer)  │
- │ ├─ Spawn a HARDCODED model end-to-end; logs render in drawer          │
- │ ├─ FULL teardown hooks + pidfile + orphan recovery (§6)               │
- │ └─ EXIT: launch → watch logs → quit → zero orphaned processes         │
- ├────────────────────────────────────────────────────────────────────────┤
- │ Phase 2: Widget Library (the hidden 60% of the project)               │
- │ ├─ Slider, checkbox, text input (cursor mgmt), cycling select         │
- │ ├─ Virtualized table + scrollable pane; cross-pane focus engine       │
- │ ├─ Theme provider (5 themes); golden frame tests per widget           │
- │ └─ EXIT: mockup "Components Catalog" tab reproduced pixel-for-pixel   │
- ├────────────────────────────────────────────────────────────────────────┤
- │ Phase 3: GGUF Parsing & Model Discovery                               │
- │ ├─ Streaming parser + fixtures; exact param count; effective bpw     │
- │ ├─ Scanner: recursive, split-file grouping, mtime cache, watcher     │
- │ ├─ VRAM estimator (pure) + table tests                                │
- │ ├─ Explorer screen wired to real data                                 │
- │ └─ EXIT: 100-file directory parses <2 s warm; corrupt files flagged   │
- ├────────────────────────────────────────────────────────────────────────┤
- │ Phase 4: Configurator, Registry & Persistence                         │
- │ ├─ Flag registry + command builder + exporters (clipboard/sh/systemd)│
- │ ├─ Configurator screen; preset CRUD; atomic store + migrations        │
- │ ├─ Runtime --help validation                                          │
- │ └─ EXIT: build, save, launch, export a preset; restart-required marks │
- ├────────────────────────────────────────────────────────────────────────┤
- │ Phase 5: Telemetry, Errors & Polish                                   │
- │ ├─ /health state machine; /slots + /metrics scraping; Server screen  │
- │ ├─ Error-state inventory implemented (§7); palette complete           │
- │ ├─ Terminal compat matrix pass; CLI (start/export/scan/list/kill)     │
- │ └─ EXIT: full error table green; compat checklist signed off          │
- └────────────────────────────────────────────────────────────────────────┘
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │ DEVELOPMENT ROADMAP v2.1                                                 │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │ Phase 1: Walking Skeleton + Safety Net                                   │
+ │ ├─ Scaffold: pin Bun, @opentui/react shell, CI pipeline;                 │
+ │    import-lint guard: src/core imports nothing from src/ui (D5)          │
+ │ ├─ Spikes (timeboxed, throwaway): node-pty under Bun; OpenTUI render     │
+ │    smoke test                                                            │
+ │ ├─ Typed event bus (headless)                                            │
+ │ ├─ \r line assembler + bounded ring buffer (pure)                        │
+ │ ├─ Supervisor: PTY spawn vs fake-server.sh fixture; teardown hooks       │
+ │    (§6.2) + port pre-flight + PATH check live here                       │
+ │ ├─ Pidfile + orphan detection & recovery (§6.3)                          │
+ │ ├─ Minimal shell: tabs + status bar                                      │
+ │ ├─ Console drawer (\r-aware autoscroll)                                  │
+ │ ├─ Spawn HARDCODED model end-to-end; logs render in drawer               │
+ │ └─ EXIT: launch → watch logs → quit → zero orphaned processes            │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │ Phase 2: Widget Library (the hidden 60% of the project)                  │
+ │ ONE BRANCH PER WIDGET; golden frame test ships with each widget:         │
+ │ ├─ Slider · checkbox · text input (cursor mgmt) · cycling select         │
+ │ ├─ Virtualized data table · scrollable pane                              │
+ │ ├─ Cross-pane focus engine LAST (every widget depends on it)             │
+ │ ├─ Theme provider: 5 themes, tokens lifted from opentui.html             │
+ │ ├─ Degraded <100x30 layout + resize hint ships here (§7)                 │
+ │ └─ EXIT: mockup "Components Catalog" tab reproduced pixel-for-pixel      │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │ Phase 3: GGUF Parsing & Model Discovery                                  │
+ │ ├─ Streaming parser + committed fixtures; exact param count;             │
+ │    effective bpw; corrupt-file flagging ships here (§7)                  │
+ │ ├─ Scanner: recursive walk, split-file grouping (+ incomplete-group      │
+ │    state), mtime cache, incremental fs watcher (§7)                      │
+ │ ├─ VRAM estimator (pure fn) + GQA/MHA table tests (§3.2)                 │
+ │ ├─ Explorer screen wired to real data; first-run dir onboarding          │
+ │ ├─ CLI falls out free: llama-deck scan | list                            │
+ │ └─ EXIT: 100-file directory parses <2 s warm; corrupt files flagged      │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │ Phase 4: Configurator, Registry & Persistence                            │
+ │ ├─ Flag registry + command builder (golden command strings)              │
+ │ ├─ Exporters: .sh + systemd golden files; OSC 52 clipboard as its        │
+ │    own branch (environment-dependent)                                    │
+ │ ├─ Preset store: atomic writes, forward migrations, unknown-flag         │
+ │    round-trip (§5)                                                       │
+ │ ├─ Configurator screen wired to registry; restart-required marks         │
+ │ ├─ Runtime --help validation ("binary too old" state ships here §7)      │
+ │ ├─ CLI gains: llama-deck start | export                                  │
+ │ └─ EXIT: build, save, launch, export a preset; restart-required marks    │
+ ├──────────────────────────────────────────────────────────────────────────┤
+ │ Phase 5: Telemetry, Errors & Polish                                      │
+ │ ├─ /health state machine (STARTING → LOADING → READY|FAILED)             │
+ │ ├─ /slots + /metrics scraping vs mock HTTP; Server screen (§3.5)         │
+ │ ├─ Failure diagnosis: OOM / bind-fail log patterns + fixes (§6.4)        │
+ │ ├─ Command palette complete; yank-to-clipboard (y)                       │
+ │ ├─ CLI gains: llama-deck kill                                            │
+ │ ├─ §7 audit: every error row verified green at its owner component       │
+ │ ├─ Terminal compat matrix pass (tmux/kitty/ghostty/wezterm/etc)          │
+ │ └─ EXIT: full error table green; compat checklist signed off             │
+ └──────────────────────────────────────────────────────────────────────────┘
 
 10. Decision Log
 
