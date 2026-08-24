@@ -12,6 +12,7 @@ export interface TuiBoxProps {
 	width?: number | `${number}%`;
 	height?: number | `${number}%`;
 	flexGrow?: number;
+	marginTop?: number;
 	children?: ReactNode;
 }
 
@@ -35,6 +36,7 @@ export function TuiBox({
 	width,
 	height,
 	flexGrow,
+	marginTop,
 	children,
 }: TuiBoxProps) {
 	const borderColor = focused
@@ -51,6 +53,7 @@ export function TuiBox({
 			width={width}
 			height={height}
 			flexGrow={flexGrow}
+			style={marginTop === undefined ? undefined : { marginTop }}
 		>
 			{children}
 		</box>

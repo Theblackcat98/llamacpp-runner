@@ -1,4 +1,4 @@
-export const TAB_COUNT = 4;
+export const TAB_COUNT = 5;
 
 export interface KeyRef {
 	name?: string;

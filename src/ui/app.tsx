@@ -20,6 +20,7 @@ import {
 	type KeyRef,
 	TAB_COUNT,
 } from "./logic/shell-state";
+import { Catalog } from "./screens/catalog";
 import type { Theme } from "./themes";
 
 const TAB_LABELS = [
@@ -27,6 +28,7 @@ const TAB_LABELS = [
 	"Launch Config",
 	"Server Telemetry",
 	"Presets",
+	"Catalog",
 ];
 const PANE_COUNT = 5;
 const DRAWER_HEIGHT = 6;
@@ -114,6 +116,30 @@ export function App({
 		return <DegradedLayout width={width} height={height} theme={theme} />;
 	}
 
+	if (tab === 4) {
+		return (
+			<box
+				style={{
+					flexDirection: "column",
+					width: "100%",
+					height: "100%",
+					backgroundColor: theme.bg,
+				}}
+			>
+				<box style={{ flexDirection: "row", height: 1 }}>
+					{TAB_LABELS.map((label, i) => (
+						<text
+							key={label}
+							fg={i === tab ? theme.bg : theme.muted}
+							bg={i === tab ? theme.accent : undefined}
+						>{` [${i + 1}] ${label} `}</text>
+					))}
+				</box>
+				<Catalog theme={theme} />
+			</box>
+		);
+	}
+
 	return (
 		<box
 			style={{
@@ -154,9 +180,13 @@ export function App({
 					paddingLeft: 1,
 				}}
 			>
-				<text
-					fg={focusPane === 2 ? theme.fg : theme.muted}
-				>{`${TAB_LABELS[tab]} arrives in a later phase`}</text>
+				{tab === 4 ? (
+					<Catalog theme={theme} />
+				) : (
+					<text
+						fg={focusPane === 2 ? theme.fg : theme.muted}
+					>{`${TAB_LABELS[tab]} arrives in a later phase`}</text>
+				)}
 			</box>
 			<ConsoleDrawer
 				lines={visibleEntries(drawer)}
@@ -175,7 +205,7 @@ export function App({
 			>
 				<text fg={theme.muted}>
 					{
-						" [Tab] Cycle Focus | [1-4] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "
+						" [Tab] Cycle Focus | [1-5] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "
 					}
 				</text>
 			</box>

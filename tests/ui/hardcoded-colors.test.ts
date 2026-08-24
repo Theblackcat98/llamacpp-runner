@@ -8,7 +8,7 @@ const ALLOWED = new Set([
 	"src/ui/logic/sgr.ts", // maps EXTERNAL llama-server ANSI colors to render names
 ]);
 
-const HEX_COLOR = /#[0-9a-fA-F]{3,8}\b/;
+const HEX_COLOR = /#[0-9a-fA-F]{8}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/;
 const NAMED_COLORS = new Set([
 	"black",
 	"red",
