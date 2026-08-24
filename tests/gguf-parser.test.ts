@@ -218,6 +218,17 @@ describe("GGUF parser: streaming cap + retry (P3-FR-07)", () => {
 		expect(h.version).toBe(3);
 	});
 
+	it("safety valve: parses a 3MB huge-vocab header (real qwen/gemma scale)", async () => {
+		const b = new GgufBuilder();
+		b.kv("string", "general.architecture", "qwen2")
+			.kv("string", "tokenizer.ggml.tokens", "x".repeat(3 * 1024 * 1024))
+			.tensor("t.weight", [4]);
+		const path = join(tmpDir("valve"), "hugevocab.gguf");
+		await Bun.write(path, b.build());
+		const h = await parseGgufFile(path);
+		expect(h.kv.get("general.architecture")).toBe("qwen2");
+	});
+
 	it("retries at 2MB when the header spans the 256KB cap", async () => {
 		const b = new GgufBuilder();
 		b.kv("string", "general.architecture", "llama")
@@ -232,7 +243,7 @@ describe("GGUF parser: streaming cap + retry (P3-FR-07)", () => {
 	it("throws HEADER_TOO_LARGE beyond the 2MB retry cap", async () => {
 		const b = new GgufBuilder();
 		b.kv("string", "general.architecture", "llama")
-			.kv("string", "big.blob", "x".repeat(3 * 1024 * 1024))
+			.kv("string", "big.blob", "x".repeat(33 * 1024 * 1024))
 			.tensor("t.weight", [4]);
 		const path = join(tmpDir("oversize"), "huge.gguf");
 		await Bun.write(path, b.build());

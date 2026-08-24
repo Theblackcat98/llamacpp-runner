@@ -12,6 +12,12 @@ import type {
 const MAGIC = 0x46554747;
 export const INITIAL_CAP = 256 * 1024;
 export const RETRY_CAP = 2 * 1024 * 1024;
+/**
+ * Safety valve below HEADER_TOO_LARGE. Real captured headers: qwen2.5-7b
+ * 5.95 MB, gemma3-4b 6.54 MB, deepseek2-lite 4.00 MB — vocab string arrays
+ * push modern headers far past the 2 MB retry (P3-FR-07 risk row).
+ */
+export const FINAL_CAP = 32 * 1024 * 1024;
 const MAX_SAFE_PARAMS = Number.MAX_SAFE_INTEGER;
 
 const TYPE_NAMES: Record<number, ScalarTypeName> = {
@@ -249,12 +255,13 @@ function parseInner(bytes: Uint8Array): {
 }
 
 /**
- * P3-FR-07 streaming cap: callers hand us the first `cap` bytes of a file.
- * If the header spans that cap and more file exists, retry once at retryCap.
+ * P3-FR-07 streaming cap: read min(fileSize, 256KB); one retry at 2MB; a
+ * final 32MB safety valve covers huge-vocab headers before HEADER_TOO_LARGE.
  */
 export async function parseGgufFile(path: string): Promise<GgufHeader> {
 	const file = Bun.file(path);
-	for (const cap of [INITIAL_CAP, RETRY_CAP]) {
+	const caps = [INITIAL_CAP, RETRY_CAP, FINAL_CAP];
+	for (const cap of caps) {
 		const readLen = Math.min(file.size, cap);
 		const bytes = new Uint8Array(await file.slice(0, readLen).arrayBuffer());
 		try {
@@ -266,10 +273,10 @@ export async function parseGgufFile(path: string): Promise<GgufHeader> {
 			if (readLen >= file.size) {
 				throw new ParseError("TRUNCATED", `${path} ends inside its header`);
 			}
-			if (cap === RETRY_CAP) {
+			if (cap === FINAL_CAP) {
 				throw new ParseError(
 					"HEADER_TOO_LARGE",
-					`${path}: header spans beyond ${RETRY_CAP} bytes`,
+					`${path}: header spans beyond ${FINAL_CAP} bytes`,
 				);
 			}
 		}
