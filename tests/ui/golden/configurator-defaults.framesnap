@@ -1,0 +1,26 @@
+┌─LAUNCH CONFIG─────────────────────────────────────────┐┌─RUNTIME─────────────────────────────────┐
+│ GPU Offload [████████████████████████] 29/29          ││ Model: ~/models/llm/qwen25-7b-q4km.gguf │
+│  4096  8192  16384  32768  65536  131072              ││ ngl max: 29 (block_count+1)             │
+│ K Cache <f16>                                         ││ 5.4 GB – 6.1 GB (estimated range)       │
+│ V Cache <f16>                                         ││                                         │
+│ [ ] Flash Attention                                   ││                                         │
+│ [ ] mlock                                             ││ [Enter] Save & Launch                   │
+│ [ ] no-mmap                                           ││ [Ctrl+S] Save Preset   [Esc] Reset      │
+│ 127.0.0.1  INS                                        ││ [Tab] cycle fields     [y] Yank cmd     │
+│ 8080 INS                                              ││                                         │
+│ alias INS                                             ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+│                                                       ││                                         │
+└───────────────────────────────────────────────────────┘└─────────────────────────────────────────┘
+┌─QUICK LAUNCH COMMAND PREVIEW─────────────────────────────────────────────────────────────────────┐
+│ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gguf' -ngl 29 -c 4096 -ctk f16 -ctv f16 --host    │
+│127.0.0.1 --port 8080 --slots --metrics                                                           │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘

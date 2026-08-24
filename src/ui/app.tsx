@@ -6,6 +6,7 @@ import {
 import { type Dispatch, type SetStateAction, useState } from "react";
 import { DegradedLayout } from "./components/degraded-layout";
 import { ConsoleDrawer } from "./console-drawer";
+import type { ConfiguratorState } from "./logic/configurator-state";
 import {
 	createDrawerState,
 	type DrawerState,
@@ -21,6 +22,7 @@ import {
 	TAB_COUNT,
 } from "./logic/shell-state";
 import { Catalog } from "./screens/catalog";
+import { Configurator } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import type { Theme } from "./themes";
 
@@ -39,8 +41,15 @@ export interface ExplorerControl {
 	scanning: boolean;
 	modelsDir: string | null;
 	scanError?: string;
+	selectedIndex?: number;
+	onSelectIndex?: (index: number) => void;
 	onRescan: () => void;
 	onUseDefaultDir: (dir: string) => void;
+}
+
+export interface ConfiguratorControl {
+	state: ConfiguratorState;
+	setState: (next: ConfiguratorState) => void;
 }
 
 export interface DrawerControl {
@@ -54,8 +63,11 @@ export interface AppProps {
 	onLaunch?: () => void;
 	onKill?: () => void;
 	onKillOrphan?: () => void;
+	onSavePreset?: () => void;
+	onYankCommand?: () => void;
 	drawerControl?: DrawerControl;
 	explorerControl?: ExplorerControl;
+	configuratorControl?: ConfiguratorControl;
 }
 
 export function App({
@@ -64,8 +76,11 @@ export function App({
 	onLaunch,
 	onKill,
 	onKillOrphan,
+	onSavePreset,
+	onYankCommand,
 	drawerControl,
 	explorerControl,
+	configuratorControl,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -110,6 +125,14 @@ export function App({
 		}
 		if (key.name === "r" && explorerControl && tab === 0) {
 			explorerControl.onRescan();
+			return;
+		}
+		if (key.ctrl && key.name === "s" && tab === 1 && onSavePreset) {
+			onSavePreset();
+			return;
+		}
+		if (key.name === "y" && !key.ctrl && tab === 1 && onYankCommand) {
+			onYankCommand();
 			return;
 		}
 		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {
@@ -210,6 +233,16 @@ export function App({
 						scanning={explorerControl.scanning}
 						modelsDir={explorerControl.modelsDir}
 						scanError={explorerControl.scanError}
+						selectedIndex={explorerControl.selectedIndex}
+						onSelectIndex={explorerControl.onSelectIndex}
+					/>
+				) : tab === 1 && configuratorControl ? (
+					<Configurator
+						theme={theme}
+						state={configuratorControl.state}
+						onChange={configuratorControl.setState}
+						focused
+						captureKeys={focusPane !== 3}
 					/>
 				) : (
 					<text
