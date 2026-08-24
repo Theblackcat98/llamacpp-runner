@@ -81,6 +81,20 @@ describe("SGR parser (P1-FR-09)", () => {
 		expect(parseSgr("no escapes here")).toEqual([{ text: "no escapes here" }]);
 	});
 
+	it("skips non-SGR CSI sequences instead of eating text", () => {
+		expect(parseSgr("\x1b[2Kmodel loaded")).toEqual([{ text: "model loaded" }]);
+	});
+
+	it("keeps text after private-mode escapes", () => {
+		expect(parseSgr("step \x1b[?25l50% done")).toEqual([
+			{ text: "step 50% done" },
+		]);
+	});
+
+	it("ignores SGR private parameters it cannot map", () => {
+		expect(parseSgr("\x1b[?25mtext")).toEqual([{ text: "text" }]);
+	});
+
 	it("returns one empty segment for empty input", () => {
 		expect(parseSgr("")).toEqual([{ text: "" }]);
 	});
