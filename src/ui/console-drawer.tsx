@@ -1,6 +1,6 @@
 import type { DrawerEntry } from "./logic/drawer-state";
 import { parseSgr } from "./logic/sgr";
-import type { Theme } from "./theme";
+import type { Theme } from "./themes";
 
 export interface ConsoleDrawerProps {
 	lines: DrawerEntry[];

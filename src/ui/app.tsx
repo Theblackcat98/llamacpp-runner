@@ -14,7 +14,7 @@ import {
 	type KeyRef,
 	TAB_COUNT,
 } from "./logic/shell-state";
-import type { Theme } from "./theme";
+import type { Theme } from "./themes";
 
 const TAB_LABELS = [
 	"Model Explorer",
