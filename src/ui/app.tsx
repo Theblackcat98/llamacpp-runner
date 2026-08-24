@@ -1,8 +1,9 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
-import { useState } from "react";
+import { type Dispatch, type SetStateAction, useState } from "react";
 import { ConsoleDrawer } from "./console-drawer";
 import {
 	createDrawerState,
+	type DrawerState,
 	pinToTail,
 	scrollBy,
 	visibleEntries,
@@ -24,16 +25,36 @@ const TAB_LABELS = [
 const PANE_COUNT = 5;
 const DRAWER_HEIGHT = 6;
 
+export interface DrawerControl {
+	state: DrawerState;
+	setState: Dispatch<SetStateAction<DrawerState>>;
+}
+
 export interface AppProps {
 	theme: Theme;
 	onQuit?: () => void;
+	onLaunch?: () => void;
+	onKill?: () => void;
+	onKillOrphan?: () => void;
+	drawerControl?: DrawerControl;
 }
 
-export function App({ theme, onQuit }: AppProps) {
+export function App({
+	theme,
+	onQuit,
+	onLaunch,
+	onKill,
+	onKillOrphan,
+	drawerControl,
+}: AppProps) {
 	const renderer = useRenderer();
 	const [tab, setTab] = useState(0);
 	const [focusPane, setFocusPane] = useState(0);
-	const [drawer, setDrawer] = useState(() => createDrawerState(DRAWER_HEIGHT));
+	const [internalDrawer, setInternalDrawer] = useState(() =>
+		createDrawerState(DRAWER_HEIGHT),
+	);
+	const drawer = drawerControl?.state ?? internalDrawer;
+	const setDrawer = drawerControl?.setState ?? setInternalDrawer;
 	const [collapsed, setCollapsed] = useState(false);
 
 	useKeyboard((key: KeyRef) => {
@@ -43,6 +64,19 @@ export function App({ theme, onQuit }: AppProps) {
 				return;
 			}
 			renderer.destroy();
+			return;
+		}
+		if (key.name === "return" && onLaunch) {
+			onLaunch();
+			return;
+		}
+		if (key.name === "x" && !key.ctrl) {
+			if (onKillOrphan) onKillOrphan();
+			else if (onKill) onKill();
+			return;
+		}
+		if (key.name === "k") {
+			if (onKillOrphan) onKillOrphan();
 			return;
 		}
 		if (key.ctrl && key.name === "l") {
