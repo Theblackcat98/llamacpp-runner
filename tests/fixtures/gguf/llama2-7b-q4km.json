@@ -1,0 +1,14 @@
+{
+	"source": "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf",
+	"headerBytes": 741039,
+	"architecture": "llama",
+	"quantName": "Q4_K_M",
+	"contextLength": 4096,
+	"blockCount": 32,
+	"embeddingLength": 4096,
+	"headCount": 32,
+	"headCountKv": 32,
+	"keyLength": null,
+	"vocabSize": null,
+	"totalParams": 6738415616
+}

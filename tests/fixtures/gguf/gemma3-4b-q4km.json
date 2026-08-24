@@ -1,0 +1,14 @@
+{
+	"source": "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf",
+	"headerBytes": 6539673,
+	"architecture": "gemma3",
+	"quantName": "Q4_K_M",
+	"contextLength": 131072,
+	"blockCount": 34,
+	"embeddingLength": 2560,
+	"headCount": 8,
+	"headCountKv": 4,
+	"keyLength": 256,
+	"vocabSize": null,
+	"totalParams": 3880099328
+}

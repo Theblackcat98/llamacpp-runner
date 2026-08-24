@@ -1,0 +1,14 @@
+{
+	"source": "https://huggingface.co/mradermacher/DeepSeek-V2-Lite-GGUF/resolve/main/DeepSeek-V2-Lite.Q4_K_M.gguf",
+	"headerBytes": 3996378,
+	"architecture": "deepseek2",
+	"quantName": "Q4_K_M",
+	"contextLength": 163840,
+	"blockCount": 27,
+	"embeddingLength": 2048,
+	"headCount": 16,
+	"headCountKv": 16,
+	"keyLength": 192,
+	"vocabSize": 102400,
+	"totalParams": 15706484224
+}
