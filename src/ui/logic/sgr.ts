@@ -38,35 +38,51 @@ export function parseSgr(input: string): TextSegment[] {
 		text = "";
 	};
 
+	const applySgrParams = (params: string) => {
+		for (const raw of params.split(";")) {
+			const code = Number.parseInt(raw === "" ? "0" : raw, 10);
+			if (Number.isNaN(code)) continue;
+			if (code === 0) {
+				flush();
+				fg = undefined;
+				bold = false;
+			} else if (code === 1) {
+				flush();
+				bold = true;
+			} else if (code === 22) {
+				flush();
+				bold = false;
+			} else if (code === 39) {
+				flush();
+				fg = undefined;
+			} else {
+				const named = BASIC_FG[code];
+				if (named !== undefined) {
+					flush();
+					fg = named;
+				}
+			}
+		}
+	};
+
 	let i = 0;
 	while (i < input.length) {
 		if (input[i] === "\x1b" && input[i + 1] === "[") {
-			const end = input.indexOf("m", i + 2);
-			if (end === -1) break;
-			for (const raw of input.slice(i + 2, end).split(";")) {
-				const code = Number.parseInt(raw === "" ? "0" : raw, 10);
-				if (code === 0) {
-					flush();
-					fg = undefined;
-					bold = false;
-				} else if (code === 1) {
-					flush();
-					bold = true;
-				} else if (code === 22) {
-					flush();
-					bold = false;
-				} else if (code === 39) {
-					flush();
-					fg = undefined;
-				} else {
-					const named = BASIC_FG[code];
-					if (named !== undefined) {
-						flush();
-						fg = named;
-					}
+			let end = -1;
+			for (let j = i + 2; j < input.length; j++) {
+				const c = input.charCodeAt(j);
+				if (c === 109) {
+					applySgrParams(input.slice(i + 2, j));
+					end = j + 1;
+					break;
+				}
+				if (c >= 64 && c <= 126) {
+					end = j + 1;
+					break;
 				}
 			}
-			i = end + 1;
+			if (end === -1) break;
+			i = end;
 			continue;
 		}
 		text += input[i];
