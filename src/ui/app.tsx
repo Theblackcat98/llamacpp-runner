@@ -1,5 +1,10 @@
-import { useKeyboard, useRenderer } from "@opentui/react";
+import {
+	useKeyboard,
+	useRenderer,
+	useTerminalDimensions,
+} from "@opentui/react";
 import { type Dispatch, type SetStateAction, useState } from "react";
+import { DegradedLayout } from "./components/degraded-layout";
 import { ConsoleDrawer } from "./console-drawer";
 import {
 	createDrawerState,
@@ -8,6 +13,7 @@ import {
 	scrollBy,
 	visibleEntries,
 } from "./logic/drawer-state";
+import { isDegraded } from "./logic/layout-state";
 import {
 	cycleFocus,
 	isQuitKey,
@@ -48,6 +54,7 @@ export function App({
 	drawerControl,
 }: AppProps) {
 	const renderer = useRenderer();
+	const { width, height } = useTerminalDimensions();
 	const [tab, setTab] = useState(0);
 	const [focusPane, setFocusPane] = useState(0);
 	const [internalDrawer, setInternalDrawer] = useState(() =>
@@ -102,6 +109,10 @@ export function App({
 			else if (key.name === "g" || key.name === "end") setDrawer(pinToTail);
 		}
 	});
+
+	if (isDegraded(width, height)) {
+		return <DegradedLayout width={width} height={height} theme={theme} />;
+	}
 
 	return (
 		<box
