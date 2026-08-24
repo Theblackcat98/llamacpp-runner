@@ -4,6 +4,7 @@ import {
 	useTerminalDimensions,
 } from "@opentui/react";
 import { type Dispatch, type SetStateAction, useState } from "react";
+import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { ConsoleDrawer } from "./console-drawer";
 import type { ConfiguratorState } from "./logic/configurator-state";
@@ -24,6 +25,7 @@ import {
 import { Catalog } from "./screens/catalog";
 import { Configurator } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
+import { PresetsScreen } from "./screens/presets";
 import type { Theme } from "./themes";
 
 const TAB_LABELS = [
@@ -52,6 +54,14 @@ export interface ConfiguratorControl {
 	setState: (next: ConfiguratorState) => void;
 }
 
+export interface PresetsControl {
+	file: PresetFile;
+	existingModelPaths: Set<string>;
+	onClone?: (id: string) => void;
+	onDelete?: (id: string) => void;
+	onSetDefault?: (id: string) => void;
+}
+
 export interface DrawerControl {
 	state: DrawerState;
 	setState: Dispatch<SetStateAction<DrawerState>>;
@@ -68,6 +78,7 @@ export interface AppProps {
 	drawerControl?: DrawerControl;
 	explorerControl?: ExplorerControl;
 	configuratorControl?: ConfiguratorControl;
+	presetsControl?: PresetsControl;
 }
 
 export function App({
@@ -81,6 +92,7 @@ export function App({
 	drawerControl,
 	explorerControl,
 	configuratorControl,
+	presetsControl,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -241,6 +253,17 @@ export function App({
 						theme={theme}
 						state={configuratorControl.state}
 						onChange={configuratorControl.setState}
+						focused
+						captureKeys={focusPane !== 3}
+					/>
+				) : tab === 3 && presetsControl ? (
+					<PresetsScreen
+						theme={theme}
+						file={presetsControl.file}
+						existingModelPaths={presetsControl.existingModelPaths}
+						onClone={presetsControl.onClone}
+						onDelete={presetsControl.onDelete}
+						onSetDefault={presetsControl.onSetDefault}
 						focused
 						captureKeys={focusPane !== 3}
 					/>

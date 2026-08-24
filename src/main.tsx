@@ -7,6 +7,7 @@ import { copyToClipboard } from "./core/export/clipboard";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
 import { createSession } from "./core/session";
+import type { PresetFile } from "./core/store/presets";
 import {
 	loadPresets,
 	presetsFilePath,
@@ -25,6 +26,11 @@ import {
 	createDrawerState,
 	type DrawerState,
 } from "./ui/logic/drawer-state";
+import {
+	clonePreset,
+	deletePreset,
+	setDefault,
+} from "./ui/logic/presets-state";
 import { TOKYO_NIGHT } from "./ui/themes";
 
 const DRAWER_HEIGHT = 6;
@@ -67,6 +73,30 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	const [config, setConfig] = useState<ConfiguratorState>(() =>
 		createConfigurator(null),
 	);
+	const [presetsFile, setPresetsFile] = useState<PresetFile>(() => ({
+		version: 2,
+		presets: [],
+	}));
+
+	useEffect(() => {
+		const store = loadPresets(presetsFilePath(paths.configDir));
+		if (store.data) {
+			setPresetsFile(store.data);
+			// lastSession restores last preset+tab on boot (P4-FR-19).
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: `[SYS] presets loaded: ${store.data.presets.length}`,
+			});
+		}
+	}, []);
+
+	function persistPresets(next: PresetFile): void {
+		setPresetsFile(next);
+		const store = loadPresets(presetsFilePath(paths.configDir));
+		savePresets(presetsFilePath(paths.configDir), next, {
+			migratedFrom: store.migratedFrom === 2 ? undefined : store.migratedFrom,
+		});
+	}
 
 	useEffect(() => {
 		const offLog = bus.onState("LOG_LINE", (event) => {
@@ -184,6 +214,13 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			configuratorControl={{
 				state: config,
 				setState: (next) => setConfig(next),
+			}}
+			presetsControl={{
+				file: presetsFile,
+				existingModelPaths: new Set(entries.map((e) => e.path)),
+				onClone: (id) => persistPresets(clonePreset(presetsFile, id)),
+				onDelete: (id) => persistPresets(deletePreset(presetsFile, id)),
+				onSetDefault: (id) => persistPresets(setDefault(presetsFile, id, 3)),
 			}}
 		/>
 	);
