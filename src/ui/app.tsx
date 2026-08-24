@@ -1,5 +1,12 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
 import { useState } from "react";
+import { ConsoleDrawer } from "./console-drawer";
+import {
+	createDrawerState,
+	pinToTail,
+	scrollBy,
+	visibleEntries,
+} from "./logic/drawer-state";
 import {
 	cycleFocus,
 	isQuitKey,
@@ -14,7 +21,8 @@ const TAB_LABELS = [
 	"Server Telemetry",
 	"Presets",
 ];
-const PANE_COUNT = 4;
+const PANE_COUNT = 5;
+const DRAWER_HEIGHT = 6;
 
 export interface AppProps {
 	theme: Theme;
@@ -25,6 +33,8 @@ export function App({ theme, onQuit }: AppProps) {
 	const renderer = useRenderer();
 	const [tab, setTab] = useState(0);
 	const [focusPane, setFocusPane] = useState(0);
+	const [drawer, setDrawer] = useState(() => createDrawerState(DRAWER_HEIGHT));
+	const [collapsed, setCollapsed] = useState(false);
 
 	useKeyboard((key: KeyRef) => {
 		if (isQuitKey(key)) {
@@ -35,6 +45,14 @@ export function App({ theme, onQuit }: AppProps) {
 			renderer.destroy();
 			return;
 		}
+		if (key.ctrl && key.name === "l") {
+			setDrawer(() => createDrawerState(DRAWER_HEIGHT));
+			return;
+		}
+		if (key.name === "o") {
+			setCollapsed((c) => !c);
+			return;
+		}
 		if (key.name === "tab") {
 			setFocusPane((p) => cycleFocus(PANE_COUNT, p, !key.shift));
 			return;
@@ -42,6 +60,12 @@ export function App({ theme, onQuit }: AppProps) {
 		const digit = Number.parseInt(key.name ?? "", 10);
 		if (digit >= 1 && digit <= TAB_COUNT) {
 			setTab(digit - 1);
+			return;
+		}
+		if (focusPane === 3) {
+			if (key.name === "up") setDrawer((s) => scrollBy(s, -1));
+			else if (key.name === "down") setDrawer((s) => scrollBy(s, 1));
+			else if (key.name === "g" || key.name === "end") setDrawer(pinToTail);
 		}
 	});
 
@@ -89,6 +113,13 @@ export function App({ theme, onQuit }: AppProps) {
 					fg={focusPane === 2 ? theme.fg : theme.muted}
 				>{`${TAB_LABELS[tab]} arrives in a later phase`}</text>
 			</box>
+			<ConsoleDrawer
+				lines={visibleEntries(drawer)}
+				viewportHeight={DRAWER_HEIGHT}
+				focused={focusPane === 3}
+				collapsed={collapsed}
+				theme={theme}
+			/>
 			<box
 				style={{
 					borderStyle: "single",
@@ -99,7 +130,7 @@ export function App({ theme, onQuit }: AppProps) {
 			>
 				<text fg={theme.muted}>
 					{
-						" [Tab] Cycle Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [q] Quit "
+						" [Tab] Cycle Focus | [1-4] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "
 					}
 				</text>
 			</box>
