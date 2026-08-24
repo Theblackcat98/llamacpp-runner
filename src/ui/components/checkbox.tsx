@@ -1,0 +1,36 @@
+import { useKeyboard } from "@opentui/react";
+import type { Theme } from "../themes";
+
+export interface CheckboxProps {
+	theme: Theme;
+	captureKeys: boolean;
+	checked: boolean;
+	focused?: boolean;
+	label?: string;
+	onToggle?: () => void;
+}
+
+export function Checkbox({
+	theme,
+	captureKeys,
+	checked,
+	focused = false,
+	label,
+	onToggle,
+}: CheckboxProps) {
+	useKeyboard((key) => {
+		if (!captureKeys) return;
+		if (key.name === "space") onToggle?.();
+	});
+
+	return (
+		<text fg={focused ? theme.fgBright : theme.fg}>
+			<span fg={focused ? theme.accent : theme.border}>[</span>
+			<span fg={checked ? theme.success : theme.muted}>
+				{checked ? "x" : " "}
+			</span>
+			<span fg={focused ? theme.accent : theme.border}>]</span>
+			{label ? <span>{` ${label}`}</span> : null}
+		</text>
+	);
+}
