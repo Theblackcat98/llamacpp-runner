@@ -11,7 +11,7 @@ import {
 	createDrawerState,
 	type DrawerState,
 } from "./ui/logic/drawer-state";
-import { TOKYO_NIGHT } from "./ui/theme";
+import { TOKYO_NIGHT } from "./ui/themes";
 
 const DRAWER_HEIGHT = 6;
 const MODEL_PATH =
