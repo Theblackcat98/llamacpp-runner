@@ -18,6 +18,9 @@ export interface ExplorerProps {
 	scanError?: string;
 	focused?: boolean;
 	captureKeys?: boolean;
+	/** Controlled selection (optional); internal state when omitted. */
+	selectedIndex?: number;
+	onSelectIndex?: (index: number) => void;
 }
 
 /**
@@ -32,9 +35,17 @@ export function Explorer({
 	scanError,
 	focused = false,
 	captureKeys = true,
+	selectedIndex,
+	onSelectIndex,
 }: ExplorerProps) {
 	const rows = buildRows(entries);
-	const [selected, setSelected] = useState(0);
+	const [internalSelected, setSelected] = useState(0);
+	const selected =
+		selectedIndex !== undefined ? selectedIndex : internalSelected;
+	const select = (index: number) => {
+		if (onSelectIndex) onSelectIndex(index);
+		else setSelected(index);
+	};
 	const clamped = Math.min(selected, Math.max(rows.length - 1, 0));
 	const current = rows[clamped]?.entry;
 
@@ -103,7 +114,7 @@ export function Explorer({
 								viewport={12}
 								captureKeys={captureKeys}
 								focused={focused}
-								onSelectionChange={(index) => setSelected(index)}
+								onSelectionChange={(index) => select(index)}
 							/>
 							{scanning ? <text fg={theme.accent}> scanning...</text> : null}
 							{scanError ? (
