@@ -75,6 +75,7 @@ export interface AppProps {
 	onKillOrphan?: () => void;
 	onSavePreset?: () => void;
 	onYankCommand?: () => void;
+	onConfirmHost?: () => void;
 	drawerControl?: DrawerControl;
 	explorerControl?: ExplorerControl;
 	configuratorControl?: ConfiguratorControl;
@@ -89,6 +90,7 @@ export function App({
 	onKillOrphan,
 	onSavePreset,
 	onYankCommand,
+	onConfirmHost,
 	drawerControl,
 	explorerControl,
 	configuratorControl,
@@ -145,6 +147,10 @@ export function App({
 		}
 		if (key.name === "y" && !key.ctrl && tab === 1 && onYankCommand) {
 			onYankCommand();
+			return;
+		}
+		if (key.ctrl && key.name === "y" && onConfirmHost) {
+			onConfirmHost();
 			return;
 		}
 		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {

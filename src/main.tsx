@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { createBus } from "./core/bus";
 import type { IntentMap, StateMap } from "./core/bus-contract";
 import { copyToClipboard } from "./core/export/clipboard";
+import { buildCommand } from "./core/flags/builder";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
-import { createSession } from "./core/session";
+import { createSession, type LaunchPlan } from "./core/session";
 import type { PresetFile } from "./core/store/presets";
 import {
 	loadPresets,
@@ -19,6 +20,7 @@ import {
 	type ConfiguratorState,
 	clampContext,
 	createConfigurator,
+	effectiveValues,
 	previewLine,
 } from "./ui/logic/configurator-state";
 import {
@@ -37,13 +39,18 @@ const DRAWER_HEIGHT = 6;
 
 const bus = createBus<IntentMap, StateMap>();
 const paths = resolvePaths();
+
+/**
+ * Set by SessionApp on every render; resolves the launch plan from the live
+ * configurator values so the spawned argv matches the preview byte-for-byte
+ * (P4-FR-03/06, EXIT criterion).
+ */
+let planSource: (() => LaunchPlan | null) | null = null;
+
 const session = createSession({
-	command: "llama-server",
-	args: ["--version"],
-	port: 8080,
-	presetId: "unconfigured",
 	paths,
 	bus,
+	resolveLaunch: () => planSource?.() ?? null,
 });
 
 await session.boot();
@@ -113,11 +120,32 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		const offDir = bus.onState("MODELS_DIR", (event) => {
 			setModelsDir(event.dir);
 		});
+		const offConfirm = bus.onState("CONFIRM_REQUIRED", (event) => {
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: `[SYS] host ${event.host} binds ALL interfaces — press Ctrl+Y to confirm launch`,
+			});
+		});
+		const offConflict = bus.onState("PORT_CONFLICT", (event) => {
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: `[SYS] port ${event.requested} in use — next free port: ${event.suggested ?? "?"}`,
+			});
+		});
+		const offBlocked = bus.onState("LAUNCH_BLOCKED", () => {
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: "[SYS] instance already running — press x to stop it first",
+			});
+		});
 		return () => {
 			offLog();
 			offProc();
 			offModels();
 			offDir();
+			offConfirm();
+			offConflict();
+			offBlocked();
 		};
 	}, []);
 
@@ -145,10 +173,36 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		);
 	}
 
+	function buildPlan(): LaunchPlan | null {
+		const cfg = config;
+		if (!cfg.model) return null;
+		const built = buildCommand({
+			modelPath: cfg.model.path,
+			meta: { blockCount: cfg.model.blockCount },
+			values: effectiveValues(cfg),
+		});
+		return {
+			command: "llama-server",
+			args: built.args,
+			port:
+				typeof cfg.values.port === "number"
+					? (cfg.values.port as number)
+					: 8080,
+			presetId: "ad-hoc",
+			host:
+				typeof cfg.values.host === "string"
+					? (cfg.values.host as string)
+					: "127.0.0.1",
+		};
+	}
+	planSource = buildPlan;
+
 	function handleLaunch(): void {
-		const entry = selectedEntry();
-		if (!entry || !config.model) return;
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
+	}
+
+	function handleConfirmHost(): void {
+		bus.emitIntent("LAUNCH", { presetId: "ad-hoc", confirmedHost: true });
 	}
 
 	function handleSavePreset(): void {
@@ -199,6 +253,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			}}
 			onSavePreset={handleSavePreset}
 			onYankCommand={handleYank}
+			onConfirmHost={handleConfirmHost}
 			drawerControl={{ state: drawer, setState: setDrawer }}
 			explorerControl={{
 				entries,
