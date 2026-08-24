@@ -1,0 +1,1371 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TUI Design Studio & Component Lab</title>
+  <style>
+    :root {
+      /* Theme Defaults: Tokyo Night */
+      --tui-bg: #1a1b26;
+      --tui-surface: #24283b;
+      --tui-fg: #a9b1d6;
+      --tui-fg-bright: #c0caf5;
+      --tui-border: #414868;
+      --tui-accent: #7aa2f7;
+      --tui-accent-hover: #89ddff;
+      --tui-muted: #565f89;
+      --tui-success: #9ece6a;
+      --tui-warn: #e0af68;
+      --tui-error: #f7768e;
+      --tui-purple: #bb9af7;
+      --tui-cyan: #7dcfff;
+      --tui-focus-bg: #2e3c64;
+      --tui-font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    }
+
+    [data-theme="catppuccin"] {
+      --tui-bg: #1e1e2e;
+      --tui-surface: #313244;
+      --tui-fg: #cdd6f4;
+      --tui-fg-bright: #f5e0dc;
+      --tui-border: #45475a;
+      --tui-accent: #89b4fa;
+      --tui-accent-hover: #b4befe;
+      --tui-muted: #6c7086;
+      --tui-success: #a6e3a1;
+      --tui-warn: #f9e2af;
+      --tui-error: #f38ba8;
+      --tui-purple: #cba6f7;
+      --tui-cyan: #89dceb;
+      --tui-focus-bg: #45475a;
+    }
+
+    [data-theme="gruvbox"] {
+      --tui-bg: #282828;
+      --tui-surface: #3c3836;
+      --tui-fg: #ebdbb2;
+      --tui-fg-bright: #fbf1c7;
+      --tui-border: #504945;
+      --tui-accent: #83a598;
+      --tui-accent-hover: #8ec07c;
+      --tui-muted: #928374;
+      --tui-success: #b8bb26;
+      --tui-warn: #fabd2f;
+      --tui-error: #fb4934;
+      --tui-purple: #d3869b;
+      --tui-cyan: #8ec07c;
+      --tui-focus-bg: #504945;
+    }
+
+    [data-theme="cyberpunk"] {
+      --tui-bg: #0d0e15;
+      --tui-surface: #1a1c29;
+      --tui-fg: #00f0ff;
+      --tui-fg-bright: #ffffff;
+      --tui-border: #ff0055;
+      --tui-accent: #ff0055;
+      --tui-accent-hover: #ffe600;
+      --tui-muted: #4a5171;
+      --tui-success: #00ff66;
+      --tui-warn: #ffe600;
+      --tui-error: #ff0055;
+      --tui-purple: #9d00ff;
+      --tui-cyan: #00f0ff;
+      --tui-focus-bg: #33001a;
+    }
+
+    [data-theme="matrix"] {
+      --tui-bg: #050b05;
+      --tui-surface: #0a180a;
+      --tui-fg: #00ff41;
+      --tui-fg-bright: #80ff9f;
+      --tui-border: #008f11;
+      --tui-accent: #00ff41;
+      --tui-accent-hover: #66ff8c;
+      --tui-muted: #003b00;
+      --tui-success: #00ff41;
+      --tui-warn: #a3ff00;
+      --tui-error: #ff3300;
+      --tui-purple: #00ffaa;
+      --tui-cyan: #00e5ff;
+      --tui-focus-bg: #003b00;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--tui-font);
+      font-size: 13px;
+      line-height: 1.35;
+      letter-spacing: 0px;
+    }
+
+    body {
+      background-color: #0d0e12;
+      color: var(--tui-fg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+      user-select: none;
+    }
+
+    /* Terminal Window Wrapper */
+    .terminal-window {
+      width: 100%;
+      max-width: 1280px;
+      height: 92vh;
+      max-height: 900px;
+      background-color: var(--tui-bg);
+      border: 2px solid var(--tui-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Header Bar */
+    .tui-header {
+      background-color: var(--tui-surface);
+      border-bottom: 1px solid var(--tui-border);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--tui-fg-bright);
+      font-weight: bold;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 6px;
+      margin-right: 12px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-close { background-color: #f7768e; }
+    .dot-min { background-color: #e0af68; }
+    .dot-max { background-color: #9ece6a; }
+
+    /* Nav Tabs */
+    .tui-tabs {
+      display: flex;
+      background-color: var(--tui-surface);
+      border-bottom: 1px solid var(--tui-border);
+      overflow-x: auto;
+    }
+
+    .tui-tab {
+      padding: 6px 16px;
+      color: var(--tui-muted);
+      cursor: pointer;
+      border-right: 1px solid var(--tui-border);
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .tui-tab:hover {
+      color: var(--tui-fg-bright);
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .tui-tab.active {
+      color: var(--tui-accent);
+      border-bottom-color: var(--tui-accent);
+      background-color: var(--tui-bg);
+      font-weight: bold;
+    }
+
+    /* Content Viewports */
+    .tui-viewport {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .tui-viewport.active {
+      display: block;
+    }
+
+    /* Layout Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    /* TUI Box Panel Primitives */
+    .tui-box {
+      border: 1px solid var(--tui-border);
+      background-color: var(--tui-bg);
+      padding: 10px;
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .tui-box-title {
+      position: absolute;
+      top: -10px;
+      left: 12px;
+      background-color: var(--tui-bg);
+      padding: 0 6px;
+      color: var(--tui-accent);
+      font-weight: bold;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Border Variations */
+    .border-double { border-style: double; border-width: 3px; }
+    .border-round { border-radius: 6px; }
+    .border-heavy { border-width: 2px; border-color: var(--tui-fg-bright); }
+    .border-dashed { border-style: dashed; }
+    .border-accent { border-color: var(--tui-accent); }
+
+    /* Keyboard Interactive Focus States */
+    .focusable {
+      outline: none;
+      transition: background-color 0.1s, color 0.1s;
+    }
+
+    .focusable:focus, .focusable.focused {
+      background-color: var(--tui-focus-bg) !important;
+      color: var(--tui-fg-bright) !important;
+      box-shadow: inset 0 0 0 1px var(--tui-accent);
+    }
+
+    .focusable:focus .tui-cursor, .focusable.focused .tui-cursor {
+      display: inline-block;
+    }
+
+    /* ASCII Typography Header */
+    .ascii-banner {
+      font-family: monospace;
+      white-space: pre;
+      color: var(--tui-accent);
+      line-height: 1.1;
+      font-weight: bold;
+      overflow-x: auto;
+    }
+
+    /* Text & Form Components */
+    .tui-input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tui-label {
+      min-width: 110px;
+      color: var(--tui-muted);
+    }
+
+    .tui-input {
+      background: var(--tui-surface);
+      border: 1px solid var(--tui-border);
+      color: var(--tui-fg-bright);
+      padding: 4px 8px;
+      flex: 1;
+    }
+
+    .tui-button {
+      background-color: var(--tui-surface);
+      border: 1px solid var(--tui-border);
+      color: var(--tui-fg-bright);
+      padding: 4px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tui-button:hover {
+      border-color: var(--tui-accent);
+      color: var(--tui-accent);
+    }
+
+    .tui-button.primary {
+      background-color: var(--tui-accent);
+      color: var(--tui-bg);
+      font-weight: bold;
+      border-color: var(--tui-accent);
+    }
+
+    .tui-button.primary:hover {
+      background-color: var(--tui-accent-hover);
+    }
+
+    /* Sliders & Toggles */
+    .tui-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .tui-slider-track {
+      flex: 1;
+      height: 16px;
+      background: var(--tui-surface);
+      border: 1px solid var(--tui-border);
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0 2px;
+      font-family: monospace;
+    }
+
+    .tui-checkbox, .tui-radio {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Preset Chips (ctx-size selector) */
+    .tui-chip {
+      display: inline-block;
+      border: 1px solid var(--tui-border);
+      background: var(--tui-surface);
+      color: var(--tui-muted);
+      padding: 1px 8px;
+      cursor: pointer;
+    }
+
+    .tui-chip:hover {
+      border-color: var(--tui-accent);
+      color: var(--tui-accent);
+    }
+
+    .tui-chip.active {
+      background: var(--tui-accent);
+      color: var(--tui-bg);
+      font-weight: bold;
+    }
+
+    /* Telemetry Gauges & Sparklines */
+    .gauge-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .sparkline {
+      color: var(--tui-cyan);
+      letter-spacing: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Interactive Data Displays */
+    .tui-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .tui-table th {
+      border-bottom: 1px solid var(--tui-border);
+      color: var(--tui-accent);
+      padding: 6px;
+      font-weight: bold;
+    }
+
+    .tui-table td {
+      padding: 5px 6px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+
+    .tui-table tr:hover td {
+      background-color: var(--tui-surface);
+    }
+
+    /* Tree View */
+    .tui-tree-node {
+      padding: 2px 0;
+      cursor: pointer;
+      white-space: pre;
+    }
+
+    .tui-tree-node:hover {
+      color: var(--tui-accent);
+    }
+
+    /* Syntax Code & Diff Viewers */
+    .tui-code {
+      background-color: var(--tui-surface);
+      padding: 8px;
+      border: 1px solid var(--tui-border);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .syn-keyword { color: var(--tui-purple); font-weight: bold; }
+    .syn-func { color: var(--tui-accent); }
+    .syn-string { color: var(--tui-success); }
+    .syn-num { color: var(--tui-warn); }
+    .syn-comment { color: var(--tui-muted); italic: true; }
+
+    .diff-add { background-color: rgba(158, 206, 106, 0.15); color: var(--tui-success); }
+    .diff-del { background-color: rgba(247, 118, 142, 0.15); color: var(--tui-error); }
+
+    /* Animations & Indicators */
+    .spinner-cell {
+      display: inline-block;
+      width: 20px;
+      text-align: center;
+      font-weight: bold;
+      color: var(--tui-accent);
+    }
+
+    .progress-bar-ascii {
+      letter-spacing: -1px;
+      font-weight: bold;
+    }
+
+    /* Terminal Console Drawer */
+    .tui-console {
+      height: 120px;
+      background-color: var(--tui-surface);
+      border-top: 2px solid var(--tui-border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .console-header {
+      background-color: var(--tui-bg);
+      padding: 4px 10px;
+      border-bottom: 1px solid var(--tui-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--tui-muted);
+    }
+
+    .console-logs {
+      flex: 1;
+      padding: 6px 10px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .log-line {
+      margin-bottom: 2px;
+      display: flex;
+      gap: 8px;
+    }
+    .log-time { color: var(--tui-muted); }
+    .log-tag { color: var(--tui-accent); font-weight: bold; }
+    .log-msg { color: var(--tui-fg); }
+
+    /* Footer Status Bar */
+    .tui-statusbar {
+      background-color: var(--tui-accent);
+      color: var(--tui-bg);
+      padding: 2px 10px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    /* Command Palette Modal Overlay */
+    .tui-modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 60px;
+      z-index: 100;
+    }
+
+    .tui-modal-overlay.active {
+      display: flex;
+    }
+
+    .tui-modal {
+      width: 500px;
+      background-color: var(--tui-bg);
+      border: 2px solid var(--tui-accent);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      padding: 12px;
+    }
+
+    .blink {
+      animation: blinker 1s cubic-bezier(0.5, 0, 1, 1) infinite;
+    }
+
+    @keyframes blinker {
+      50% { opacity: 0; }
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--tui-bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--tui-border);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--tui-muted);
+    }
+  </style>
+</head>
+<body>
+
+<div class="terminal-window" id="app">
+  <!-- Window Header -->
+  <header class="tui-header">
+    <div style="display: flex; align-items: center;">
+      <div class="window-controls">
+        <span class="dot dot-close"></span>
+        <span class="dot dot-min"></span>
+        <span class="dot dot-max"></span>
+      </div>
+      <span>opentui-design-studio v2.0.0 — 80x24 ANSI Engine</span>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; font-size: 11px;">
+      <span>THEME:
+        <select id="themeSelect" onchange="changeTheme(this.value)" style="background:var(--tui-bg); color:var(--tui-accent); border:1px solid var(--tui-border); padding:2px 4px;">
+          <option value="tokyonight">Tokyo Night</option>
+          <option value="catppuccin">Catppuccin</option>
+          <option value="gruvbox">Gruvbox Dark</option>
+          <option value="cyberpunk">Cyberpunk Neon</option>
+          <option value="matrix">Matrix Green</option>
+        </select>
+      </span>
+      <span style="color: var(--tui-success);">● CONNECTED</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tui-tabs">
+    <div class="tui-tab active" onclick="switchTab('componentsTab', this)">
+      <span>[1]</span> Components Catalog
+    </div>
+    <div class="tui-tab" onclick="switchTab('animationsTab', this)">
+      <span>[2]</span> Spinners & ASCII Symbols
+    </div>
+    <div class="tui-tab" onclick="switchTab('interactiveTab', this)">
+      <span>[3]</span> Forms & Controls
+    </div>
+    <div class="tui-tab" onclick="switchTab('sandboxTab', this)">
+      <span>[4]</span> Live Layout Sandbox
+    </div>
+    <div class="tui-tab" onclick="switchTab('configTab', this)">
+      <span>[5]</span> App Screen: Configurator
+    </div>
+    <div class="tui-tab" onclick="switchTab('telemetryTab', this)">
+      <span>[6]</span> App Screen: Telemetry
+    </div>
+  </nav>
+
+  <!-- VIEWPORT 1: COMPONENTS CATALOG -->
+  <main id="componentsTab" class="tui-viewport active">
+    <!-- ASCII Header Banner -->
+    <div class="tui-box border-round">
+      <div class="ascii-banner">
+  ██████╗ ██████╗ ███████╗███╗   ██╗████████╗██╗██╗  ██╗██╗   ██╗██╗
+ ██╔═══██╗██╔══██╗██╔════╝████╗  ██║╚══██╔══╝██║██║  ██║██║   ██║██║
+ ██║   ██║██████╔╝█████╗  ██╔██╗ ██║   ██║   ██║██║  ██║██║   ██║██║
+ ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║   ██║   ██║██║  ██║██║   ██║██║
+ ╚██████╔╝██║     ███████╗██║ ╚████║   ██║   ██║╚█████╔╝╚██████╔╝██║
+  ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝ ╚════╝  ╚═════╝ ╚═╝
+      </div>
+      <div style="margin-top: 6px; color: var(--tui-muted); display: flex; justify-content: space-between;">
+        <span>Declarative TUI primitives with native frame diffing & flexbox layout.</span>
+        <span style="color: var(--tui-accent);">[Press Tab to navigate focus]</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Container & Border Variations -->
+      <div class="tui-box">
+        <div class="tui-box-title">Container Borders</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="tui-box" style="margin-bottom:0;">
+            <div class="tui-box-title">Single</div>
+            <span style="color:var(--tui-muted)">borderStyle: "single"</span>
+          </div>
+          <div class="tui-box border-double" style="margin-bottom:0;">
+            <div class="tui-box-title">Double</div>
+            <span style="color:var(--tui-muted)">borderStyle: "double"</span>
+          </div>
+          <div class="tui-box border-round" style="margin-bottom:0;">
+            <div class="tui-box-title">Round</div>
+            <span style="color:var(--tui-muted)">borderStyle: "round"</span>
+          </div>
+          <div class="tui-box border-heavy" style="margin-bottom:0;">
+            <div class="tui-box-title">Heavy</div>
+            <span style="color:var(--tui-muted)">borderStyle: "heavy"</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Modifiers & ANSI Colors -->
+      <div class="tui-box">
+        <div class="tui-box-title">Typography & Styles</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div><strong style="color:var(--tui-fg-bright)">Bold text modifier:</strong> <span style="font-weight:bold;">The quick brown fox</span></div>
+          <div><strong style="color:var(--tui-fg-bright)">Dim / Muted modifier:</strong> <span style="color:var(--tui-muted)">jumps over the lazy dog</span></div>
+          <div><strong style="color:var(--tui-fg-bright)">Italic & Underline:</strong> <span style="font-style:italic; text-decoration:underline;">ANSI text decorators</span></div>
+          <div><strong style="color:var(--tui-fg-bright)">Inverse highlight:</strong> <span style="background:var(--tui-fg); color:var(--tui-bg); padding:0 4px;">SELECTED ROW</span></div>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <span style="background:var(--tui-accent); color:#000; padding:1px 6px; font-weight:bold;">BLUE</span>
+            <span style="background:var(--tui-success); color:#000; padding:1px 6px; font-weight:bold;">GREEN</span>
+            <span style="background:var(--tui-warn); color:#000; padding:1px 6px; font-weight:bold;">YELLOW</span>
+            <span style="background:var(--tui-error); color:#000; padding:1px 6px; font-weight:bold;">RED</span>
+            <span style="background:var(--tui-purple); color:#000; padding:1px 6px; font-weight:bold;">PURPLE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Display Components: Table & Tree -->
+    <div class="grid-2" style="margin-top: 12px;">
+      <!-- Interactive Data Table -->
+      <div class="tui-box">
+        <div class="tui-box-title">Data Table & Grid</div>
+        <table class="tui-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>PROCESS</th>
+              <th>CPU %</th>
+              <th>MEM</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="focusable" tabindex="0" onfocus="logEvent('Focus Row 1024')">
+              <td>#1024</td>
+              <td>opentui-core</td>
+              <td style="color:var(--tui-success);">2.4%</td>
+              <td>14.2 MB</td>
+              <td><span style="color:var(--tui-success)">RUNNING</span></td>
+            </tr>
+            <tr class="focusable" tabindex="0" onfocus="logEvent('Focus Row 1025')">
+              <td>#1025</td>
+              <td>zig-frame-diff</td>
+              <td style="color:var(--tui-accent);">18.7%</td>
+              <td>42.8 MB</td>
+              <td><span style="color:var(--tui-success)">RUNNING</span></td>
+            </tr>
+            <tr class="focusable" tabindex="0" onfocus="logEvent('Focus Row 1028')">
+              <td>#1028</td>
+              <td>tree-sitter-c</td>
+              <td style="color:var(--tui-muted);">0.0%</td>
+              <td>8.1 MB</td>
+              <td><span style="color:var(--tui-warn)">SLEEPING</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- File Tree & Code Inspector -->
+      <div class="tui-box">
+        <div class="tui-box-title">File Tree & Syntax Highlight</div>
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px;">
+          <div style="border-right: 1px solid var(--tui-border); padding-right: 6px;">
+            <div class="tui-tree-node" onclick="logEvent('Select src/')">▼ src/</div>
+            <div class="tui-tree-node" onclick="logEvent('Select index.tsx')" style="color:var(--tui-accent)">  ├─ index.tsx</div>
+            <div class="tui-tree-node" onclick="logEvent('Select layout.ts')">  ├─ layout.ts</div>
+            <div class="tui-tree-node" onclick="logEvent('Select native.zig')">  └─ native.zig</div>
+            <div class="tui-tree-node">► package.json</div>
+          </div>
+          <div class="tui-code">
+<span class="syn-keyword">import</span> { createRoot } <span class="syn-keyword">from</span> <span class="syn-string">"@opentui/react"</span>;
+
+<span class="syn-keyword">function</span> <span class="syn-func">App</span>() {
+  <span class="syn-keyword">return</span> (
+    &lt;<span class="syn-func">box</span> borderStyle=<span class="syn-string">"round"</span>&gt;
+      &lt;<span class="syn-func">text</span> color=<span class="syn-string">"#7aa2f7"</span>&gt;Hello TUI&lt;/<span class="syn-func">text</span>&gt;
+    &lt;/<span class="syn-func">box</span>&gt;
+  );
+}</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEWPORT 2: ANIMATIONS & ASCII LAB -->
+  <main id="animationsTab" class="tui-viewport">
+    <div class="grid-3">
+      <!-- CLI Spinners Catalog -->
+      <div class="tui-box">
+        <div class="tui-box-title">CLI Spinners</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div><span class="spinner-cell" id="spBraille">⠋</span> <strong>Braille:</strong> <span style="color:var(--tui-muted)">⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏</span></div>
+          <div><span class="spinner-cell" id="spLine">|</span> <strong>Classic Line:</strong> <span style="color:var(--tui-muted)">| / - \</span></div>
+          <div><span class="spinner-cell" id="spBlocks">▛</span> <strong>Quadrant Blocks:</strong> <span style="color:var(--tui-muted)">▛ ▜ ▟ ▙</span></div>
+          <div><span class="spinner-cell" id="spDots">.</span> <strong>Bounce Dots:</strong> <span style="color:var(--tui-muted)">. o O @ O o</span></div>
+          <div><span class="spinner-cell" id="spPulse">·</span> <strong>Pulse Star:</strong> <span style="color:var(--tui-muted)">· ✻ ✽ ✶ ✳ ✢</span></div>
+          <div><span class="spinner-cell" id="spClock">🕐</span> <strong>Clock Hands:</strong> <span style="color:var(--tui-muted)">🕐 🕑 🕒 🕓 🕔</span></div>
+        </div>
+      </div>
+
+      <!-- Level Indicators & ASCII Fraction Blocks -->
+      <div class="tui-box">
+        <div class="tui-box-title">Block Fill Spectrum</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <div style="margin-bottom:2px; color:var(--tui-muted);">Vertical Fill Steps (8ths):</div>
+            <div style="font-size:16px; color:var(--tui-accent); letter-spacing:2px;">█ ▇ ▆ ▅ ▄ ▃ ▂  </div>
+          </div>
+          <div>
+            <div style="margin-bottom:2px; color:var(--tui-muted);">Horizontal Partial Blocks:</div>
+            <div style="font-size:16px; color:var(--tui-success); letter-spacing:2px;">█ ▉ ▊ ▋ ▌ ▍ ▎ ▏</div>
+          </div>
+          <div>
+            <div style="margin-bottom:2px; color:var(--tui-muted);">Square Block Fraction Steps:</div>
+            <div style="font-size:16px; color:var(--tui-warn); letter-spacing:4px;">■ ▅ □</div>
+            <div style="font-size:11px; color:var(--tui-muted); margin-top:2px;">Full (■) • Half (▅) • Empty (□)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animated Progress Meters -->
+      <div class="tui-box">
+        <div class="tui-box-title">Dynamic Meters & Gauges</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+              <span>DOWNLOAD PROGRESS</span>
+              <span id="progPct">64%</span>
+            </div>
+            <div class="progress-bar-ascii" id="progBar1" style="color:var(--tui-accent);">[████████████████░░░░░░░░░]</div>
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+              <span>VOLUME AUDIO LEVEL</span>
+              <span id="vuVal">7/10</span>
+            </div>
+            <div style="font-size:14px;" id="vuMeter">
+              <span style="color:var(--tui-success);">■ ■ ■ ■ ■ ■</span>
+              <span style="color:var(--tui-warn);">■ ■</span>
+              <span style="color:var(--tui-border);">□ □</span>
+            </div>
+          </div>
+
+          <div>
+            <div style="margin-bottom:2px;">STATUS BADGES:</div>
+            <div style="display:flex; gap:6px;">
+              <span style="background:rgba(158,206,106,0.2); color:var(--tui-success); padding:1px 4px;"><span class="blink">●</span> ONLINE</span>
+              <span style="background:rgba(224,175,104,0.2); color:var(--tui-warn); padding:1px 4px;">▲ SYNCING</span>
+              <span style="background:rgba(247,118,142,0.2); color:var(--tui-error); padding:1px 4px;">✖ ERROR</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Text Effects Lab -->
+    <div class="grid-2" style="margin-top:12px;">
+      <div class="tui-box">
+        <div class="tui-box-title">Typewriter & Stream Effects</div>
+        <div id="typewriterTarget" style="min-height: 48px; background:var(--tui-surface); padding:8px; border:1px solid var(--tui-border);">
+          Loading buffer...
+        </div>
+        <div style="margin-top:6px; display:flex; gap:6px;">
+          <button class="tui-button" onclick="restartTypewriter()">Replay Typewriter</button>
+          <button class="tui-button" onclick="triggerBellSound()">Trigger Terminal Bell (\a)</button>
+        </div>
+      </div>
+
+      <div class="tui-box">
+        <div class="tui-box-title">Marquee Text Ticker</div>
+        <div style="background:var(--tui-surface); padding:6px; border:1px solid var(--tui-border); overflow:hidden; white-space:nowrap;">
+          <span id="marqueeText" style="color:var(--tui-cyan); font-weight:bold;">
+            *** OPENTUI V2 RELEASED *** FAST FLEXBOX RENDERER *** NATIVE ZIG CORE ***
+          </span>
+        </div>
+        <div style="margin-top:10px; color:var(--tui-muted);">
+          Simulates continuous ANSI stdout scroll and screen updates.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEWPORT 3: INTERACTIVE CONTROLS -->
+  <main id="interactiveTab" class="tui-viewport">
+    <div class="grid-2">
+      <!-- Form Controls -->
+      <div class="tui-box">
+        <div class="tui-box-title">Form Controls & Inputs</div>
+
+        <div class="tui-input-group">
+          <label class="tui-label">Text Input:</label>
+          <input type="text" class="tui-input focusable" value="admin@opentui.dev" oninput="logEvent('Input: ' + this.value)" />
+        </div>
+
+        <div class="tui-input-group">
+          <label class="tui-label">Select Box:</label>
+          <select class="tui-input focusable" onchange="logEvent('Select: ' + this.value)">
+            <option>@opentui/core (Zig)</option>
+            <option>@opentui/react (Reconciler)</option>
+            <option>@opentui/solid (SolidJS)</option>
+          </select>
+        </div>
+
+        <div class="tui-input-group">
+          <label class="tui-label">Slider Control:</label>
+          <div class="tui-slider-container">
+            <input type="range" min="0" max="100" value="45" class="focusable" style="flex:1;" oninput="updateSliderVal(this.value)" />
+            <span id="sliderValNum" style="width:40px; text-align:right;">45%</span>
+          </div>
+        </div>
+
+        <div class="tui-input-group" style="margin-top:10px;">
+          <label class="tui-label">Checkboxes:</label>
+          <div style="display:flex; gap:12px;">
+            <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)">
+              <span class="chk-box">[x]</span> Raw Mode
+            </label>
+            <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)">
+              <span class="chk-box">[ ]</span> Alt Screen
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button class="tui-button primary focusable" onclick="logEvent('Action: Saved Changes')">
+            [Enter] Save Configuration
+          </button>
+          <button class="tui-button focusable" onclick="logEvent('Action: Reset Form')">
+            [Esc] Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Git Diff Viewer Component -->
+      <div class="tui-box">
+        <div class="tui-box-title">Git Diff Viewer Component</div>
+        <div class="tui-code" style="font-size:12px;">
+<span style="color:var(--tui-muted)">@@ -14,6 +14,8 @@ function renderTerminal() {</span>
+<span class="diff-del">-  const buffer = new LegacyScreenBuffer();</span>
+<span class="diff-add">+  const nativeEngine = new ZigFrameDiff();</span>
+<span class="diff-add">+  nativeEngine.enableMouseTracking();</span>
+   buffer.flush();
+<span class="diff-del">-  console.log("Flushed full screen");</span>
+<span class="diff-add">+  // Optimized frame diffing applied</span>
+</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEWPORT 4: LIVE LAYOUT SANDBOX -->
+  <main id="sandboxTab" class="tui-viewport">
+    <div class="grid-2">
+      <!-- Layout Customizer Panel -->
+      <div class="tui-box">
+        <div class="tui-box-title">Layout Parameters</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="tui-input-group">
+            <label class="tui-label">Flex Direction:</label>
+            <select id="sbDirection" class="tui-input" onchange="updateSandboxPreview()">
+              <option value="column">column</option>
+              <option value="row">row</option>
+            </select>
+          </div>
+          <div class="tui-input-group">
+            <label class="tui-label">Border Style:</label>
+            <select id="sbBorder" class="tui-input" onchange="updateSandboxPreview()">
+              <option value="round">round</option>
+              <option value="single">single</option>
+              <option value="double">double</option>
+              <option value="heavy">heavy</option>
+            </select>
+          </div>
+          <div class="tui-input-group">
+            <label class="tui-label">Gap Spacing:</label>
+            <input type="number" id="sbGap" class="tui-input" value="1" min="0" max="5" onchange="updateSandboxPreview()" />
+          </div>
+          <div class="tui-input-group">
+            <label class="tui-label">Panel Title:</label>
+            <input type="text" id="sbTitle" class="tui-input" value="Custom Box" oninput="updateSandboxPreview()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Generated Box Preview -->
+      <div class="tui-box">
+        <div class="tui-box-title">Live Preview</div>
+        <div id="sandboxPreviewTarget" class="tui-box border-round" style="min-height: 140px; display:flex; flex-direction:column; gap:8px;">
+          <div class="tui-box-title" id="sbPreviewTitle">Custom Box</div>
+          <div style="background:var(--tui-surface); padding:6px; border:1px solid var(--tui-border);">Child Element #1</div>
+          <div style="background:var(--tui-surface); padding:6px; border:1px solid var(--tui-border);">Child Element #2</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEWPORT 5: APP SCREEN — LAUNCH CONFIGURATOR (llama-deck) -->
+  <main id="configTab" class="tui-viewport">
+    <div class="grid-2">
+      <!-- GPU Offload Slider -->
+      <div class="tui-box">
+        <div class="tui-box-title">GPU Offload (-ngl / --n-gpu-layers)</div>
+        <div class="tui-slider-container">
+          <input type="range" min="0" max="65" value="64" class="focusable" style="flex:1;" oninput="updateNgl(this.value)" />
+          <span id="nglVal" style="width:56px; text-align:right;">64 / 65</span>
+        </div>
+        <div style="margin-top:6px; color:var(--tui-muted);">max = block_count + 1 (read from GGUF tensor metadata)</div>
+        <div style="margin-top:4px; color:var(--tui-warn);">Est. VRAM (range): <span id="nglVram">21.1 – 23.8 GB</span></div>
+        <div style="margin-top:4px; color:var(--tui-muted);">[!] changes require server restart — weights reload</div>
+      </div>
+
+      <!-- Context Length -->
+      <div class="tui-box">
+        <div class="tui-box-title">Context Length (-c / --ctx-size)</div>
+        <div class="tui-input-group">
+          <label class="tui-label">ctx_size:</label>
+          <input type="number" id="ctxInput" class="tui-input focusable" value="32768" min="512" step="512" onchange="logEvent('ctx-size set: ' + this.value, 'CFG')" />
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+          <span class="tui-chip" onclick="selectCtxChip(this, 4096)">4096</span>
+          <span class="tui-chip" onclick="selectCtxChip(this, 8192)">8192</span>
+          <span class="tui-chip" onclick="selectCtxChip(this, 16384)">16384</span>
+          <span class="tui-chip active" onclick="selectCtxChip(this, 32768)">32768</span>
+          <span class="tui-chip" onclick="selectCtxChip(this, 65536)">65536</span>
+          <span class="tui-chip" onclick="selectCtxChip(this, 131072)">131072</span>
+        </div>
+        <div style="margin-top:6px; color:var(--tui-muted);">clamped to {arch}.context_length (32,768) — warn on exceed</div>
+        <div style="margin-top:4px; color:var(--tui-muted);">KV cache @ q8_0: <span id="kvSize" style="color:var(--tui-cyan);">4.0 GB</span> (GQA-aware: n_kv_heads, not n_heads)</div>
+      </div>
+
+      <!-- Network Binding -->
+      <div class="tui-box">
+        <div class="tui-box-title">Network Binding (--host / --port)</div>
+        <div class="tui-input-group">
+          <label class="tui-label">host:</label>
+          <input type="text" class="tui-input focusable" value="127.0.0.1" oninput="logEvent('host set: ' + this.value, 'CFG')" />
+        </div>
+        <div class="tui-input-group">
+          <label class="tui-label">port:</label>
+          <input type="number" class="tui-input focusable" value="8080" min="1" max="65535" onchange="logEvent('port set: ' + this.value, 'CFG')" />
+        </div>
+        <div style="color:var(--tui-warn);">[!] 0.0.0.0 binding triggers confirm dialog · pre-flight bind check before spawn</div>
+      </div>
+
+      <!-- Toggles & KV Cache -->
+      <div class="tui-box">
+        <div class="tui-box-title">Runtime Toggles & KV Cache Precision</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)"><span class="chk-box">[x]</span> flash-attn</label>
+          <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)"><span class="chk-box">[ ]</span> mlock</label>
+          <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)"><span class="chk-box">[ ]</span> no-mmap</label>
+          <label class="tui-checkbox focusable" tabindex="0" onclick="toggleCheckbox(this)"><span class="chk-box">[x]</span> slots+metrics</label>
+        </div>
+        <div class="tui-input-group" style="margin-top:10px;">
+          <label class="tui-label" style="min-width:90px;">cache-type-k:</label>
+          <select class="tui-input focusable" style="max-width:90px;" onchange="logEvent('cache_type_k: ' + this.value, 'CFG')">
+            <option>f16</option><option selected>q8_0</option><option>q4_0</option>
+          </select>
+          <label class="tui-label" style="min-width:90px;">cache-type-v:</label>
+          <select class="tui-input focusable" style="max-width:90px;" onchange="logEvent('cache_type_v: ' + this.value, 'CFG')">
+            <option>f16</option><option selected>q8_0</option><option>q4_0</option>
+          </select>
+        </div>
+        <div style="color:var(--tui-muted); margin-top:6px;">--slots / --metrics auto-injected while telemetry enabled (default ON)</div>
+      </div>
+    </div>
+
+    <!-- Command Preview & Actions -->
+    <div class="tui-box border-accent" style="margin-top:12px;">
+      <div class="tui-box-title">Command Preview (live, registry-built)</div>
+      <div class="tui-code"><span class="syn-func">llama-server</span> <span class="syn-string">-m</span> ~/models/llm/qwen2.5-coder-32B.gguf <span class="syn-string">-c</span> <span class="syn-num">32768</span> <span class="syn-string">-ngl</span> <span class="syn-num">64</span> <span class="syn-string">-fa</span> <span class="syn-string">--cache-type-k</span> q8_0 <span class="syn-string">--cache-type-v</span> q8_0 <span class="syn-string">--host</span> 127.0.0.1 <span class="syn-string">--port</span> <span class="syn-num">8080</span> <span class="syn-string">--slots</span> <span class="syn-string">--metrics</span></div>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <button class="tui-button primary focusable" onclick="logEvent('Action: Save &amp; Launch (pre-flight checks passed)', 'SRV')">[Enter] Save &amp; Launch</button>
+        <button class="tui-button focusable" onclick="logEvent('Action: Preset saved (atomic write: temp + rename)', 'SYS')">[Ctrl+S] Save Preset</button>
+        <button class="tui-button focusable" onclick="logEvent('Action: Reset to flag-registry defaults', 'SYS')">[Esc] Reset</button>
+        <button class="tui-button focusable" onclick="logEvent('Action: Command yanked via OSC 52', 'SYS')">[y] Yank</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEWPORT 6: APP SCREEN — SERVER TELEMETRY (llama-deck) -->
+  <main id="telemetryTab" class="tui-viewport">
+    <!-- Status Header -->
+    <div class="tui-box border-accent">
+      <div class="tui-box-title">Instance Status</div>
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <span style="background:rgba(158,206,106,0.2); color:var(--tui-success); padding:2px 8px; font-weight:bold;"><span class="blink">●</span> READY</span>
+        <span>Model: <span style="color:var(--tui-fg-bright);">qwen2.5-coder-32b-instruct-q4_k_m</span></span>
+        <span>Uptime: <span id="uptimeVal" style="color:var(--tui-cyan);">00:42:17</span></span>
+        <span>Endpoint: <span style="color:var(--tui-accent);">http://127.0.0.1:8080</span></span>
+      </div>
+      <div style="margin-top:6px; color:var(--tui-muted);">state machine: STARTING → LOADING → READY | FAILED · driven by /health (503 → 200) + exit-code watch</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:12px;">
+      <!-- Memory & KV Gauges -->
+      <div class="tui-box">
+        <div class="tui-box-title">Memory & KV Cache (/metrics)</div>
+        <div class="gauge-row"><span>VRAM (actual / est. range)</span><span id="vramVal">22.1 / 21.1–23.8 GB</span></div>
+        <div class="progress-bar-ascii" id="vramBar" style="color:var(--tui-accent);">[████████████████████░░░░░]</div>
+        <div class="gauge-row" style="margin-top:12px;"><span>KV CACHE USAGE RATIO</span><span id="kvVal">37%</span></div>
+        <div class="progress-bar-ascii" id="kvBar" style="color:var(--tui-success);">[█████████░░░░░░░░░░░░░░░]</div>
+      </div>
+
+      <!-- Throughput Sparklines -->
+      <div class="tui-box">
+        <div class="tui-box-title">Throughput (tokens/sec)</div>
+        <div class="gauge-row"><span>PROMPT EVAL</span><span id="tpsPrompt" style="color:var(--tui-fg-bright);">412.8 t/s</span></div>
+        <div class="sparkline" id="sparkPrompt">▁▂▃▅▆▇▆▅▃▂▁▂▃▅▆▇█▇▆▅▃▂</div>
+        <div class="gauge-row" style="margin-top:10px;"><span>DECODE</span><span id="tpsDecode" style="color:var(--tui-fg-bright);">38.4 t/s</span></div>
+        <div class="sparkline" id="sparkDecode">▃▃▄▃▅▄▃▃▄▅▃▄▃▃▄▃▅▄▃▃▄</div>
+        <div style="margin-top:8px; color:var(--tui-muted);">parsed from Prometheus /metrics — never regexed from log lines</div>
+      </div>
+    </div>
+
+    <!-- Slots Table -->
+    <div class="tui-box" style="margin-top:12px;">
+      <div class="tui-box-title">Active Slots (/slots — requires --slots)</div>
+      <table class="tui-table">
+        <thead>
+          <tr><th>SLOT</th><th>STATE</th><th>PROMPT TOKENS</th><th>GENERATING</th><th>T/S</th></tr>
+        </thead>
+        <tbody>
+          <tr class="focusable" tabindex="0" onfocus="logEvent('Focus slot #0')">
+            <td>#0</td><td style="color:var(--tui-success);">ACTIVE</td><td>18,432</td><td>yes</td><td>38.4</td>
+          </tr>
+          <tr class="focusable" tabindex="0" onfocus="logEvent('Focus slot #1')">
+            <td>#1</td><td style="color:var(--tui-muted);">IDLE</td><td>—</td><td>no</td><td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- BOTTOM PANEL: SIMULATED TERMINAL CONSOLE LOG -->
+  <div class="tui-console">
+    <div class="console-header">
+      <span>SYSTEM CONSOLE LOG (Intercepted stdout)</span>
+      <div>
+        <button onclick="clearConsole()" style="background:none; border:none; color:var(--tui-muted); cursor:pointer;">[Clear Log]</button>
+      </div>
+    </div>
+    <div class="console-logs" id="consoleLogContainer">
+      <!-- Dynamic log entries appear here -->
+    </div>
+  </div>
+
+  <!-- STATUSBAR -->
+  <footer class="tui-statusbar">
+    <div>
+      <span id="keyHint">[Tab] Cycle Focus</span> |
+      <span>[Ctrl+P] Command Palette</span> |
+      <span>[Esc] Blur Input</span>
+    </div>
+    <div>
+      <span id="focusedElementTag">READY</span>
+    </div>
+  </footer>
+
+  <!-- COMMAND PALETTE MODAL OVERLAY -->
+  <div class="tui-modal-overlay" id="cmdPaletteModal">
+    <div class="tui-modal">
+      <div style="color:var(--tui-accent); font-weight:bold; margin-bottom:8px;">
+        &gt; COMMAND PALETTE (Type to filter)
+      </div>
+      <input type="text" id="cmdPaletteInput" class="tui-input" placeholder="Type a command or theme..." style="width:100%; margin-bottom:10px;" onkeyup="filterPaletteCommands(this.value)" />
+      <div id="paletteResults" style="display:flex; flex-direction:column; gap:4px; max-height:160px; overflow-y:auto;">
+        <div class="tui-button" onclick="selectPaletteOption('theme:tokyonight')">Switch Theme -&gt; Tokyo Night</div>
+        <div class="tui-button" onclick="selectPaletteOption('theme:catppuccin')">Switch Theme -&gt; Catppuccin</div>
+        <div class="tui-button" onclick="selectPaletteOption('theme:gruvbox')">Switch Theme -&gt; Gruvbox</div>
+        <div class="tui-button" onclick="selectPaletteOption('tab:1')">Go to Tab 1: Components</div>
+        <div class="tui-button" onclick="selectPaletteOption('tab:2')">Go to Tab 2: Animations &amp; ASCII</div>
+        <div class="tui-button" onclick="selectPaletteOption('tab:5')">Go to Tab 5: Configurator Screen</div>
+        <div class="tui-button" onclick="selectPaletteOption('tab:6')">Go to Tab 6: Telemetry Screen</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Global Terminal State & Utilities
+  let currentTheme = 'tokyonight';
+
+  function logEvent(msg, tag = 'EVENT') {
+    const container = document.getElementById('consoleLogContainer');
+    const timeStr = new Date().toISOString().substring(11, 19);
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${tag}]</span> <span class="log-msg">${escapeHtml(msg)}</span>`;
+    container.appendChild(line);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function clearConsole() {
+    document.getElementById('consoleLogContainer').innerHTML = '';
+    logEvent('Console cleared', 'SYS');
+  }
+
+  function changeTheme(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    currentTheme = themeName;
+    logEvent(`Theme changed to ${themeName}`, 'THEME');
+  }
+
+  function switchTab(tabId, tabEl) {
+    document.querySelectorAll('.tui-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tui-viewport').forEach(v => v.classList.remove('active'));
+    tabEl.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    logEvent(`Switched viewport to ${tabId}`, 'NAV');
+  }
+
+  // CLI Spinners Animation Controller
+  const spinners = {
+    braille: { frames: ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'], el: 'spBraille', idx: 0 },
+    line: { frames: ['|','/','-','\\'], el: 'spLine', idx: 0 },
+    blocks: { frames: ['▛','▜','▟','▙'], el: 'spBlocks', idx: 0 },
+    dots: { frames: ['.','o','O','@','O','o'], el: 'spDots', idx: 0 },
+    pulse: { frames: ['·','✻','✽','✶','✳','✢'], el: 'spPulse', idx: 0 },
+    clock: { frames: ['🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗','🕘','🕙','🕚','🕛'], el: 'spClock', idx: 0 }
+  };
+
+  setInterval(() => {
+    for (const key in spinners) {
+      const sp = spinners[key];
+      sp.idx = (sp.idx + 1) % sp.frames.length;
+      const dom = document.getElementById(sp.el);
+      if (dom) dom.textContent = sp.frames[sp.idx];
+    }
+  }, 100);
+
+  // Dynamic Progress Bar & VU Meter Ticker
+  let progVal = 64;
+  let progDirection = 1;
+
+  setInterval(() => {
+    progVal += progDirection * 2;
+    if (progVal >= 100) progDirection = -1;
+    if (progVal <= 10) progDirection = 1;
+
+    document.getElementById('progPct').textContent = progVal + '%';
+
+    // Construct ASCII Bar [████░░░]
+    const totalBlocks = 24;
+    const filledBlocks = Math.round((progVal / 100) * totalBlocks);
+    const emptyBlocks = totalBlocks - filledBlocks;
+    const barStr = '[' + '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks) + ']';
+    document.getElementById('progBar1').textContent = barStr;
+  }, 200);
+
+  // Typewriter Text Effect Simulation
+  const sampleMessage = "Connected to OpenTUI Frame Diffing Engine (120 FPS target)...";
+  let typewriterIdx = 0;
+
+  function restartTypewriter() {
+    typewriterIdx = 0;
+    document.getElementById('typewriterTarget').textContent = "_";
+    typewriterTick();
+  }
+
+  function typewriterTick() {
+    if (typewriterIdx < sampleMessage.length) {
+      document.getElementById('typewriterTarget').textContent = sampleMessage.substring(0, typewriterIdx + 1) + "█";
+      typewriterIdx++;
+      setTimeout(typewriterTick, 35);
+    } else {
+      document.getElementById('typewriterTarget').textContent = sampleMessage;
+    }
+  }
+
+  // Marquee Ticker Effect
+  let marqueeStr = "*** OPENTUI V2 RELEASED *** FAST FLEXBOX RENDERER *** NATIVE ZIG CORE *** ";
+  setInterval(() => {
+    marqueeStr = marqueeStr.substring(1) + marqueeStr.charAt(0);
+    document.getElementById('marqueeText').textContent = marqueeStr;
+  }, 120);
+
+  // Audio Terminal Bell Simulation using Web Audio API
+  function triggerBellSound() {
+    logEvent('Terminal Bell Sound (\\a) triggered', 'AUDIO');
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 800; // Standard 800Hz ASCII bell frequency
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch(e) {
+      console.log('Audio Context restricted:', e);
+    }
+  }
+
+  // Interactive Form Helpers
+  function updateSliderVal(val) {
+    document.getElementById('sliderValNum').textContent = val + '%';
+    logEvent(`Slider changed: ${val}%`);
+  }
+
+  function toggleCheckbox(el) {
+    const box = el.querySelector('.chk-box');
+    if (box.textContent === '[ ]') {
+      box.textContent = '[x]';
+      logEvent(`Checkbox checked: ${el.innerText.trim()}`);
+    } else {
+      box.textContent = '[ ]';
+      logEvent(`Checkbox unchecked: ${el.innerText.trim()}`);
+    }
+  }
+
+  // Sandbox Live Customizer
+  function updateSandboxPreview() {
+    const dir = document.getElementById('sbDirection').value;
+    const border = document.getElementById('sbBorder').value;
+    const gap = document.getElementById('sbGap').value;
+    const title = document.getElementById('sbTitle').value;
+
+    const preview = document.getElementById('sandboxPreviewTarget');
+    preview.style.flexDirection = dir;
+    preview.style.gap = (gap * 8) + 'px';
+    preview.className = `tui-box border-${border}`;
+    document.getElementById('sbPreviewTitle').textContent = title || 'Custom Box';
+
+    logEvent(`Updated Sandbox Layout: dir=${dir}, border=${border}`);
+  }
+
+  // Command Palette Overlay Controls
+  function toggleCommandPalette(show) {
+    const modal = document.getElementById('cmdPaletteModal');
+    if (show) {
+      modal.classList.add('active');
+      document.getElementById('cmdPaletteInput').focus();
+      logEvent('Command Palette opened', 'KEY');
+    } else {
+      modal.classList.remove('active');
+    }
+  }
+
+  function selectPaletteOption(cmd) {
+    toggleCommandPalette(false);
+    if (cmd.startsWith('theme:')) {
+      const theme = cmd.split(':')[1];
+      document.getElementById('themeSelect').value = theme;
+      changeTheme(theme);
+    } else if (cmd.startsWith('tab:')) {
+      const num = cmd.split(':')[1];
+      const tabEls = document.querySelectorAll('.tui-tab');
+      if (tabEls[num-1]) tabEls[num-1].click();
+    }
+  }
+
+  function filterPaletteCommands(query) {
+    const q = query.toLowerCase();
+    const btns = document.querySelectorAll('#paletteResults .tui-button');
+    btns.forEach(btn => {
+      btn.style.display = btn.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+    });
+  }
+
+  // Configurator Screen Helpers (llama-deck)
+  function updateNgl(val) {
+    document.getElementById('nglVal').textContent = val + ' / 65';
+    // Demo interpolation: weights offload scales with ngl; range adds compute buffer + overhead
+    const lo = (19.8 * val / 65 + 1.3).toFixed(1);
+    const hi = (19.8 * val / 65 + 3.2).toFixed(1);
+    document.getElementById('nglVram').textContent = lo + ' – ' + hi + ' GB';
+    logEvent('ngl changed: ' + val + ' (restart required)', 'CFG');
+  }
+
+  function selectCtxChip(el, val) {
+    document.querySelectorAll('.tui-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('ctxInput').value = val;
+    // Demo: KV size scales linearly with ctx at q8_0 (4.0 GB @ 32k)
+    document.getElementById('kvSize').textContent = (val / 32768 * 4.0).toFixed(1) + ' GB';
+    logEvent('ctx-size set: ' + val + ' — KV cache recalculated', 'CFG');
+  }
+
+  // Telemetry Demo Feed (animates only while tab [6] is visible)
+  const sparkChars = ['▁','▂','▃','▄','▅','▆','▇','█'];
+  function pushSpark(id, v) {
+    const el = document.getElementById(id);
+    el.textContent = el.textContent.slice(1) + sparkChars[Math.min(7, Math.max(0, Math.round(v)))];
+  }
+
+  setInterval(() => {
+    const tab = document.getElementById('telemetryTab');
+    if (!tab || !tab.classList.contains('active')) return;
+    document.getElementById('tpsPrompt').textContent = (120 + Math.random() * 480).toFixed(1) + ' t/s';
+    document.getElementById('tpsDecode').textContent = (34 + Math.random() * 9).toFixed(1) + ' t/s';
+    pushSpark('sparkPrompt', 3 + Math.random() * 4.5);
+    pushSpark('sparkDecode', 2.5 + Math.random() * 2.5);
+    const kv = 30 + Math.random() * 12;
+    document.getElementById('kvVal').textContent = Math.round(kv) + '%';
+    const blocks = Math.round(kv / 100 * 25);
+    document.getElementById('kvBar').textContent = '[' + '█'.repeat(blocks) + '░'.repeat(25 - blocks) + ']';
+  }, 1000);
+
+  // Keyboard Shortcuts & Focus Manager
+  document.addEventListener('keydown', (e) => {
+    // Ctrl+P / Cmd+P to trigger Command Palette
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      toggleCommandPalette(true);
+    } else if (e.key === 'Escape') {
+      toggleCommandPalette(false);
+      if (document.activeElement) document.activeElement.blur();
+    }
+  });
+
+  // Track active focus for bottom status bar display
+  document.addEventListener('focusin', (e) => {
+    const tag = e.target.tagName + (e.target.className ? '.' + e.target.className.split(' ')[0] : '');
+    document.getElementById('focusedElementTag').textContent = `FOCUSED: <${tag}>`;
+  });
+
+  // Initialization
+  window.onload = function() {
+    logEvent('OpenTUI Design Lab initialized.', 'INIT');
+    logEvent('Frame renderer connected via Canvas/Web Virtual Screen.', 'SYS');
+    logEvent('App screen mockups added: [5] Configurator, [6] Telemetry.', 'INIT');
+    restartTypewriter();
+  };
+</script>
+</body>
+</html>
