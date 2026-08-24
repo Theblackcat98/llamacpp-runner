@@ -31,7 +31,7 @@ const TYPE_NAMES: Record<number, ScalarTypeName> = {
 
 class Reader {
 	private view: DataView;
-	private offset = 0;
+	offset = 0;
 
 	constructor(private bytes: Uint8Array) {
 		this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -181,14 +181,25 @@ function readValueOf(
 /** Parses a complete in-memory header. Throws typed ParseErrors, never crashes. */
 export function parseGgufBytes(bytes: Uint8Array): GgufHeader {
 	try {
-		return parseInner(bytes);
+		return parseInner(bytes).header;
 	} catch (e) {
 		if (e instanceof NeedMoreBytes) throw new ParseError("TRUNCATED");
 		throw e;
 	}
 }
 
-function parseInner(bytes: Uint8Array): GgufHeader {
+/**
+ * Byte offset just past the header (KV + tensor info table). Used by fixture
+ * capture to store exactly the header bytes of real files.
+ */
+export function headerEndOffset(bytes: Uint8Array): number {
+	return parseInner(bytes).endOffset;
+}
+
+function parseInner(bytes: Uint8Array): {
+	header: GgufHeader;
+	endOffset: number;
+} {
 	const r = new Reader(bytes);
 	if (bytes.byteLength < 4 || r.u32() !== MAGIC)
 		throw new ParseError("BAD_MAGIC");
@@ -231,7 +242,10 @@ function parseInner(bytes: Uint8Array): GgufHeader {
 		);
 	}
 
-	return { version, kv, tensors, totalParams: Number(totalParams) };
+	return {
+		header: { version, kv, tensors, totalParams: Number(totalParams) },
+		endOffset: r.offset,
+	};
 }
 
 /**

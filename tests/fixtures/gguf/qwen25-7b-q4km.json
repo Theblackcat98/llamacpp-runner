@@ -1,0 +1,14 @@
+{
+	"source": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+	"headerBytes": 5950142,
+	"architecture": "qwen2",
+	"quantName": "Q4_K_M",
+	"contextLength": 131072,
+	"blockCount": 28,
+	"embeddingLength": 3584,
+	"headCount": 28,
+	"headCountKv": 4,
+	"keyLength": null,
+	"vocabSize": null,
+	"totalParams": 6518222848
+}
