@@ -1,0 +1,51 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "llama-deck presets",
+	"type": "object",
+	"required": ["version", "presets"],
+	"properties": {
+		"$schema": { "type": "string" },
+		"version": { "const": 2 },
+		"default_model_dir": { "type": "string" },
+		"theme": { "type": "string" },
+		"binary_path": { "type": "string" },
+		"lastSession": {
+			"type": "object",
+			"properties": {
+				"preset_id": { "type": "string" },
+				"tab": { "type": "integer", "minimum": 0, "maximum": 3 }
+			},
+			"required": ["preset_id", "tab"]
+		},
+		"presets": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": [
+					"id",
+					"name",
+					"model_path",
+					"flags",
+					"env_vars",
+					"created_at",
+					"last_used"
+				],
+				"properties": {
+					"id": { "type": "string" },
+					"name": { "type": "string" },
+					"model_path": { "type": "string" },
+					"flags": {
+						"type": "object",
+						"description": "Registry-keyed values; unknown keys preserved verbatim (round-trip safe)."
+					},
+					"env_vars": {
+						"type": "object",
+						"additionalProperties": { "type": "string" }
+					},
+					"created_at": { "type": "string", "format": "date-time" },
+					"last_used": { "type": ["string", "null"], "format": "date-time" }
+				}
+			}
+		}
+	}
+}
