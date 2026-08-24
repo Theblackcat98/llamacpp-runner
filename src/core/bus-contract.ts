@@ -4,6 +4,8 @@ export type ProcState = "IDLE" | "STARTING" | "LOADING" | "READY" | "FAILED";
 
 export interface LaunchIntent {
 	presetId: string;
+	/** P4-FR-09: user acknowledged the 0.0.0.0 bind confirmation. */
+	confirmedHost?: boolean;
 }
 
 export interface ProcStateEvent {
@@ -43,6 +45,22 @@ export interface ModelsDirEvent {
 	dir: string | null;
 }
 
+/** P4-FR-20: second launch while an instance is running (D4). */
+export interface LaunchBlockedEvent {
+	reason: "instance_running";
+}
+
+/** P4-FR-09: 0.0.0.0 bind needs explicit user confirmation before spawn. */
+export interface ConfirmRequiredEvent {
+	host: string;
+}
+
+/** P4-FR-10: pre-flight bind check failed; suggest next free port (§7). */
+export interface PortConflictEvent {
+	requested: number;
+	suggested?: number;
+}
+
 export interface IntentMap {
 	LAUNCH: LaunchIntent;
 	KILL: Record<string, never>;
@@ -57,4 +75,7 @@ export interface StateMap {
 	ORPHAN_FOUND: OrphanFoundEvent;
 	MODELS_STATE: ModelsStateEvent;
 	MODELS_DIR: ModelsDirEvent;
+	LAUNCH_BLOCKED: LaunchBlockedEvent;
+	CONFIRM_REQUIRED: ConfirmRequiredEvent;
+	PORT_CONFLICT: PortConflictEvent;
 }
