@@ -3,6 +3,8 @@ import { createRoot } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { createBus } from "./core/bus";
 import type { IntentMap, StateMap } from "./core/bus-contract";
+import { createModelsService } from "./core/models/service";
+import type { ModelEntry } from "./core/models/types";
 import { createSession } from "./core/session";
 import { resolvePaths } from "./core/store/state-paths";
 import { App } from "./ui/app";
@@ -21,6 +23,7 @@ const PORT = Number.parseInt(process.env.LLAMA_DECK_PORT ?? "8080", 10);
 const NGL = Number.parseInt(process.env.LLAMA_DECK_NGL ?? "99", 10);
 
 const bus = createBus<IntentMap, StateMap>();
+const paths = resolvePaths();
 const session = createSession({
 	command: "llama-server",
 	args: [
@@ -35,15 +38,19 @@ const session = createSession({
 	],
 	port: PORT,
 	presetId: "hardcoded-phase1",
-	paths: resolvePaths(),
+	paths,
 	bus,
 });
 
 await session.boot();
+const modelsService = createModelsService(bus, paths);
+modelsService.boot();
+
 const renderer = await createCliRenderer();
 createRoot(renderer).render(
 	<SessionApp
 		onQuit={() => {
+			modelsService.dispose();
 			void session.shutdown().then(() => renderer.destroy());
 		}}
 	/>,
@@ -54,6 +61,10 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		createDrawerState(DRAWER_HEIGHT),
 	);
 	const [, setTick] = useState(0);
+	const [entries, setEntries] = useState<ModelEntry[]>([]);
+	const [scanning, setScanning] = useState(false);
+	const [scanError, setScanError] = useState<string | undefined>(undefined);
+	const [modelsDir, setModelsDir] = useState<string | null>(null);
 
 	useEffect(() => {
 		const offLog = bus.onState("LOG_LINE", (event) => {
@@ -62,9 +73,19 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		const offProc = bus.onState("PROC_STATE", () => {
 			setTick((t) => t + 1);
 		});
+		const offModels = bus.onState("MODELS_STATE", (event) => {
+			setEntries(event.entries);
+			setScanning(event.scanning);
+			setScanError(event.error);
+		});
+		const offDir = bus.onState("MODELS_DIR", (event) => {
+			setModelsDir(event.dir);
+		});
 		return () => {
 			offLog();
 			offProc();
+			offModels();
+			offDir();
 		};
 	}, []);
 
@@ -80,6 +101,15 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				void session.killFoundOrphan().then(() => setTick((t) => t + 1));
 			}}
 			drawerControl={{ state: drawer, setState: setDrawer }}
+			explorerControl={{
+				entries,
+				scanning,
+				modelsDir,
+				scanError,
+				onRescan: () => bus.emitIntent("RESCAN", {}),
+				onUseDefaultDir: (dir: string) =>
+					bus.emitIntent("SET_MODELS_DIR", { dir }),
+			}}
 		/>
 	);
 }

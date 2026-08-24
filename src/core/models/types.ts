@@ -11,6 +11,7 @@ export interface ModelEntry {
 	quantName: string;
 	contextLength?: number;
 	blockCount?: number;
+	embeddingLength?: number;
 	headCount?: number;
 	headCountKv?: number;
 	keyLength?: number;

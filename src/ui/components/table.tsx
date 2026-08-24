@@ -21,6 +21,7 @@ export interface VirtualizedTableProps<T> {
 	viewport: number;
 	header?: boolean;
 	onSelect?: (index: number, row: T) => void;
+	onSelectionChange?: (index: number, row: T | undefined) => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export function VirtualizedTable<T>({
 	viewport,
 	header = true,
 	onSelect,
+	onSelectionChange,
 }: VirtualizedTableProps<T>) {
 	const [state, setState] = useState<TableState<T>>(() =>
 		createTableState({ columns, viewport }),
@@ -46,7 +48,13 @@ export function VirtualizedTable<T>({
 		const name = key.name ?? "";
 		const mapped = name === "up" ? "k" : name === "down" ? "j" : name;
 		if (["k", "j", "g", "G"].includes(mapped)) {
-			setState((prev) => applyTableKey(prev, data, mapped));
+			setState((prev) => {
+				const next = applyTableKey(prev, data, mapped);
+				if (next.selected !== prev.selected) {
+					onSelectionChange?.(next.selected, data[next.selected]);
+				}
+				return next;
+			});
 			return;
 		}
 		if (mapped === "enter" && onSelect) {
