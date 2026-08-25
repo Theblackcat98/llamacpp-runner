@@ -2,7 +2,9 @@ import { formatBytes } from "./core/estimate/vram";
 import { scanModels } from "./core/models/scanner";
 import type { ModelEntry } from "./core/models/types";
 import { type ExportFormat, exportPreset } from "./core/preset-launch";
+import { inspectOrphan, killOrphan } from "./core/process/orphan";
 import { loadConfig } from "./core/store/config";
+import { clearPidFile } from "./core/store/pidfile";
 import {
 	loadPresets,
 	type PresetFile,
@@ -14,14 +16,23 @@ function usage(): never {
 	console.log(`llama-deck — llama.cpp manager
 
 Usage:
-  llama-deck scan [dir ...]   Scan directories (default: configured models dir)
-  llama-deck list [dir ...]   List model names only
-  llama-deck presets          List saved presets
+  llama-deck scan [dir ...] [--json]
+                              Scan directories (default: configured models dir)
+  llama-deck list [dir ...] [--json]
+                              List model names only
+  llama-deck presets [--json] List saved presets
   llama-deck export <preset> [--format cmd|sh|systemd]
                               Export a preset's launch command
   llama-deck start <preset>   Launch a preset (llama-server in foreground)
+  llama-deck kill [--json]    Stop a running instance via pidfile (§6.2)
 `);
 	process.exit(0);
+}
+
+/** P5-FR-13: --json output modes for scripting. */
+function jsonFlag(args: string[]): { rest: string[]; json: boolean } {
+	const json = args.includes("--json");
+	return { rest: args.filter((a) => a !== "--json"), json };
 }
 
 function findPreset(id: string): import("./core/store/presets").Preset {
@@ -61,9 +72,47 @@ async function main(): Promise<void> {
 
 	const paths = resolvePaths();
 
+	if (command === "kill") {
+		const { json } = jsonFlag(args);
+		const inspection = await inspectOrphan(paths.pidFile);
+		const out = (payload: {
+			killed: boolean;
+			pid?: number;
+			reason?: string;
+		}) =>
+			json
+				? console.log(JSON.stringify(payload))
+				: console.log(
+						payload.killed
+							? `killed llama-server pid=${payload.pid}`
+							: payload.reason === "alive"
+								? "failed to kill"
+								: payload.reason === "stale"
+									? "stale pidfile cleaned — no server running"
+									: "no server running",
+					);
+		if (inspection.status === "alive" && inspection.record) {
+			const killed = await killOrphan(inspection.record.pid);
+			if (!killed) clearPidFile(paths.pidFile);
+			out({ killed, pid: inspection.record.pid, reason: "alive" });
+			process.exit(killed ? 0 : 1);
+		}
+		out({
+			killed: false,
+			reason: inspection.status === "stale" ? "stale" : "no_pidfile",
+		});
+		return;
+	}
+
 	if (command === "presets") {
+		const { rest, json } = jsonFlag(args);
+		void rest;
 		const store = loadPresets(presetsFilePath(paths.configDir));
 		const file = store.data as PresetFile | null;
+		if (json) {
+			console.log(JSON.stringify(file?.presets ?? []));
+			return;
+		}
 		for (const p of file?.presets ?? []) {
 			console.log(`${p.id}\t${p.name}`);
 		}
@@ -99,16 +148,41 @@ async function main(): Promise<void> {
 	}
 
 	if (command !== "scan" && command !== "list") {
-		console.log(`Unknown command: ${command} (kill arrives in Phase 5)`);
+		console.log(`Unknown command: ${command}`);
 		usage();
 	}
 
-	const dirs = resolveDirs(args);
+	const { rest, json } = jsonFlag(args);
+	const dirs = resolveDirs(rest);
 	const state = resolvePaths();
 	const result = await scanModels(dirs, { stateDir: state.stateDir });
 
 	if (command === "list") {
+		if (json) {
+			console.log(
+				JSON.stringify(
+					result.entries.map((e) => ({
+						name: e.name,
+						sizeBytes: e.totalBytes,
+						quant: e.quantName,
+						arch: e.architecture,
+					})),
+				),
+			);
+			return;
+		}
 		for (const entry of result.entries) console.log(entry.name);
+		return;
+	}
+
+	if (json) {
+		console.log(
+			JSON.stringify({
+				dirs,
+				stats: result.stats,
+				entries: formatRows(result.entries),
+			}),
+		);
 		return;
 	}
 
