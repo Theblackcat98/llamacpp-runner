@@ -6,7 +6,12 @@ import {
 import { type Dispatch, type SetStateAction, useState } from "react";
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
+import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
+import {
+	buildDefaultActions,
+	type PaletteHandlers,
+} from "./logic/action-registry";
 import type { ConfiguratorState } from "./logic/configurator-state";
 import {
 	createDrawerState,
@@ -16,6 +21,11 @@ import {
 	visibleEntries,
 } from "./logic/drawer-state";
 import { isDegraded } from "./logic/layout-state";
+import {
+	applyPaletteKey,
+	type PaletteState as CmdPaletteState,
+	createPaletteState,
+} from "./logic/palette-state";
 import {
 	cycleFocus,
 	isQuitKey,
@@ -69,6 +79,9 @@ export interface TelemetryControl {
 	onEnableTelemetry?: () => void;
 }
 
+/** Handlers the palette actions dispatch to; missing ones are no-ops. */
+export interface PaletteControl extends Partial<PaletteHandlers> {}
+
 export interface DrawerControl {
 	state: DrawerState;
 	setState: Dispatch<SetStateAction<DrawerState>>;
@@ -88,6 +101,7 @@ export interface AppProps {
 	configuratorControl?: ConfiguratorControl;
 	presetsControl?: PresetsControl;
 	telemetryControl?: TelemetryControl;
+	paletteControl?: PaletteControl;
 }
 
 export function App({
@@ -104,6 +118,7 @@ export function App({
 	configuratorControl,
 	presetsControl,
 	telemetryControl,
+	paletteControl,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -115,8 +130,27 @@ export function App({
 	const drawer = drawerControl?.state ?? internalDrawer;
 	const setDrawer = drawerControl?.setState ?? setInternalDrawer;
 	const [collapsed, setCollapsed] = useState(false);
+	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
+
+	const paletteActions = buildDefaultActions({
+		switchTheme: (name) => paletteControl?.switchTheme?.(name),
+		setPort: () => setTab(1),
+		killServer: () => (onKillOrphan ? onKillOrphan() : onKill?.()),
+		exportCommand: () => onYankCommand?.(),
+		rescanModels: () => explorerControl?.onRescan(),
+		adoptOrphan: () => paletteControl?.adoptOrphan?.(),
+		toggleTelemetry: () =>
+			paletteControl?.toggleTelemetry?.() ??
+			telemetryControl?.onEnableTelemetry?.(),
+		goToTab: (t) => setTab(t - 1),
+		clearLog: () => setDrawer(() => createDrawerState(DRAWER_HEIGHT)),
+	});
 
 	useKeyboard((key: KeyRef) => {
+		if ((key.ctrl && key.name === "p") || palette.open) {
+			setPalette((prev) => applyPaletteKey(prev, paletteActions, key));
+			return;
+		}
 		if (isQuitKey(key)) {
 			if (onQuit) {
 				onQuit();
@@ -324,6 +358,7 @@ export function App({
 				collapsed={collapsed}
 				theme={theme}
 			/>
+			<Palette theme={theme} state={palette} actions={paletteActions} />
 			<box
 				style={{
 					borderStyle: "single",
