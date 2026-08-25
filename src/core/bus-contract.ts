@@ -61,6 +61,13 @@ export interface PortConflictEvent {
 	suggested?: number;
 }
 
+/** P5-FR-07: classified failure from exit code + log patterns (§6.4). */
+export interface FailureClassifiedEvent {
+	kind: string;
+	summary: string;
+	suggestion: string;
+}
+
 export interface IntentMap {
 	LAUNCH: LaunchIntent;
 	KILL: Record<string, never>;
@@ -78,4 +85,5 @@ export interface StateMap {
 	LAUNCH_BLOCKED: LaunchBlockedEvent;
 	CONFIRM_REQUIRED: ConfirmRequiredEvent;
 	PORT_CONFLICT: PortConflictEvent;
+	FAILURE_CLASSIFIED: FailureClassifiedEvent;
 }
