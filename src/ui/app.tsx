@@ -22,10 +22,12 @@ import {
 	type KeyRef,
 	TAB_COUNT,
 } from "./logic/shell-state";
+import { buildTelemetryViewModel } from "./logic/telemetry-state";
 import { Catalog } from "./screens/catalog";
 import { Configurator } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import { PresetsScreen } from "./screens/presets";
+import { Telemetry } from "./screens/telemetry";
 import type { Theme } from "./themes";
 
 const TAB_LABELS = [
@@ -62,6 +64,11 @@ export interface PresetsControl {
 	onSetDefault?: (id: string) => void;
 }
 
+export interface TelemetryControl {
+	vm: import("./logic/telemetry-state").TelemetryViewModel | null;
+	onEnableTelemetry?: () => void;
+}
+
 export interface DrawerControl {
 	state: DrawerState;
 	setState: Dispatch<SetStateAction<DrawerState>>;
@@ -80,6 +87,7 @@ export interface AppProps {
 	explorerControl?: ExplorerControl;
 	configuratorControl?: ConfiguratorControl;
 	presetsControl?: PresetsControl;
+	telemetryControl?: TelemetryControl;
 }
 
 export function App({
@@ -95,6 +103,7 @@ export function App({
 	explorerControl,
 	configuratorControl,
 	presetsControl,
+	telemetryControl,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -156,6 +165,10 @@ export function App({
 		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {
 			const home = process.env.HOME ?? "~";
 			explorerControl.onUseDefaultDir(`${home}/models/llm`);
+			return;
+		}
+		if (key.name === "t" && !key.ctrl && tab === 2) {
+			telemetryControl?.onEnableTelemetry?.();
 			return;
 		}
 		if (key.name === "tab") {
@@ -261,6 +274,31 @@ export function App({
 						onChange={configuratorControl.setState}
 						focused
 						captureKeys={focusPane !== 3}
+					/>
+				) : tab === 2 ? (
+					<Telemetry
+						theme={theme}
+						vm={
+							telemetryControl?.vm ?? {
+								...buildTelemetryViewModel({
+									phase: "IDLE",
+									model: null,
+									endpoint: null,
+									startedAtMs: null,
+									nowMs: Date.now(),
+									telemetryEnabled: false,
+									vramEstimatedBytes: null,
+									memUsedBytes: null,
+									kvUsageRatio: null,
+									promptHistory: [],
+									decodeHistory: [],
+									slots: [],
+									failure: null,
+									tailLines: [],
+								}),
+							}
+						}
+						onEnableTelemetry={telemetryControl?.onEnableTelemetry}
 					/>
 				) : tab === 3 && presetsControl ? (
 					<PresetsScreen
