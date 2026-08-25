@@ -7,6 +7,11 @@ Development rules for llama-deck. Spec of record: `plans/llamamanager.md` — `�
 - Runtime: Bun, version-pinned. Never assume Node.js-specific APIs without checking Bun compatibility.
 - Layers: `src/core` (headless domain logic) · `src/ui` (@opentui/react shell) · `src/cli.ts`.
 - Roadmap: §9 defines phases; each phase ends with an EXIT criterion; each bullet inside a phase is a branch-sized WORK ITEM.
+- Scratch work: never use `/tmp/*`. Create a `.tmp/` folder inside the project instead (gitignored).
+
+## User preferences
+
+- Scratch/temp files go in the project's `.tmp/` folder, never `/tmp/*`.
 
 ## Hard rules (violations fail CI, not review)
 
