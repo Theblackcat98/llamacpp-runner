@@ -13,6 +13,7 @@ import {
 } from "./process/supervisor";
 import { clearPidFile, ensureDir, writePidFile } from "./store/pidfile";
 import type { AppPaths } from "./store/state-paths";
+import { classifyFailure } from "./telemetry/failure-classifier";
 
 /** A fully-resolved launch: argv comes from the flag registry builder (§3.3). */
 export interface LaunchPlan {
@@ -95,6 +96,19 @@ export function createSession(opts: SessionOptions): Session {
 				exitCode: event.exitCode,
 				tail: event.tail,
 			});
+			if (event.state === "FAILED") {
+				const classified = classifyFailure(
+					event.exitCode ?? 1,
+					null,
+					event.tail ?? supervisor.snapshotTail(50),
+				);
+				if (classified) {
+					bus.emitState("FAILURE_CLASSIFIED", classified);
+					sysLog(
+						`FAILED: ${classified.summary} — fix: ${classified.suggestion}`,
+					);
+				}
+			}
 		});
 		return supervisor;
 	}
