@@ -7,6 +7,7 @@ IGNORE_INT=0
 CRASH_AFTER=0
 START_DELAY=0
 PROGRESS_STEPS=5
+HTTP_503_MS=-1
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -34,11 +35,35 @@ while [ $# -gt 0 ]; do
 		PROGRESS_STEPS="$2"
 		shift 2
 		;;
+	--http)
+		HTTP_503_MS="${2:-0}"
+		case "$2" in ''|*[!0-9]*) HTTP_503_MS=0; shift ;; *) shift 2 ;; esac
+		;;
 	*)
 		shift
 		;;
 	esac
 done
+
+# --http N: serve /health (503 for N ms then 200), /slots, /metrics via fake-http.ts
+if [ "$HTTP_503_MS" -ge 0 ]; then
+	bun run "$(cd "$(dirname "$0")" && pwd)/fake-http.ts" \
+		--port "$PORT" --health-503-ms "$HTTP_503_MS" &
+	HTTP_PID=$!
+	cleanup_http() { kill "$HTTP_PID" 2>/dev/null; wait "$HTTP_PID" 2>/dev/null; }
+	trap cleanup_http EXIT
+	i=0
+	until { kill -0 "$HTTP_PID" 2>/dev/null && exec 3<>"/dev/tcp/127.0.0.1/$PORT"; } 2>/dev/null; do
+		exec 3>&- 2>/dev/null
+		sleep 0.05
+		i=$((i + 1))
+		if [ "$i" -gt 100 ]; then
+			echo "[ERR] fake-http.ts failed to bind port $PORT" >&2
+			exit 97
+		fi
+	done
+	exec 3>&-
+fi
 
 if [ "$START_DELAY" != "0" ]; then
 	sleep "$START_DELAY"
