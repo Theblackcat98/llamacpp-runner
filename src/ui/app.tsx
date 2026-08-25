@@ -3,7 +3,7 @@ import {
 	useRenderer,
 	useTerminalDimensions,
 } from "@opentui/react";
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { Palette } from "./components/palette";
@@ -20,7 +20,13 @@ import {
 	scrollBy,
 	visibleEntries,
 } from "./logic/drawer-state";
-import { isDegraded } from "./logic/layout-state";
+import {
+	beginResize,
+	createRelayout,
+	type Dims,
+	isDegraded,
+	settleDue,
+} from "./logic/layout-state";
 import {
 	applyPaletteKey,
 	type PaletteState as CmdPaletteState,
@@ -131,6 +137,22 @@ export function App({
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
+	const [relayout, setRelayout] = useState(() => createRelayout(width, height));
+	const dims: Dims = relayout.committed;
+
+	useEffect(() => {
+		setRelayout((s) => beginResize(s, { width, height }, Date.now()));
+	}, [width, height]);
+	useEffect(() => {
+		if (!relayout.pending) return;
+		const id = setInterval(() => {
+			setRelayout((s) => {
+				const r = settleDue(s, Date.now(), 120);
+				return r.state;
+			});
+		}, 60);
+		return () => clearInterval(id);
+	}, [relayout.pending !== null]);
 	const [tab, setTab] = useState(0);
 	const [focusPane, setFocusPane] = useState(0);
 	const [internalDrawer, setInternalDrawer] = useState(() =>
@@ -246,8 +268,10 @@ export function App({
 		}
 	});
 
-	if (isDegraded(width, height)) {
-		return <DegradedLayout width={width} height={height} theme={theme} />;
+	if (isDegraded(dims.width, dims.height)) {
+		return (
+			<DegradedLayout width={dims.width} height={dims.height} theme={theme} />
+		);
 	}
 
 	if (tab === 4) {
