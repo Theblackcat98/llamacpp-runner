@@ -27,6 +27,12 @@ import {
 	createPaletteState,
 } from "./logic/palette-state";
 import {
+	createQuitState,
+	handleKillKey,
+	handleQuitKey,
+	type QuitState,
+} from "./logic/quit-state";
+import {
 	cycleFocus,
 	isQuitKey,
 	type KeyRef,
@@ -102,6 +108,8 @@ export interface AppProps {
 	presetsControl?: PresetsControl;
 	telemetryControl?: TelemetryControl;
 	paletteControl?: PaletteControl;
+	/** Live-server signal for quit/kill confirmation (P5-FR-11). */
+	serverRunning?: boolean;
 }
 
 export function App({
@@ -119,6 +127,7 @@ export function App({
 	presetsControl,
 	telemetryControl,
 	paletteControl,
+	serverRunning = false,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -131,6 +140,8 @@ export function App({
 	const setDrawer = drawerControl?.setState ?? setInternalDrawer;
 	const [collapsed, setCollapsed] = useState(false);
 	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
+	const [confirm, setConfirm] = useState<QuitState>(createQuitState);
+	const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
@@ -152,11 +163,18 @@ export function App({
 			return;
 		}
 		if (isQuitKey(key)) {
-			if (onQuit) {
-				onQuit();
+			const result = handleQuitKey(confirm, Date.now(), serverRunning);
+			setConfirm(result.state);
+			if (result.action === "quit") {
+				setConfirmNotice(null);
+				if (onQuit) {
+					onQuit();
+					return;
+				}
+				renderer.destroy();
 				return;
 			}
-			renderer.destroy();
+			if (result.action === "confirm") setConfirmNotice(result.message ?? null);
 			return;
 		}
 		if (key.name === "return" && onLaunch) {
@@ -164,8 +182,15 @@ export function App({
 			return;
 		}
 		if (key.name === "x" && !key.ctrl) {
-			if (onKillOrphan) onKillOrphan();
-			else if (onKill) onKill();
+			const result = handleKillKey(confirm, Date.now(), serverRunning);
+			setConfirm(result.state);
+			if (result.action === "execute") {
+				setConfirmNotice(null);
+				if (onKillOrphan) onKillOrphan();
+				else if (onKill) onKill();
+			} else if (result.action === "confirm") {
+				setConfirmNotice(result.message ?? null);
+			}
 			return;
 		}
 		if (key.name === "k") {
@@ -367,10 +392,9 @@ export function App({
 					backgroundColor: theme.surface,
 				}}
 			>
-				<text fg={theme.muted}>
-					{
-						" [Tab] Cycle Focus | [1-5] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "
-					}
+				<text fg={confirmNotice ? theme.warn : theme.muted}>
+					{confirmNotice ??
+						" [Tab] Cycle Focus | [1-5] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "}
 				</text>
 			</box>
 		</box>
