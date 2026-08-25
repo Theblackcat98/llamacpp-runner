@@ -41,7 +41,7 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 		}
 	});
 
-	it("growing back above the minimum restores the shell", async () => {
+	it("growing back above the minimum restores the shell after settle", async () => {
 		const setup = await testRender(<App theme={DEFAULT_THEME} />, {
 			width: 60,
 			height: 20,
@@ -52,6 +52,7 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			await act(async () => {
 				await setup.resize(120, 40);
 			});
+			await Bun.sleep(260); // debounce (120 ms) + settle poll
 			await flush(setup);
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Model Explorer");
@@ -61,7 +62,7 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 		}
 	});
 
-	it("shrinking below the minimum activates degraded mode", async () => {
+	it("shrinking below the minimum activates degraded mode after settle", async () => {
 		const setup = await testRender(<App theme={DEFAULT_THEME} />, {
 			width: 120,
 			height: 40,
@@ -72,10 +73,37 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			await act(async () => {
 				await setup.resize(50, 15);
 			});
+			await Bun.sleep(260);
 			await flush(setup);
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Resize");
 			expect(frame).not.toContain("Model Explorer");
+		} finally {
+			setup.renderer.destroy();
+		}
+	});
+
+	it("resize churn commits only the final dimensions (P5-FR-14)", async () => {
+		const setup = await testRender(<App theme={DEFAULT_THEME} />, {
+			width: 100,
+			height: 30,
+		});
+		try {
+			await flush(setup);
+			for (const [w, h] of [
+				[110, 32],
+				[115, 34],
+				[125, 36],
+			] as const) {
+				await act(async () => {
+					await setup.resize(w, h);
+				});
+			}
+			await Bun.sleep(300);
+			await flush(setup);
+			const frame = setup.captureCharFrame();
+			expect(frame).toContain("Model Explorer");
+			expect(frame).not.toContain("Resize");
 		} finally {
 			setup.renderer.destroy();
 		}
