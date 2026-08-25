@@ -1,0 +1,3 @@
+# HELP llamacpp:prompt_tokens_seconds_total Number of prompt tokens processed / se
+llamacpp:prompt_tokens_seconds_total 812.
+llamacpp:predicted_tok

@@ -1,0 +1,4 @@
+this is not prometheus {{{
+llamacpp:kv_cache_usage_ratio not_a_number
+llamacpp:prompt_tokens_seconds_total
+= = =
