@@ -1,0 +1,15 @@
+# HELP llamacpp:prompt_tokens_seconds_total Number of prompt tokens processed / seconds spent (t/s)
+# TYPE llamacpp:prompt_tokens_seconds_total counter
+llamacpp:prompt_tokens_seconds_total 812.5
+# HELP llamacpp:predicted_tokens_seconds_total Number of predicted tokens / seconds (t/s)
+# TYPE llamacpp:predicted_tokens_seconds_total counter
+llamacpp:predicted_tokens_seconds_total 23.4
+# HELP llamacpp:kv_cache_usage_ratio KV cache usage ratio
+# TYPE llamacpp:kv_cache_usage_ratio gauge
+llamacpp:kv_cache_usage_ratio{layer="0"} 0.42
+# HELP llamacpp:memory_used_bytes Memory used by the process in bytes
+# TYPE llamacpp:memory_used_bytes gauge
+llamacpp:memory_used_bytes 6871947673
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 42
