@@ -1,309 +1,155 @@
-# llama-runner Audit Remediation Roadmap
+# llama-deck Production Remediation and Archive Plan
 
-Status: proposed
-Source: repository audit performed 2026-08-28
-Scope: correctness, safety, integration gaps, persistence, portability, and UX issues found after the original Phase 1–5 implementation.
-
-This roadmap intentionally treats the existing phase reports as historical implementation records, not proof that the current product is complete. The current suite has 375 passing tests and 3 failing tests, plus React `act(...)` warnings and an EventEmitter listener warning.
-
-## Delivery rules
-
-- One phase below is one pull request.
-- Each PR must include tests first, implementation, docs updates, and the relevant EXIT criterion.
-- Core changes and UI changes should remain isolated unless the integration itself is the work item.
-- Run `bun run lint && bun run typecheck && bun test` before merging each PR.
-- Do not archive a phase until its EXIT criterion is green from `main`.
-- Preserve the single-instance rule and the shared teardown path.
+Status: active
+Source audits: `plans/production-readiness-audit.md`, 2026-08-28
+Specification of record: `plans/llamamanager.md`
 
-## Phase 6 — Lifecycle and Safety Correctness
+## Current baseline
 
-### Goal
-Make every managed process follow one reliable, cancellable, restartable lifecycle and restore the safety guarantees promised by the specification.
+The audit documents described a red suite and disconnected UI wiring. That snapshot is stale: on the current `main`, verification completed on 2026-08-28 with:
 
-### PR scope
+- `bun run lint` — pass
+- `bun run typecheck` — pass
+- `bun test` — **423 passed, 0 failed** across 76 files
+- import boundary and supervisor/orphan integration coverage — pass
 
-- Fix the three currently failing process/telemetry integration tests.
-- Make `Supervisor` restartable after a clean or failed exit.
-- Add explicit start/teardown cancellation state so kill during startup is safe and bounded.
-- Prevent READY/log events after teardown or process exit.
-- Ensure spawn errors become typed failure states without hanging callers.
-- Route all process launches, including CLI `start`, through the shared supervisor/session teardown path.
-- Ensure CLI start uses pidfile lifecycle, port preflight, failure classification, and SIGINT → wait ≤5 s → SIGKILL.
-- Make concurrent teardown and repeated shutdown idempotent.
-- Remove ad-hoc signal handling from CLI.
+The implementation history also contains completed remediation work through Phases 6–13. The remaining work is primarily release-readiness validation, documentation reconciliation, and deciding whether the Catalog artifact remains a supported development screen or is removed from the production surface.
 
-### Tests
+## Non-negotiable archive rule
 
-- Supervisor restart after exit.
-- Kill during preflight and spawn.
-- Late log after teardown is ignored.
-- CLI start receives SIGINT and escalates correctly.
-- CLI start writes and clears pidfile.
-- CLI and TUI use equivalent lifecycle behavior.
-- Existing fake-server telemetry and CLI-kill tests pass reliably.
+A PRD or phase document may be moved to `plans/archive/` only after its own EXIT criterion is verified from the current `main`. Passing tests alone is insufficient where the criterion explicitly requires manual terminal checks, a real llama-server soak, or documentation sign-off.
 
-### EXIT criterion
+For every phase:
 
-`bun test` passes with no process-related timeouts; a fake server can be launched, observed, stopped, restarted, and forcibly killed without an orphan or stale pidfile.
+1. Verify the phase-specific automated tests from `main`.
+2. Run `bun run lint && bun run typecheck && bun test`.
+3. Complete the phase-specific manual/integration evidence.
+4. Update the phase document from `planned` to `complete`, recording date, commit, and evidence.
+5. Move the phase document and its matching PRD (if present) to `plans/archive/` in the same documentation change.
+6. Re-run the full suite after moves; archive only if still green.
 
-## Phase 7 — Real Telemetry Integration
+`plans/llamamanager.md` remains active as the specification of record and is never archived by this plan. The two already archived Phase 1 and Phase 2 PRDs remain archived. Do not use the old audit's historical “done” labels as evidence.
 
-### Goal
-Connect the implemented telemetry core to the running TUI so the Server Telemetry screen reflects the actual managed server.
+## Remediation order and gates
 
-### PR scope
+### Phase 6 — Lifecycle and Safety Correctness
 
-- Wire `HealthPoller`, `SlotsPoller`, `MetricsPoller`, and `createTelemetryMonitor` from the session/application composition root.
-- Add telemetry state to the typed event bus or a clearly documented state-upstream adapter.
-- Start and stop pollers with the managed supervisor lifecycle.
-- Pass real `serverRunning` state to `App`.
-- Implement READY/LOADING/FAILED/IDLE rendering from live state.
-- Display live endpoint, uptime, failure tail, metrics, slots, and health status.
-- Make telemetry toggle actually update launch flags and poller lifecycle.
-- Prevent stale poll responses from affecting a later launch generation.
-- Isolate subscriber exceptions so one render callback cannot stop a poller.
+**Scope:** supervisor restart/cancellation, late-event suppression, typed spawn failures, shared CLI/TUI teardown, pidfile lifecycle, idempotent shutdown.
 
-### Tests
+**Required evidence:** supervisor restart, kill during preflight/spawn, late output suppression, CLI SIGINT escalation, pidfile create/clear, orphan/teardown suite.
 
-- Composition-level test: launch → poll → READY → metrics/slots updates → kill.
-- Pollers stop on shutdown and restart cleanly.
-- Stale generation responses are ignored.
-- UI receives actual `serverRunning` state.
-- Toggle telemetry changes both argv and screen behavior.
-- No callback exception permanently stops polling.
+**EXIT:** fake server starts, reaches observed state, stops, restarts, and is force-killed without timeout, orphan, or stale pidfile.
 
-### EXIT criterion
+**Current assessment:** implementation and automated coverage pass; archive after recording the current full-suite and mandatory teardown evidence.
 
-A fake HTTP server plus fake process drives the real TUI state from STARTING through LOADING to READY, displays metrics and slots, and returns to IDLE after teardown.
+### Phase 7 — Real Telemetry Integration
 
-## Phase 8 — Configuration, Preset, and Binary Completeness
+**Scope:** composition-root pollers, typed state-upstream wiring, lifecycle coupling, live endpoint/status/metrics/slots, telemetry toggle, generation safety, subscriber isolation.
 
-### Goal
-Make persistence and configurator features match what the UI and schema advertise.
+**Required evidence:** launch → STARTING/LOADING → READY with real application state, metrics and slots visible, teardown → IDLE, non-default endpoint, stale response, and callback failure tests.
 
-### PR scope
+**EXIT:** fake process plus HTTP server drives the real TUI through the complete lifecycle.
 
-- Wire preset load into the configurator.
-- Implement relink flow for broken presets.
-- Restore `lastSession` tab and preset on startup.
-- Update UI state immediately after saving a preset.
-- Add delete confirmation.
-- Separate explicit default preset from last-session state, or document and consistently implement the chosen semantics.
-- Use `binary_path` in launch plans and CLI/TUI startup.
-- Connect runtime `--help` validation to configurator field availability and deprecation warnings.
-- Render all supported registry-backed fields or deliberately remove unsupported registry entries.
-- Normalize/expand `~`, relative paths, and platform paths consistently.
-- Validate models directory before saving it.
-- Add schema validation for config and presets.
-- Capture the original schema version before migration.
+**Current assessment:** core tests pass, but explicitly re-verify non-default host/port and the rendered TUI path before archive.
 
-### Tests
+### Phase 8 — Configuration, Presets, and Binary Completeness
 
-- Preset load updates every configurator field.
-- Broken preset relink and re-save.
-- Startup restores last session.
-- Save updates visible rows immediately.
-- Invalid JSON shapes are rejected safely.
-- Migration reports the true source version and preserves backups.
-- Alternate binary path is used by both CLI and TUI.
-- Tilde and relative paths resolve consistently.
+**Scope:** preset load/relink/save/delete, last-session restoration, default-vs-last-session semantics, binary path, runtime help availability, registry-backed fields, path normalization, schema validation, migration source version.
 
-### EXIT criterion
+**Required evidence:** end-to-end select/configure/save/relaunch/load/relink/launch; exact preview/spawn argv parity; invalid JSON and migration tests; alternate binary and path tests.
 
-A user can select a model, configure it, save a preset, quit, relaunch, load it, relink it after a move, and launch the selected binary with the same command shown in the preview.
+**EXIT:** the selected preset and binary survive restart and produce the exact previewed command.
 
-## Phase 9 — Persistence and Concurrency Hardening
+**Current assessment:** automated Phase 8 coverage passes; archive only after a current TUI restart/relink walkthrough is recorded.
 
-### Goal
-Make JSON storage durable and safe under crashes and concurrent CLI/TUI access.
+### Phase 9 — Persistence and Concurrency Hardening
 
-### PR scope
+**Scope:** unique same-directory temp files, shared atomic writes, durability decision, backup retention/recovery, interrupted writes, locking/single-writer policy, pidfile race safety.
 
-- Replace fixed `.tmp` files with unique same-directory temporary files.
-- Add collision-safe atomic write helpers shared by config, presets, pidfile, and metadata cache.
-- Decide and document fsync durability behavior.
-- Preserve previous backups instead of overwriting blindly.
-- Handle interrupted writes and recover safely.
-- Add file locking or a single-writer strategy for presets/config.
-- Validate pidfile fields and reject invalid PIDs/records.
-- Avoid deleting another process’s pidfile during races.
-- Add safe backup/restore diagnostics.
+**Required evidence:** concurrent writers, injected write/rename/fsync failures, crash points, backup recovery, invalid pidfile records, and no cross-rename/lost update.
 
-### Tests
+**EXIT:** last valid data remains recoverable and concurrent writers cannot corrupt or silently overwrite one another.
 
-- Concurrent save attempts.
-- Injected write, rename, and fsync failures.
-- Crash points before and after rename.
-- Backup retention and recovery.
-- Invalid schema and pidfile records.
-- Two CLI/TUI writers do not lose updates silently.
+**Current assessment:** implementation history and tests indicate completion; confirm the documented durability and concurrency policy before archive.
 
-### EXIT criterion
+### Phase 10 — Portability and Process Identity
 
-Injected failures leave the last valid document recoverable, no temporary file is mistaken for the canonical document, and concurrent writers cannot cross-rename each other’s data.
+**Scope:** process-inspection abstraction, Linux implementation, unsupported-platform behavior, identity/endpoint checks, IPv4/IPv6/exposure handling, safe adoption/signaling.
 
-## Phase 10 — Portability and Process Identity
+**Required evidence:** mocked platform backends, PID reuse, mismatches, wrong ports, IPv4/IPv6, permission denial, public-interface warnings.
 
-### Goal
-Remove Linux-only assumptions and reduce false-positive/false-negative orphan handling.
+**EXIT:** unavailable `/proc` never silently marks a valid process stale; mismatched processes/endpoints are refused without unrelated kills.
 
-### PR scope
+**Current assessment:** core safeguards pass; archive only after platform-matrix evidence and explicit unsupported-platform behavior are documented.
 
-- Introduce a process-inspection abstraction.
-- Provide Linux `/proc` implementation and safe unsupported-platform behavior.
-- Improve process identity validation using command, owner, port, and start identity where available.
-- Handle `localhost`, IPv4, IPv6, wildcard IPv6, and interface exposure consistently.
-- Expand host exposure confirmation beyond exact `0.0.0.0`.
-- Make orphan adoption require the expected process/endpoint relationship.
-- Clarify behavior when permissions prevent inspection or signaling.
-- Document platform support and limitations.
+### Phase 11 — Model Discovery and GGUF Robustness
 
-### Tests
+**Scope:** hostile-header limits, u64 safety, type/truncation diagnostics, scan errors, symlink policy, cache invalidation, worker/watcher resilience, incomplete split-model blocking.
 
-- Mock process-inspection backends for Linux, macOS, Windows, and unsupported environments.
-- PID reuse and mismatched process tests.
-- Wrong-port and closed-port orphan tests.
-- IPv4/IPv6 preflight tests.
-- Permission-denied behavior.
-- Public-interface warning tests.
+**Required evidence:** adversarial fixtures, nested changes, unreadable paths, same-size replacement, worker failures, empty jobs, incomplete launch blocking.
 
-### EXIT criterion
+**EXIT:** changing recursive trees remain accurate and explainable without unbounded allocation, stale cache, crashes, or launchable incomplete models.
 
-Orphan detection never silently claims a valid process is stale solely because `/proc` is unavailable, and it refuses mismatched processes or endpoints without risking an unrelated kill.
+**Current assessment:** automated hardening coverage passes; archive after recording recursive watcher and error-state evidence.
 
-## Phase 11 — Model Discovery and GGUF Robustness
+### Phase 12 — Command, Estimation, and Runtime Compatibility
 
-### Goal
-Make scanning reliable for real directories, hostile/corrupt files, nested trees, and changing model sets.
+**Scope:** runtime help gating, format-specific escaping, preview/export parity, centralized defaults, independent K/V estimates, batch effects, units, limitations, preset sanitization.
 
-### PR scope
+**Required evidence:** hostile quoting inputs, unavailable/deprecated flags, mixed precision, batch sensitivity, units, invalid hand-edited values.
 
-- Add parser count and allocation limits for hostile headers.
-- Preserve u64 count precision and reject unsafe loop bounds.
-- Distinguish unsupported GGUF types from truncation.
-- Reuse parsing allocations where useful.
-- Surface unreadable directories and scan errors.
-- Define symlink policy and document it.
-- Make cache signatures resistant to timestamp precision/content replacement issues.
-- Avoid worker-pool creation for fully cached scans.
-- Harden worker failure/replacement behavior.
-- Make watcher behavior recursive or rescan on directory changes.
-- Handle watcher errors through scan state.
-- Preserve existing rows while a rescan is in progress.
-- Block incomplete split models from launch/configuration.
+**EXIT:** displayed/exported/spawned commands are equivalent where applicable, unsupported flags cannot launch, and estimates are consistently labeled and internally coherent.
 
-### Tests
+**Current assessment:** automated coverage passes; archive after reviewing generated artifacts against a real configured binary.
 
-- Huge count/header adversarial fixtures.
-- Unsupported type diagnostics.
-- Nested directory create/rename/delete watcher tests.
-- Unreadable path reporting.
-- Cache invalidation for same-size replacements.
-- Worker failure and empty-job tests.
-- Incomplete split model cannot launch.
+### Phase 13 — Keyboard, Focus, and UI Integration
 
-### EXIT criterion
+**Scope:** single key owner, listener cleanup, warning-free React updates, themes, four-tab product surface, preset callbacks, controlled inputs, focus remapping, confirmations, live process/stderr identity.
 
-A changing recursive model tree produces accurate, explainable state without crashes, unbounded allocations, stale cache entries, or launchable incomplete models.
+**Required evidence:** one-action-per-keypress, mount/unmount listener counts, all-theme switching, focus traversal, input synchronization, confirmation accept/cancel, warning-free UI suite.
 
-## Phase 12 — Command, Estimation, and Runtime Compatibility
+**EXIT:** every documented binding has one owner, every advertised action is wired, and UI tests have no React/listener warnings.
 
-### Goal
-Ensure generated commands and estimates are accurate, compatible, and honest about uncertainty.
+**Current assessment:** automated UI coverage passes. Resolve the product decision around Catalog before declaring the four-tab criterion complete: remove/gate the development Catalog, or explicitly amend the spec and ship it as a supported fifth tab.
 
-### PR scope
+### Phase 14 — UX, Layout, and Release Readiness
 
-- Connect runtime help validation to command generation, not only display metadata.
-- Make unavailable/deprecated flags impossible to launch accidentally.
-- Improve shell and systemd escaping with format-specific rules.
-- Quote Explorer previews using the same command-line formatter as exports.
-- Centralize defaults and runtime constants.
-- Calculate K and V cache memory independently.
-- Include batch/ubatch effects in compute-buffer estimates or explicitly remove the claim.
-- Use consistent GiB/GB labels throughout the UI.
-- Add architecture-specific estimator limitations and confidence notes.
-- Clamp/validate preset values before command generation.
+**Scope:** filtering/sorting, scan progress/errors, truncation/full-value inspection, 100x30/120x40/200x60 layouts, exposure warning, terminal compatibility, branding/docs/version, stale reports, README, real-server soak.
 
-### Tests
+**Required evidence:** golden frames at all target sizes, large model/preset sets, terminal checklist for tmux/kitty/ghostty/wezterm/alacritty/VS Code, one-hour real llama-server soak, and documentation review.
 
-- Paths and environment values containing spaces, quotes, `%`, backslashes, and newlines.
-- Runtime flag unavailable/deprecated behavior.
-- K/V mixed precision estimates.
-- Batch-size sensitivity.
-- Unit-label consistency.
-- Hand-edited invalid preset flags.
+**EXIT:** release checklist complete, suite green and warning-free, manual compatibility signed off, and docs describe shipped behavior.
 
-### EXIT criterion
+**Current assessment:** open release gate. This is the final blocker for archiving the audit/remediation plan itself.
 
-The displayed command, exported command, and spawned argv are byte-for-byte equivalent where applicable; unsupported flags are visibly blocked; estimates are internally consistent and clearly labeled as estimates.
+## Audit finding disposition
 
-## Phase 13 — Keyboard, Focus, and UI Integration
+- **F1/F2/F3/F4/F6:** treat as closed only with current composition/TUI evidence; retain regression tests.
+- **F5:** unresolved product-surface decision; must be removed/gated or explicitly specified before Phase 13/14 archive.
+- **F7/F7b/F8–F10/F12–F19:** map to Phases 8, 12, 13, and 14 above; do not mark closed from unit tests alone where the finding concerns visible wiring or onboarding.
+- Historical documents (`docs/phase5-report.md`, `docs/error-audit.md`) must be corrected or clearly marked historical before release sign-off.
 
-### Goal
-Make the TUI’s advertised interactions work consistently without duplicate handlers or leaks.
+## Archive sequence
 
-### PR scope
+Archive in dependency order, never in bulk:
 
-- Choose one owner for global Enter, quit, kill, and field navigation events.
-- Remove duplicate `useKeyboard` handling and eliminate listener leaks.
-- Fix React `act(...)` warnings in UI tests.
-- Wire theme provider and runtime theme switching.
-- Reconcile the four-tab spec with the Catalog tab and palette actions.
-- Wire preset load/relink callbacks.
-- Add visible labels and controlled value synchronization to text inputs.
-- Ensure screen changes remap focus correctly.
-- Add explicit modal/inline confirmation states for host exposure, kill, quit, and delete.
-- Show live process status in the shell header.
-- Preserve stderr identity in the console.
+1. Verify and archive Phase 6.
+2. Verify and archive Phase 7.
+3. Verify and archive Phase 8.
+4. Verify and archive Phase 9.
+5. Verify and archive Phase 10.
+6. Verify and archive Phase 11.
+7. Verify and archive Phase 12.
+8. Resolve Catalog and complete the Phase 13 gate; then archive Phase 13 and its Phase 5/related PRD only if its independent EXIT is green.
+9. Complete Phase 14 release evidence; archive Phase 14 and the remaining audit/remediation records only after docs and manual sign-off are complete.
 
-### Tests
+The original PRDs `prd-phase-3` through `prd-phase-5` are archived only when their original EXIT criteria are independently re-run against current `main`; remediation completion does not automatically prove the original PRD. Keep the active spec and current release checklist outside `plans/archive/`.
 
-- One keypress produces one action.
-- Mount/unmount cycles do not increase key listener count.
-- Theme switching changes every screen.
-- Focus traversal across each screen.
-- Input reset/load/model-change synchronization.
-- Confirmation modal acceptance/cancellation.
-- UI tests complete without `act(...)` warnings.
+## Definition of done for this plan
 
-### EXIT criterion
-
-Every documented keybinding has one working owner, every advertised action is wired, and the full UI suite runs without listener or React update warnings.
-
-## Phase 14 — UX, Layout, and Release Readiness
-
-### Goal
-Turn the technically complete tool into a predictable daily-use terminal application.
-
-### PR scope
-
-- Add model and preset search/filtering.
-- Add useful sorting options.
-- Add scan progress, elapsed time, cache-hit status, and actionable errors.
-- Truncate long paths/names with consistent ellipses and provide full-value inspection.
-- Rework fixed widths/heights for 100x30 and wider terminals.
-- Validate all five-tab/catalog layouts at narrow widths.
-- Add explicit “server exposed to network” warning and security guidance.
-- Add terminal compatibility checklist and test instructions.
-- Align package name, UI branding, docs, version, and GitHub repository naming.
-- Update stale phase reports that claim green status.
-- Add a README with installation, prerequisites, supported platforms, binary setup, examples, and limitations.
-
-### Tests/manual checks
-
-- Narrow and wide golden frames.
-- 100x30, 120x40, and 200x60 layouts.
-- Long model names and paths.
-- Hundreds of models/presets.
-- tmux, kitty, ghostty, wezterm, alacritty, and VS Code terminal checklist.
-- One-hour real llama-server soak with no orphan and stable memory.
-
-### EXIT criterion
-
-The release checklist is complete, the full suite is green and warning-free, manual terminal compatibility is signed off, and documentation accurately describes the shipped behavior.
-
-## Archive policy
-
-- `plans/llamamanager.md` remains the specification of record until superseded by an explicit versioned spec.
-- Existing `plans/prd-phase-*` and `plans/phase-*` should be moved to `plans/archive/` only after their phase gates are independently verified from current `main`.
-- `docs/phase5-report.md` and `docs/error-audit.md` are historical reports and should not be treated as current completion evidence while the suite is failing.
+- Every audit finding has a closed, deferred, removed, or explicitly accepted disposition.
+- Every phase has current automated and required manual evidence.
+- No stale document claims a green phase without evidence.
+- `bun run lint && bun run typecheck && bun test` passes with zero failures and zero warnings.
+- Required terminal compatibility and real-server soak checks are signed off.
+- Only then are completed PRDs/phases moved to `plans/archive/`.
