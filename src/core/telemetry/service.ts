@@ -32,10 +32,8 @@ export interface TelemetryServiceOptions {
 export function createTelemetryService(
 	opts: TelemetryServiceOptions,
 ): TelemetryService {
-	const monitor: TelemetryMonitor = createTelemetryMonitor({
-		supervisor: opts.supervisor,
-		health: opts.health,
-	});
+	let monitor: TelemetryMonitor | null = null;
+	let detach: (() => void) | null = null;
 	const listeners = new Set<(snapshot: TelemetrySnapshot) => void>();
 	let current: TelemetrySnapshot = {
 		phase: "IDLE",
@@ -44,10 +42,8 @@ export function createTelemetryService(
 		slots: [],
 	};
 	let started = false;
-	const disposed = false;
 
 	const publish = (patch: Partial<TelemetrySnapshot>) => {
-		if (disposed) return;
 		current = { ...current, ...patch };
 		for (const listener of [...listeners]) {
 			try {
@@ -58,32 +54,50 @@ export function createTelemetryService(
 		}
 	};
 
-	monitor.onChange((phase) => publish({ phase }));
-	opts.health.onStatus((health) => publish({ health }));
-	opts.metrics.onSnapshot((metrics) => publish({ metrics }));
-	opts.slots.onSlots((slots) => publish({ slots }));
+	const attach = (): void => {
+		monitor = createTelemetryMonitor({
+			supervisor: opts.supervisor,
+			health: opts.health,
+		});
+		const offPhase = monitor.onChange((phase) => publish({ phase }));
+		const offHealth = opts.health.onStatus((health) => publish({ health }));
+		const offMetrics = opts.metrics.onSnapshot((metrics) =>
+			publish({ metrics }),
+		);
+		const offSlots = opts.slots.onSlots((slots) => publish({ slots }));
+		detach = () => {
+			offPhase();
+			offHealth();
+			offMetrics();
+			offSlots();
+			monitor?.stop();
+			monitor = null;
+		};
+	};
 
 	return {
 		get snapshot() {
 			return current;
 		},
 		start() {
-			if (disposed || started) return;
+			if (started) return;
 			started = true;
+			attach();
 			opts.health.start();
 			opts.metrics.start();
 			opts.slots.start();
 		},
 		stop() {
-			if (disposed || !started) return;
+			if (!started) return;
 			started = false;
 			opts.health.stop();
 			opts.metrics.stop();
 			opts.slots.stop();
-			monitor.stop();
+			detach?.();
+			detach = null;
+			current = { phase: "IDLE", health: null, metrics: null, slots: [] };
 		},
 		onSnapshot(cb) {
-			if (disposed) return () => {};
 			listeners.add(cb);
 			return () => listeners.delete(cb);
 		},

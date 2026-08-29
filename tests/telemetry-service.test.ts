@@ -74,6 +74,12 @@ describe("telemetry service", () => {
 		expect(health.stops).toBe(1);
 		expect(metrics.stops).toBe(1);
 		expect(slots.stops).toBe(1);
+		health.emit(health.value);
+		expect(seen.length).toBe(3);
+		service.start();
+		expect(health.starts).toBe(2);
+		health.emit(health.value);
+		expect(seen.length).toBe(4);
 	});
 
 	it("isolates subscriber failures", () => {
@@ -98,6 +104,7 @@ describe("telemetry service", () => {
 		service.onSnapshot(() => {
 			called = true;
 		});
+		service.start();
 		health.emit(health.value);
 		expect(called).toBe(true);
 	});
