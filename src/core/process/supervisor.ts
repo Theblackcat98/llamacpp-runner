@@ -46,6 +46,7 @@ export class Supervisor {
 	private transport: Transport | null = null;
 	private startPromise: Promise<void> | null = null;
 	private teardownPromise: Promise<ExitInfo | null> | null = null;
+	private teardownRequested = false;
 	private exited = false;
 	private exitInfo: ExitInfo | null = null;
 	private readonly assembler = new LineAssembler();
@@ -85,18 +86,27 @@ export class Supervisor {
 
 	start(): Promise<void> {
 		if (this.startPromise) return this.startPromise;
-		this.startPromise = this.#start();
+		this.teardownRequested = false;
+		this.exited = false;
+		this.exitInfo = null;
+		this.startPromise = this.#start().finally(() => {
+			this.startPromise = null;
+		});
 		return this.startPromise;
 	}
 
 	async kill(): Promise<ExitInfo | null> {
-		await this.start();
+		this.teardownRequested = true;
+		if (this.startPromise) await this.startPromise;
 		return this.teardown();
 	}
 
 	async teardown(): Promise<ExitInfo | null> {
+		this.teardownRequested = true;
 		if (this.teardownPromise) return this.teardownPromise;
-		this.teardownPromise = this.#teardown();
+		this.teardownPromise = this.#teardown().finally(() => {
+			this.teardownPromise = null;
+		});
 		return this.teardownPromise;
 	}
 
@@ -118,6 +128,7 @@ export class Supervisor {
 				return;
 			}
 		}
+		if (this.teardownRequested) return;
 		this.emitState({ state: "STARTING" });
 		try {
 			this.transport = this.transportFactory({
@@ -134,6 +145,7 @@ export class Supervisor {
 		this.transport.onData((chunk) => this.ingest(chunk));
 		this.transport.onExit((info) => this.handleExit(info));
 		this.emitState({ state: "LOADING" });
+		if (this.teardownRequested) await this.#teardown();
 	}
 
 	async #teardown(): Promise<ExitInfo | null> {
@@ -157,15 +169,18 @@ export class Supervisor {
 	}
 
 	private recordLine(line: string): void {
+		if (this.exited) return;
 		this.lines.push(line);
 		for (const cb of this.logListeners) cb(line);
 		const ready = this.opts.readyPattern;
+		if (ready) ready.lastIndex = 0;
 		if (ready?.test(line)) {
 			this.emitState({ state: "READY" });
 		}
 	}
 
 	private handleExit(info: ExitInfo): void {
+		if (this.exited) return;
 		for (const line of this.assembler.flush()) this.recordLine(line);
 		this.exited = true;
 		this.exitInfo = info;

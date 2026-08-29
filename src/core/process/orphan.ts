@@ -96,9 +96,18 @@ export async function killOrphan(
 		} catch {
 			return true;
 		}
-		await waitFor(() => !processAlive(pid), timings.sigkillGraceMs);
+		await waitFor(() => !processGone(pid), timings.sigkillGraceMs);
 	}
-	return !processAlive(pid);
+	return processGone(pid);
+}
+
+function processGone(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return false;
+	} catch (err) {
+		return (err as NodeJS.ErrnoException).code === "ESRCH";
+	}
 }
 
 async function waitFor(

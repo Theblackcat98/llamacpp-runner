@@ -55,14 +55,17 @@ describe("CLI kill (P5-FR-12)", () => {
 	it("live llama-server-like process is torn down via §6.2 path", async () => {
 		// Double-fork: the sleeper is reparented away from this test process,
 		// so it cannot linger as an un-reaped zombie mid-assertion.
-		const spawner = Bun.spawnSync([
-			"bash",
-			"-c",
-			"exec -a llama-server sleep 30 & echo $!",
-		]);
+		const spawner = Bun.spawnSync(
+			["bash", "-c", "exec -a llama-server sleep 30 >/dev/null 2>&1 & echo $!"],
+			{
+				stdout: "pipe",
+				stderr: "ignore",
+			},
+		);
 		const pid = Number(spawner.stdout.toString().trim());
 		expect(pid).toBeGreaterThan(0);
 		await Bun.sleep(100);
+		mkdirSync(`${TMP}state/llama-deck`, { recursive: true });
 		writeFileSync(
 			`${TMP}state/llama-deck/server.pid`,
 			JSON.stringify({

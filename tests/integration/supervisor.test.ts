@@ -191,6 +191,60 @@ describe("supervisor vs fake-server.sh (§6)", () => {
 		expect(sv.pid).toBeUndefined();
 	});
 
+	it("can restart after a previous run exits", async () => {
+		const port = 18101;
+		const sv = new Supervisor({
+			command: "bash",
+			args: [FIXTURE, "--port", String(port)],
+			port,
+			readyPattern: READY,
+			timings: FAST,
+		});
+		const states: string[] = [];
+		sv.onState((e) => states.push(e.state));
+		await sv.start();
+		expect(await waitFor(() => states.includes("READY"))).toBe(true);
+		await sv.kill();
+		const firstPid = sv.pid;
+		await sv.start();
+		expect(
+			await waitFor(() => states.filter((s) => s === "READY").length === 2),
+		).toBe(true);
+		expect(sv.pid).not.toBe(firstPid);
+		await sv.kill();
+	});
+
+	it("does not emit READY from late output after exit", async () => {
+		let data: ((chunk: string) => void) | undefined;
+		let exit:
+			| ((info: { code: number; signal: string | null }) => void)
+			| undefined;
+		const sv = new Supervisor({
+			command: "fake",
+			args: [],
+			transportFactory: () => ({
+				pid: 12345,
+				onData(cb) {
+					data = cb;
+				},
+				onExit(cb) {
+					exit = cb;
+				},
+				kill() {
+					return true;
+				},
+			}),
+			whichFn: () => "/bin/fake",
+			readyPattern: /ready/,
+		});
+		const states: string[] = [];
+		sv.onState((e) => states.push(e.state));
+		await sv.start();
+		exit?.({ code: 0, signal: null });
+		data?.("ready\\n");
+		expect(states.filter((s) => s === "READY")).toHaveLength(0);
+	});
+
 	it("zero-exit after READY reports clean stop, not FAILED (P1-FR-16)", async () => {
 		const run = await runFixture(["--port", "18089"]);
 		await run.waitReady();
