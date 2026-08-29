@@ -26,4 +26,5 @@ export interface ModelEntry {
 export interface ScanResult {
 	entries: ModelEntry[];
 	stats: { filesWalked: number; parsed: number; cachedHits: number };
+	errors?: string[];
 }

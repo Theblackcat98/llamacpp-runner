@@ -2,7 +2,8 @@ export type ParseErrorCode =
 	| "BAD_MAGIC"
 	| "UNSUPPORTED_VERSION"
 	| "TRUNCATED"
-	| "HEADER_TOO_LARGE";
+	| "HEADER_TOO_LARGE"
+	| "UNSUPPORTED_TYPE";
 
 export class ParseError extends Error {
 	readonly code: ParseErrorCode;

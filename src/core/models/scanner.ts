@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { ModelInfo } from "../gguf/types";
 import {
@@ -16,9 +16,14 @@ interface WalkedFile {
 	path: string;
 	size: number;
 	mtimeMs: number;
+	identity: string;
 }
 
 export interface ScanOptions {
+	/** Report directories/files that could not be read instead of silently skipping them. */
+	onError?: (path: string, error: unknown) => void;
+	/** Do not follow symlinks, preventing recursive/out-of-tree scans. */
+	followSymlinks?: boolean;
 	/** $XDG_STATE_HOME/llama-deck — enables the metadata cache (P3-FR-10). */
 	stateDir?: string;
 	/** Worker pool size (P3-FR-18). Defaults to 4. */
@@ -31,25 +36,43 @@ function walkDirents(dir: string) {
 	return readdirSync(dir, { withFileTypes: true });
 }
 
-function walk(dir: string, out: WalkedFile[]): void {
+function walk(
+	dir: string,
+	out: WalkedFile[],
+	options: ScanOptions,
+	errors: string[],
+): void {
 	let dirEntries: ReturnType<typeof walkDirents>;
 	try {
 		dirEntries = walkDirents(dir);
-	} catch {
-		return; // unreadable dir -> skip, never crash the scan
+	} catch (error) {
+		errors.push(
+			`${dir}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		options.onError?.(dir, error);
+		return;
 	}
 	for (const de of dirEntries) {
 		const path = join(dir, de.name);
+		if (de.isSymbolicLink() && !options.followSymlinks) continue;
 		if (de.isDirectory()) {
-			walk(path, out);
+			walk(path, out, options, errors);
 			continue;
 		}
 		if (!de.isFile() || !de.name.toLowerCase().endsWith(".gguf")) continue;
 		try {
 			const st = statSync(path);
-			out.push({ path, size: st.size, mtimeMs: st.mtimeMs });
-		} catch {
-			// raced deletion -> skip
+			out.push({
+				path,
+				size: st.size,
+				mtimeMs: st.mtimeMs,
+				identity: `${st.dev}:${st.ino}`,
+			});
+		} catch (error) {
+			errors.push(
+				`${path}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			options.onError?.(path, error);
 		}
 	}
 }
@@ -97,7 +120,7 @@ class ParsePool {
 
 function signature(files: WalkedFile[]): string {
 	return files
-		.map((f) => `${f.path}:${f.size}:${Math.round(f.mtimeMs)}`)
+		.map((f) => `${f.path}:${f.size}:${f.mtimeMs}:${f.identity}`)
 		.join("|");
 }
 
@@ -115,10 +138,23 @@ export async function scanModels(
 	options: ScanOptions = {},
 ): Promise<ScanResult> {
 	const walked: WalkedFile[] = [];
-	for (const dir of dirs) walk(dir, walked);
+	const walkErrors: string[] = [];
+	for (const dir of dirs) {
+		try {
+			if (lstatSync(dir).isSymbolicLink() && !options.followSymlinks) continue;
+		} catch (error) {
+			walkErrors.push(
+				`${dir}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			options.onError?.(dir, error);
+			continue;
+		}
+		walk(dir, walked, options, walkErrors);
+	}
 
 	const emptyStats = { filesWalked: walked.length, parsed: 0, cachedHits: 0 };
-	if (walked.length === 0) return { entries: [], stats: emptyStats };
+	if (walked.length === 0)
+		return { entries: [], stats: emptyStats, errors: walkErrors };
 
 	const cache = options.stateDir ? loadCache(options.stateDir) : undefined;
 
@@ -270,5 +306,6 @@ export async function scanModels(
 			parsed: jobs.length,
 			cachedHits,
 		},
+		errors: walkErrors,
 	};
 }
