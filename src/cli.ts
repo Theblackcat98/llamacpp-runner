@@ -1,4 +1,6 @@
 import { formatBytes } from "./core/estimate/vram";
+import { registryAvailability } from "./core/flags/help-parser";
+import { captureHelp, resolveBinaryPath } from "./core/flags/validate";
 import { scanModels } from "./core/models/scanner";
 import type { ModelEntry } from "./core/models/types";
 import { type ExportFormat, exportPreset } from "./core/preset-launch";
@@ -127,7 +129,9 @@ async function main(): Promise<void> {
 			formatIdx >= 0 ? args[formatIdx + 1] : "cmd"
 		) as ExportFormat;
 		if (format !== "cmd" && format !== "sh" && format !== "systemd") usage();
-		process.stdout.write(exportPreset(findPreset(presetId), format));
+		const preset = findPreset(presetId);
+		const availability = await runtimeAvailability(configuredBinary());
+		process.stdout.write(exportPreset(preset, format, { availability }));
 		return;
 	}
 
@@ -135,7 +139,9 @@ async function main(): Promise<void> {
 		const presetId = args[0];
 		if (!presetId) usage();
 		const { presetToPlan } = await import("./core/preset-launch");
-		const plan = presetToPlan(findPreset(presetId));
+		const preset = findPreset(presetId);
+		const availability = await runtimeAvailability(configuredBinary());
+		const plan = presetToPlan(preset, { availability });
 		const child = Bun.spawn([plan.command, ...plan.args], {
 			stdin: "inherit",
 			stdout: "inherit",
@@ -190,6 +196,28 @@ async function main(): Promise<void> {
 		`Scanned ${result.stats.filesWalked} files in ${dirs.join(", ")} -> ${result.entries.length} models`,
 	);
 	console.table(formatRows(result.entries));
+}
+
+/** Configured binary_path from the presets file (file-level, Phase 8). */
+function configuredBinary(): string | undefined {
+	const store = loadPresets(presetsFilePath(resolvePaths().configDir));
+	return (store.data as PresetFile | null)?.binary_path ?? undefined;
+}
+
+/**
+ * Phase 12: resolve the binary, capture its `--help`, and compute the flag
+ * availability map so unsupported flags never launch. Best effort — any
+ * capture failure yields {} (builder keeps every flag).
+ */
+async function runtimeAvailability(
+	binaryPath: string | undefined,
+): Promise<Record<string, { supported: boolean; deprecated: boolean }>> {
+	const binary =
+		resolveBinaryPath({ configured: binaryPath }).status === "ok"
+			? binaryPath
+			: undefined;
+	const help = binary ? await captureHelp(binary) : "";
+	return help ? registryAvailability(help) : {};
 }
 
 function formatRows(entries: ModelEntry[]): Record<string, string>[] {

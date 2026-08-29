@@ -2,7 +2,9 @@
  * .sh exporter (§3.3, P4-FR-16b): POSIX script with env vars + exec.
  * Output is deterministic — golden-file tested (P4-NFR-01 spirit).
  */
-import { type BuiltCommand, commandLine } from "../flags/builder";
+
+import type { BuiltCommand } from "../flags/builder";
+import { formatCommand, formatEnvValue } from "./quote";
 
 export interface ShellScriptInput {
 	built: BuiltCommand;
@@ -18,13 +20,10 @@ export function buildShellScript(input: ShellScriptInput): string {
 		"",
 	];
 	for (const [key, value] of Object.entries(input.envVars)) {
-		lines.push(`export ${key}=${shQuote(value)}`);
+		lines.push(`export ${key}=${formatEnvValue(value, "shell")}`);
 	}
-	lines.push(`exec ${commandLine(input.built)}`);
+	lines.push(
+		`exec ${formatCommand(input.built.command, input.built.args, "shell")}`,
+	);
 	return `${lines.join("\n")}\n`;
-}
-
-function shQuote(s: string): string {
-	if (/^[A-Za-z0-9_\-./:=@%^+]+$/.test(s)) return s;
-	return `'${s.replaceAll("'", `'\\''`)}'`;
 }

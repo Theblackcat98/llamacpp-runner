@@ -26,7 +26,7 @@ describe("explorer rows (P3-FR-15/16)", () => {
 	it("formats populated rows", () => {
 		const rows = buildRows([GOOD]);
 		expect(rows[0]?.displayName).toBe("qwen25-7b-q4km");
-		expect(rows[0]?.sizeLabel).toMatch(/^4\.4 GB$/);
+		expect(rows[0]?.sizeLabel).toMatch(/^4\.4 GiB$/);
 		expect(rows[0]?.quantLabel).toBe("Q4_K_M");
 		expect(rows[0]?.archLabel).toBe("qwen2");
 		expect(rows[0]?.corrupt).toBe(false);

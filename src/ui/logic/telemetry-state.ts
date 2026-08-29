@@ -1,3 +1,4 @@
+import { formatBytes } from "../../core/estimate/vram";
 import type { SlotSample } from "../../core/telemetry/slots";
 import { sparkline } from "../../core/telemetry/sparkline";
 import type { TelemetryPhase } from "../../core/telemetry/state-machine";
@@ -60,7 +61,7 @@ export function formatUptime(ms: number): string {
 }
 
 function gb(bytes: number): string {
-	return `${(bytes / 1e9).toFixed(1)} GB`;
+	return formatBytes(bytes);
 }
 
 export function buildTelemetryViewModel(

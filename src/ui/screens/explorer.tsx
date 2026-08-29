@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatBytes } from "../../core/estimate/vram";
+import { shellQuote } from "../../core/export/quote";
 import type { ModelEntry } from "../../core/models/types";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
@@ -170,7 +171,7 @@ export function Explorer({
 			>
 				<text fg={current && !current.error ? theme.fg : theme.muted}>
 					{current && !current.error
-						? `llama-server -m ${current.path}`
+						? `llama-server -m ${shellQuote(current.path)}`
 						: "select a model to preview its command"}
 				</text>
 			</TuiBox>

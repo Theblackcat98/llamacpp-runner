@@ -56,7 +56,7 @@ describe("buildTelemetryViewModel (P5-FR-04)", () => {
 	it("VRAM gauge = actual / estimated high, capped at 1", () => {
 		const vm = buildTelemetryViewModel(BASE);
 		expect(vm.vramFraction).toBeCloseTo(0.5);
-		expect(vm.vramLabel).toContain("12.0 GB actual / 24.0 GB est");
+		expect(vm.vramLabel).toContain("11.2 GiB actual / 22.4 GiB est");
 		const over = buildTelemetryViewModel({ ...BASE, memUsedBytes: 48e9 });
 		expect(over.vramFraction).toBe(1);
 	});

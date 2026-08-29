@@ -111,7 +111,7 @@ export function defaultVramRange(
 		keyLength: entry.keyLength,
 		embeddingLength: entry.embeddingLength,
 		gpuLayers: entry.blockCount + 1,
-	});
+	}).range;
 }
 
 export const CORRUPT_GLYPH = "!";

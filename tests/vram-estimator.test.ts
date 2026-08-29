@@ -27,20 +27,20 @@ describe("VRAM estimator: formula (P3-FR-12)", () => {
 		const weights = 3_897_308_464;
 		const kv = 2 * 32 * 4096 * 8 * 128 * 2;
 		const expectedLow = weights + kv + 0.5 * GIB + 300 * 1024 * 1024;
-		expect(r.low).toBeCloseTo(expectedLow, 0);
+		expect(r.range.low).toBeCloseTo(expectedLow, 0);
 	});
 
 	it("uses explicit key_length when present (gemma-style)", () => {
 		const shared = llama2_7b({ headCountKv: 4 });
 		const explicitKv = kvCacheBytes({ ...shared, keyLength: 256 });
 		const derivedKv = kvCacheBytes(shared);
-		expect(explicitKv / derivedKv).toBeCloseTo(256 / 128, 8);
+		expect(explicitKv.total / derivedKv.total).toBeCloseTo(256 / 128, 8);
 	});
 
 	it("MHA estimates exceed GQA by the head ratio", () => {
 		const mha = estimateVram(llama2_7b());
 		const gqa = estimateVram(llama2_7b({ headCountKv: 8 }));
-		expect(mha.low).toBeGreaterThan(gqa.low);
+		expect(mha.range.low).toBeGreaterThan(gqa.range.low);
 	});
 });
 
@@ -48,10 +48,10 @@ describe("VRAM estimator: range output (P3-FR-13/14)", () => {
 	it("high endpoint = weights + kv + compute_max + 800MB overhead", () => {
 		const input = llama2_7b();
 		const r = estimateVram(input);
-		const kv = kvCacheBytes(input);
+		const kv = kvCacheBytes(input).total;
 		// ctx=4096 -> scale sqrt(0.5) -> compute max = 2*0.5*sqrt(0.5) GiB
 		const computeMax = Math.sqrt(0.5) * GIB;
-		expect(r.high - input.fileSize - kv).toBeCloseTo(
+		expect(r.range.high - input.fileSize - kv).toBeCloseTo(
 			computeMax + 800 * 1024 * 1024,
 			0,
 		);
@@ -61,7 +61,7 @@ describe("VRAM estimator: range output (P3-FR-13/14)", () => {
 		const r = estimateVram(llama2_7b({ gpuLayers: 16, contextLength: 512 }));
 		const halfWeights = (input_size() * 16) / 33;
 		const kv = 2 * 32 * 512 * 32 * 128 * 2;
-		expect(r.low).toBeCloseTo(
+		expect(r.range.low).toBeCloseTo(
 			halfWeights + kv + 0.5 * GIB + 300 * 1024 * 1024,
 			0,
 		);
@@ -124,8 +124,8 @@ describe("VRAM estimator: real-world config table (§8)", () => {
 	for (const row of TABLE) {
 		it(`${row.label} lands within tolerance`, () => {
 			const r = estimateVram(row.input);
-			const lowGib = r.low / GIB;
-			const highGib = r.high / GIB;
+			const lowGib = r.range.low / GIB;
+			const highGib = r.range.high / GIB;
 			expect(lowGib).toBeGreaterThanOrEqual(row.gibRange[0] - row.tolerance);
 			expect(highGib).toBeLessThanOrEqual(row.gibRange[1] + row.tolerance);
 		});
@@ -139,8 +139,8 @@ describe("VRAM estimator: properties (§8, P3-NFR-04)", () => {
 				const r = estimateVram(
 					llama2_7b({ contextLength: ctx, gpuLayers: ngl }),
 				);
-				expect(r.low).toBeGreaterThan(0);
-				expect(r.high).toBeGreaterThan(r.low);
+				expect(r.range.low).toBeGreaterThan(0);
+				expect(r.range.high).toBeGreaterThan(r.range.low);
 			}
 		}
 	});
@@ -150,10 +150,10 @@ describe("VRAM estimator: properties (§8, P3-NFR-04)", () => {
 		let prevHigh = 0;
 		for (const ctx of [1024, 4096, 16384, 65536]) {
 			const r = estimateVram(llama2_7b({ contextLength: ctx }));
-			expect(r.low).toBeGreaterThanOrEqual(prevLow);
-			expect(r.high).toBeGreaterThanOrEqual(prevHigh);
-			prevLow = r.low;
-			prevHigh = r.high;
+			expect(r.range.low).toBeGreaterThanOrEqual(prevLow);
+			expect(r.range.high).toBeGreaterThanOrEqual(prevHigh);
+			prevLow = r.range.low;
+			prevHigh = r.range.high;
 		}
 	});
 
@@ -161,8 +161,8 @@ describe("VRAM estimator: properties (§8, P3-NFR-04)", () => {
 		let prevLow = 0;
 		for (const ngl of [0, 11, 22, 33]) {
 			const r = estimateVram(llama2_7b({ gpuLayers: ngl }));
-			expect(r.low).toBeGreaterThanOrEqual(prevLow);
-			prevLow = r.low;
+			expect(r.range.low).toBeGreaterThanOrEqual(prevLow);
+			prevLow = r.range.low;
 		}
 	});
 
@@ -173,10 +173,43 @@ describe("VRAM estimator: properties (§8, P3-NFR-04)", () => {
 	});
 });
 
+describe("VRAM estimator: Phase 12 independent K/V + batch + labels", () => {
+	it("K and V caches are sized independently by their own quant", () => {
+		const base = llama2_7b();
+		const bothF16 = kvCacheBytes(base);
+		const kvDiff = kvCacheBytes({
+			...base,
+			kvQuantK: "q8_0",
+			kvQuantV: "q4_0",
+		});
+		// Same total geometry, but K now 1 B/elem and V now 0.5625 B/elem.
+		const perElem = 32 * 4096 * 32 * 128;
+		expect(kvDiff.k).toBeCloseTo(perElem * 1.0, 0);
+		expect(kvDiff.v).toBeCloseTo(perElem * 0.5625, 0);
+		expect(kvDiff.total).toBeLessThan(bothF16.total);
+	});
+
+	it("batch/ubatch increase the compute-buffer upper bound", () => {
+		const small = estimateVram(llama2_7b({ batchSize: 512, ubatchSize: 128 }));
+		const big = estimateVram(llama2_7b({ batchSize: 8192, ubatchSize: 2048 }));
+		expect(big.range.high).toBeGreaterThan(small.range.high);
+	});
+
+	it("ships a machine-readable limitations note with the estimate", () => {
+		const r = estimateVram(llama2_7b({ keyLength: 192, kvQuantV: "q4_0" }));
+		expect(r.limitations.length).toBeGreaterThan(0);
+		expect(r.limitations.some((l) => l.code === "compute-envelope")).toBe(true);
+		expect(r.limitations.some((l) => l.code === "explicit-head-dim")).toBe(
+			true,
+		);
+		expect(r.limitations.some((l) => l.code === "q4-kv-lossy")).toBe(true);
+	});
+});
+
 describe("formatBytes", () => {
-	it("formats GiB-range values for the 'estimated range' label", () => {
-		expect(formatBytes(21.1 * GIB)).toMatch(/^21\.1 GB$/);
-		expect(formatBytes(0.9 * GIB)).toBe("921.6 MB");
-		expect(formatBytes(2 * GIB)).toBe("2.0 GB");
+	it("labels binary quantities as GiB/MiB (Phase 12)", () => {
+		expect(formatBytes(21.1 * GIB)).toMatch(/^21\.1 GiB$/);
+		expect(formatBytes(0.9 * GIB)).toBe("921.6 MiB");
+		expect(formatBytes(2 * GIB)).toBe("2.0 GiB");
 	});
 });

@@ -4,6 +4,7 @@
  * preview/VRAM wiring. UI renders state; intents call these functions.
  */
 
+import { DEFAULT_CONTEXT } from "../../core/constants";
 import {
 	type EstimateInput,
 	estimateVram,
@@ -45,7 +46,7 @@ export const RESTART_REQUIRED_IDS = [
 ] as const;
 
 export const CTX_CHIPS = [4096, 8192, 16384, 32768, 65536, 131072];
-const DEFAULT_CTX = 4096;
+const DEFAULT_CTX = DEFAULT_CONTEXT;
 
 function defaultValues(model: ConfiguratorModel): Record<string, unknown> {
 	const values: Record<string, unknown> = {};
@@ -176,22 +177,16 @@ export function vramRangeText(state: ConfiguratorState): string | null {
 			typeof state.values.n_gpu_layers === "number"
 				? (state.values.n_gpu_layers as number)
 				: state.nglMax,
-		kvQuant:
-			state.values.cache_type_k === "q8_0" ||
-			state.values.cache_type_v === "q8_0"
-				? "q8_0"
-				: state.values.cache_type_k === "q4_0" ||
-						state.values.cache_type_v === "q4_0"
-					? "q4_0"
-					: "f16",
+		kvQuantK: kvQuantValue(state, "cache_type_k"),
+		kvQuantV: kvQuantValue(state, "cache_type_v"),
 	};
 	const range = estimateVram(input);
-	return `${formatBytes(range.low)} – ${formatBytes(range.high)} (estimated range)`;
+	return `${formatBytes(range.range.low)} – ${formatBytes(range.range.high)} (estimated range)`;
 }
+
+export type KvQuant = "f16" | "q8_0" | "q4_0";
 
 export function kvQuantValue(state: ConfiguratorState, id: string): KvQuant {
 	const v = state.values[id];
 	return v === "q8_0" ? "q8_0" : v === "q4_0" ? "q4_0" : "f16";
 }
-
-export type KvQuant = "f16" | "q8_0" | "q4_0";

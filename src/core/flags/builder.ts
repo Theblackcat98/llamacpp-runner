@@ -3,6 +3,9 @@
  * -> deterministic argv. Pure — same inputs produce byte-identical argv
  * (P4-NFR-01). meta: max refs resolve against the selected model.
  */
+import { LLAMA_SERVER_BIN } from "../constants";
+import { shellQuote } from "../export/quote";
+import type { FlagAvailability } from "./help-parser";
 import { FLAG_ORDER, type FlagEntry, REGISTRY } from "./registry";
 
 export interface ModelMeta {
@@ -19,14 +22,17 @@ export interface BuildCommandInput {
 	 * (default ON); explicit values win.
 	 */
 	telemetry?: boolean;
+	/**
+	 * Phase 12: runtime `--help` availability map; flags the binary does not
+	 * support are dropped from argv so they can never launch accidentally.
+	 */
+	availability?: Record<string, FlagAvailability>;
 }
 
 export interface BuiltCommand {
 	command: string;
 	args: string[];
 }
-
-const LLAMA_SERVER = "llama-server";
 
 function resolveMax(
 	entry: { max?: number | string },
@@ -52,10 +58,20 @@ export function buildCommand(input: BuildCommandInput): BuiltCommand {
 	const explicit = (id: string) =>
 		id in values && values[id] !== undefined && values[id] !== null;
 
+	// Phase 12: flags the binary does not support are dropped before emission.
+	const availability = input.availability;
+	const isSupported = (id: string): boolean => {
+		if (availability === undefined) return true;
+		const avail = availability[id];
+		if (!avail) return true; // unknown -> don't guess, keep
+		return avail.supported;
+	};
+
 	for (const id of FLAG_ORDER) {
 		if (!has(id)) continue;
 		const entry: FlagEntry = REGISTRY[id];
 		const raw: unknown = values[id];
+		if (!isSupported(id)) continue;
 
 		if (entry.type === "bool") {
 			// Bools use their long form for readability in preview/exports.
@@ -84,21 +100,20 @@ export function buildCommand(input: BuildCommandInput): BuiltCommand {
 	}
 
 	const telemetry = input.telemetry ?? true;
-	if (telemetry && !explicit("slots")) args.push("--slots");
-	if (telemetry && !explicit("metrics")) args.push("--metrics");
+	if (telemetry && !explicit("slots") && isSupported("slots")) {
+		args.push("--slots");
+	}
+	if (telemetry && !explicit("metrics") && isSupported("metrics")) {
+		args.push("--metrics");
+	}
 
-	return { command: LLAMA_SERVER, args };
+	return { command: LLAMA_SERVER_BIN, args };
 }
 
 /**
- * Shell-quote a full command line for preview / .sh export. Values are
- * single-quoted POSIX-style; embedded quotes are escaped.
+ * Shell-quote a full command line for preview / .sh export (POSIX). Delegate
+ * to the shared formatter so previews and exports never drift (Phase 12).
  */
-export function shellQuote(s: string): string {
-	if (/^[A-Za-z0-9_\-./:=@%^+]+$/.test(s)) return s;
-	return `'${s.replaceAll("'", `'\\''`)}'`;
-}
-
 export function commandLine(built: BuiltCommand): string {
 	return [built.command, ...built.args.map(shellQuote)].join(" ");
 }
