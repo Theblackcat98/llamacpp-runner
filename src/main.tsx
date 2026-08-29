@@ -68,6 +68,7 @@ modelsService.boot();
 
 let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
 let metricsPoller: MetricsPoller | null = null;
+let telemetryEndpoint = "";
 
 const renderer = await createCliRenderer();
 createRoot(renderer).render(
@@ -111,6 +112,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		version: 2,
 		presets: [],
 	}));
+	const [telemetryEnabled, setTelemetryEnabled] = useState(true);
 
 	useEffect(() => {
 		const store = loadPresets(presetsFilePath(paths.configDir));
@@ -231,8 +233,13 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	}
 	planSource = buildPlan;
 
-	if (!telemetryService) {
-		const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : "127.0.0.1"}:${typeof config.values.port === "number" ? config.values.port : 8080}`;
+	const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : "127.0.0.1"}:${typeof config.values.port === "number" ? config.values.port : 8080}`;
+	if (telemetryService && telemetryEndpoint !== endpoint) {
+		telemetryService.stop();
+		telemetryService = null;
+		metricsPoller = null;
+	}
+	if (!telemetryService && telemetryEnabled) {
 		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
 		const service = createTelemetryService({
 			supervisor: session.supervisor,
@@ -245,6 +252,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		);
 		telemetryService = service;
 		metricsPoller = metrics;
+		telemetryEndpoint = endpoint;
 		service.start();
 	}
 
@@ -358,6 +366,9 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 					bus.emitIntent("SET_MODELS_DIR", { dir }),
 			}}
 			telemetryControl={{
+				onEnableTelemetry: () => {
+					setTelemetryEnabled((enabled) => !enabled);
+				},
 				vm: buildTelemetryViewModel({
 					phase: telemetry.phase,
 					model: config.model?.path ?? null,
@@ -368,7 +379,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 						: null,
 					startedAtMs: procState === "IDLE" ? null : Date.now(),
 					nowMs: Date.now(),
-					telemetryEnabled: true,
+					telemetryEnabled,
 					vramEstimatedBytes: null,
 					memUsedBytes: telemetry.metrics?.memUsedBytes ?? null,
 					kvUsageRatio: telemetry.metrics?.kvUsageRatio ?? null,
@@ -394,6 +405,16 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			}}
 			paletteControl={{
 				switchTheme,
+				toggleTelemetry: () => {
+					setTelemetryEnabled((enabled) => {
+						if (enabled) {
+							telemetryService?.stop();
+							telemetryService = null;
+							metricsPoller = null;
+						}
+						return !enabled;
+					});
+				},
 			}}
 			serverRunning={procState !== "IDLE"}
 		/>

@@ -44,8 +44,10 @@ export function createTelemetryService(
 		slots: [],
 	};
 	let started = false;
+	const disposed = false;
 
 	const publish = (patch: Partial<TelemetrySnapshot>) => {
+		if (disposed) return;
 		current = { ...current, ...patch };
 		for (const listener of [...listeners]) {
 			try {
@@ -56,35 +58,32 @@ export function createTelemetryService(
 		}
 	};
 
-	const offPhase = monitor.onChange((phase) => publish({ phase }));
-	const offHealth = opts.health.onStatus((health) => publish({ health }));
-	const offMetrics = opts.metrics.onSnapshot((metrics) => publish({ metrics }));
-	const offSlots = opts.slots.onSlots((slots) => publish({ slots }));
+	monitor.onChange((phase) => publish({ phase }));
+	opts.health.onStatus((health) => publish({ health }));
+	opts.metrics.onSnapshot((metrics) => publish({ metrics }));
+	opts.slots.onSlots((slots) => publish({ slots }));
 
 	return {
 		get snapshot() {
 			return current;
 		},
 		start() {
-			if (started) return;
+			if (disposed || started) return;
 			started = true;
 			opts.health.start();
 			opts.metrics.start();
 			opts.slots.start();
 		},
 		stop() {
-			if (!started) return;
+			if (disposed || !started) return;
 			started = false;
 			opts.health.stop();
 			opts.metrics.stop();
 			opts.slots.stop();
 			monitor.stop();
-			offPhase();
-			offHealth();
-			offMetrics();
-			offSlots();
 		},
 		onSnapshot(cb) {
+			if (disposed) return () => {};
 			listeners.add(cb);
 			return () => listeners.delete(cb);
 		},
