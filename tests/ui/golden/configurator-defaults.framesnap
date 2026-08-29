@@ -6,9 +6,9 @@
 │ [ ] Flash Attention                                   ││                                         │
 │ [ ] mlock                                             ││ [Enter] Save & Launch                   │
 │ [ ] no-mmap                                           ││ [Ctrl+S] Save Preset   [Esc] Reset      │
-│ 127.0.0.1  INS                                        ││ [Tab] cycle fields     [y] Yank cmd     │
-│ 8080 INS                                              ││                                         │
-│ alias INS                                             ││                                         │
+│ host 127.0.0.1  INS                                   ││ [Tab] cycle fields     [y] Yank cmd     │
+│ port 8080 INS                                         ││                                         │
+│ alias   INS                                           ││                                         │
 │                                                       ││                                         │
 │                                                       ││                                         │
 │                                                       ││                                         │

@@ -59,6 +59,17 @@ describe("drawer state (P1-FR-10)", () => {
 		s = setViewportHeight(s, 5);
 		expect(visibleLines(s)).toEqual(["a", "b", "c"]);
 	});
+
+	it("preserves stdout/stderr identity on entries (Phase 13)", () => {
+		let s = createDrawerState(3);
+		s = appendLines(s, [
+			{ text: "server listening", stream: "out" },
+			{ text: "[ERR] failed to alloc", stream: "err" },
+			"plain string defaults to out",
+		]);
+		expect(s.lines.map((l) => l.stream)).toEqual(["out", "err", "out"]);
+		expect(s.lines[1]?.text).toBe("[ERR] failed to alloc");
+	});
 });
 
 describe("SGR parser (P1-FR-09)", () => {

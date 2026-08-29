@@ -1,8 +1,8 @@
-import { useKeyboard } from "@opentui/react";
 import { useState } from "react";
 import type { Preset, PresetFile } from "../../core/store/presets";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import { buildRows, type PresetRow } from "../logic/presets-state";
 import type { Theme } from "../themes";
 
@@ -35,19 +35,27 @@ export function PresetsScreen({
 	captureKeys = true,
 }: PresetsScreenProps) {
 	const [selected, setSelected] = useState(0);
+	// Phase 13: deletion is destructive — d arms, d again within 2 s executes.
+	const [deleteArmedAt, setDeleteArmedAt] = useState<number | null>(null);
 	const rows: PresetRow[] = buildRows(file.presets, existingModelPaths);
 	const clamped = Math.min(selected, Math.max(rows.length - 1, 0));
 	const currentRow = rows[clamped];
 	const currentPreset = file.presets.find((p) => p.id === currentRow?.id);
 	const isDefault = file.lastSession?.preset_id === currentRow?.id;
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys, (key) => {
 		const id = currentPreset?.id;
 		if (!id) return;
 		if (key.name === "c") onClone?.(id);
-		else if (key.name === "d") onDelete?.(id);
-		else if (key.name === "return") onSetDefault?.(id);
+		else if (key.name === "d") {
+			const now = Date.now();
+			if (deleteArmedAt !== null && now - deleteArmedAt <= 2000) {
+				setDeleteArmedAt(null);
+				onDelete?.(id);
+			} else {
+				setDeleteArmedAt(now);
+			}
+		} else if (key.name === "return") onSetDefault?.(id);
 		else if (key.name === "l" && currentPreset) onLoad?.(currentPreset);
 	});
 
@@ -101,6 +109,11 @@ export function PresetsScreen({
 					<text fg={isDefault ? theme.accent : theme.muted}>
 						{isDefault ? " * default preset (restored on boot)" : ""}
 					</text>
+					{deleteArmedAt !== null ? (
+						<text fg={theme.warn}>
+							{" press d again within 2s to confirm delete"}
+						</text>
+					) : null}
 				</box>
 			</TuiBox>
 		</box>

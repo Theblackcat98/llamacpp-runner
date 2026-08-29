@@ -97,6 +97,13 @@ describe("text input state (P2-FR-01)", () => {
 		expect(type("8a0.8-", opts).buffer).toBe("808");
 	});
 
+	it("reset replaces the buffer and moves the caret to the end (Phase 13)", () => {
+		let st = type("abc");
+		st = applyKey(st, k.home, undefined);
+		st = applyKey(st, { kind: "reset", value: "xyz" }, undefined);
+		expect(st).toEqual({ buffer: "xyz", cursor: 3, overwrite: false });
+	});
+
 	it("random key sequences never break invariants (property test)", () => {
 		let seed = 0x2f6e2b1;
 		const rnd = () => {

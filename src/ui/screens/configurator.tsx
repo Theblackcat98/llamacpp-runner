@@ -1,5 +1,4 @@
-import { useKeyboard } from "@opentui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { REGISTRY } from "../../core/flags/registry";
 import { TuiBox } from "../components/box";
 import { Checkbox } from "../components/checkbox";
@@ -7,6 +6,7 @@ import { ChipGroup } from "../components/chip-group";
 import { CyclingSelect } from "../components/cycling-select";
 import { Slider } from "../components/slider";
 import { TextInput } from "../components/text-input";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
 	type ConfiguratorState,
 	CTX_CHIPS,
@@ -25,10 +25,11 @@ export interface ConfiguratorProps {
 	theme: Theme;
 	state: ConfiguratorState;
 	onChange?: (next: ConfiguratorState) => void;
-	onLaunch?: () => void;
-	onSavePreset?: () => void;
 	focused?: boolean;
 	captureKeys?: boolean;
+	/** Phase 13: reports the focused field index so the shell can yield global
+	 * printable keys (digits, o/k/q/…) while a text field owns typing. */
+	onActiveFieldChange?: (field: number) => void;
 }
 
 /**
@@ -40,12 +41,15 @@ export function Configurator({
 	theme,
 	state,
 	onChange,
-	onLaunch,
-	onSavePreset,
 	focused = false,
 	captureKeys = true,
+	onActiveFieldChange,
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
+
+	useEffect(() => {
+		onActiveFieldChange?.(field);
+	}, [field, onActiveFieldChange]);
 	const update = (mutate: (s: ConfiguratorState) => ConfiguratorState) =>
 		onChange?.(clampContext(mutate(state)));
 
@@ -64,8 +68,7 @@ export function Configurator({
 		);
 	};
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys, (key) => {
 		if (key.name === "escape") {
 			onChange?.(resetConfigurator(state));
 			return;
@@ -78,14 +81,8 @@ export function Configurator({
 			setField((f) => (f + 1) % FIELD_COUNT);
 			return;
 		}
-		if (key.name === "return") {
-			if (onLaunch) onLaunch();
-			return;
-		}
-		if (key.ctrl && key.name === "s") {
-			if (onSavePreset) onSavePreset();
-			return;
-		}
+		// Enter (launch) and Ctrl+S (save) are owned by the shell (App) so a
+		// single keypress causes exactly one action (Phase 13).
 	});
 
 	const ngl = numValue(state.values.n_gpu_layers, state.nglMax);
@@ -159,8 +156,9 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 7}
+							label="host"
 							placeholder="127.0.0.1"
-							initial={strValue(state.values.host)}
+							value={strValue(state.values.host)}
 							onChange={(st) =>
 								update((s) => ({ ...setFlag(s, "host", st.buffer) }))
 							}
@@ -168,9 +166,10 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 8}
+							label="port"
 							placeholder="8080"
 							numeric
-							initial={strValue(state.values.port)}
+							value={strValue(state.values.port)}
 							onChange={(st) => {
 								const port = Number.parseInt(st.buffer || "8080", 10);
 								update((s) =>
@@ -181,7 +180,8 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 9}
-							placeholder="alias"
+							label="alias"
+							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
 						/>
 					</box>

@@ -23,13 +23,19 @@ describe("text input golden frames (P2-FR-01)", () => {
 		await act(async () => {
 			await setup.mockInput.pressKeys(["p", "o", "r", "t"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		expect(setup.captureCharFrame()).toContain("port");
 		await act(async () => {
 			await setup.mockInput.pressKeys(["\x1b[2~"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		expect(setup.captureCharFrame()).toContain("OVR");
-		setup.renderer.destroy();
+		await act(async () => {
+			setup.renderer.destroy();
+		});
 	});
 });

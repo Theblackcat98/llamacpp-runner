@@ -4,7 +4,7 @@ import { ScrollPane } from "../../../src/ui/components/scroll-pane";
 import { VirtualizedTable } from "../../../src/ui/components/table";
 import type { TableColumn } from "../../../src/ui/components/table-state";
 import { TOKYO_NIGHT } from "../../../src/ui/themes";
-import { expectGoldenFrame } from "./harness";
+import { expectGoldenFrame, renderWithAct, teardownWithAct } from "./harness";
 
 interface Row {
 	id: number;
@@ -43,8 +43,7 @@ describe("table + scroll pane golden frames (P2-FR-06,07)", () => {
 	});
 
 	it("scroll pane pins to tail and pauses on up-arrow", async () => {
-		const { testRender } = await import("@opentui/react/test-utils");
-		const setup = await testRender(
+		const setup = await renderWithAct(
 			<ScrollPane
 				theme={TOKYO_NIGHT}
 				captureKeys
@@ -54,15 +53,16 @@ describe("table + scroll pane golden frames (P2-FR-06,07)", () => {
 			/>,
 			{ width: 30, height: 4 },
 		);
-		await setup.flush();
 		expect(setup.captureCharFrame()).toContain("log line 19");
 		await act(async () => {
 			await setup.mockInput.pressKeys(["\x1b[A"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		const frame = setup.captureCharFrame();
 		expect(frame).toContain("log line 16");
 		expect(frame).not.toContain("log line 19");
-		setup.renderer.destroy();
+		await teardownWithAct(setup);
 	});
 });

@@ -1,4 +1,4 @@
-import { useKeyboard } from "@opentui/react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 
 export interface CheckboxProps {
@@ -18,8 +18,7 @@ export function Checkbox({
 	label,
 	onToggle,
 }: CheckboxProps) {
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys, (key) => {
 		if (key.name === "space") onToggle?.();
 	});
 

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { Explorer } from "../../src/ui/screens/explorer";
 import { TOKYO_NIGHT } from "../../src/ui/themes";
-import { expectGoldenFrame } from "./golden/harness";
+import {
+	expectGoldenFrame,
+	renderWithAct,
+	teardownWithAct,
+} from "./golden/harness";
 
 /**
  * §7 "First run, no models dir" (P5-FR-08): onboarding prompt renders when
@@ -17,14 +21,12 @@ describe("first-run onboarding (§7)", () => {
 	});
 
 	it("onboarding names the [s] shortcut and scan command", async () => {
-		const { testRender } = await import("@opentui/react/test-utils");
-		const setup = await testRender(
+		const setup = await renderWithAct(
 			<Explorer theme={TOKYO_NIGHT} entries={[]} modelsDir={null} />,
 			{ width: 100, height: 12 },
 		);
-		await setup.flush();
 		const frame = setup.captureCharFrame();
-		setup.renderer.destroy();
+		await teardownWithAct(setup);
 		expect(frame).toContain("No model directory configured");
 		expect(frame).toContain("[s] use ~/models/llm");
 	});

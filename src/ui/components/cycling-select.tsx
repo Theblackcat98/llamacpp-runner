@@ -1,4 +1,4 @@
-import { useKeyboard } from "@opentui/react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import {
 	applySelectKey,
@@ -25,8 +25,7 @@ export function CyclingSelect({
 	const n = options.length;
 	const current = n === 0 ? 0 : Math.min(Math.max(index, 0), n - 1);
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys, (key) => {
 		const name = key.name ?? "";
 		if (name !== "left" && name !== "right") return;
 		const next = applySelectKey({ options, index: current }, name);

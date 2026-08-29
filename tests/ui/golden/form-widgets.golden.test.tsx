@@ -5,7 +5,7 @@ import { ChipGroup } from "../../../src/ui/components/chip-group";
 import { CyclingSelect } from "../../../src/ui/components/cycling-select";
 import { Slider } from "../../../src/ui/components/slider";
 import { TOKYO_NIGHT } from "../../../src/ui/themes";
-import { expectGoldenFrame } from "./harness";
+import { expectGoldenFrame, renderWithAct, teardownWithAct } from "./harness";
 
 function DemoRow() {
 	const [checked, setChecked] = useState(false);
@@ -56,9 +56,7 @@ describe("form widgets golden frames (P2-FR-02..05)", () => {
 	});
 
 	it("keyboard drives slider, checkbox, chips, select", async () => {
-		const { testRender } = await import("@opentui/react/test-utils");
-		const setup = await testRender(<DemoRow />, { width: 44, height: 7 });
-		await setup.flush();
+		const setup = await renderWithAct(<DemoRow />, { width: 44, height: 7 });
 		await act(async () => {
 			await setup.mockInput.pressKeys(["\x1b[1;2C"]);
 		});
@@ -68,9 +66,11 @@ describe("form widgets golden frames (P2-FR-02..05)", () => {
 		await act(async () => {
 			await setup.mockInput.pressKeys(["\r"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		expect(setup.captureCharFrame()).toContain("43/99");
 		expect(setup.captureCharFrame()).toContain("[x] mmap");
-		setup.renderer.destroy();
+		await teardownWithAct(setup);
 	});
 });

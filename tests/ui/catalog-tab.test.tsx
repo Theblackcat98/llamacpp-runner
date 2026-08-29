@@ -11,16 +11,22 @@ describe("catalog tab in app shell (P2-FR-15)", () => {
 			height: 30,
 		});
 		try {
-			await setup.flush();
+			await act(async () => {
+				await setup.flush();
+			});
 			await act(async () => {
 				await setup.mockInput.pressKeys(["5"]);
 			});
-			await setup.flush();
+			await act(async () => {
+				await setup.flush();
+			});
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Container Borders");
 			expect(frame).toContain("Data Table");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 
@@ -30,17 +36,23 @@ describe("catalog tab in app shell (P2-FR-15)", () => {
 			height: 30,
 		});
 		try {
-			await setup.flush();
+			await act(async () => {
+				await setup.flush();
+			});
 			await act(async () => {
 				await setup.mockInput.pressKeys(["5"]);
 			});
 			await act(async () => {
 				await setup.mockInput.pressKeys(["1"]);
 			});
-			await setup.flush();
+			await act(async () => {
+				await setup.flush();
+			});
 			expect(setup.captureCharFrame()).toContain("Model Explorer");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 });

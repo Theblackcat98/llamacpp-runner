@@ -3,6 +3,8 @@ export const DRAWER_CAPACITY = 10_000;
 export interface DrawerEntry {
 	id: number;
 	text: string;
+	/** "out" | "err" — preserves stdout/stderr identity (Phase 13). */
+	stream: "out" | "err";
 }
 
 export interface DrawerState {
@@ -22,11 +24,15 @@ export function createDrawerState(
 
 export function appendLines(
 	state: DrawerState,
-	incoming: string[],
+	incoming: Array<string | { text: string; stream: "out" | "err" }>,
 ): DrawerState {
 	if (incoming.length === 0) return state;
 	let nextId = state.nextId;
-	const appended = incoming.map((text) => ({ id: nextId++, text }));
+	const appended = incoming.map((entry) => ({
+		id: nextId++,
+		text: typeof entry === "string" ? entry : entry.text,
+		stream: typeof entry === "string" ? ("out" as const) : entry.stream,
+	}));
 	let lines = state.lines.concat(appended);
 	if (lines.length > state.capacity) {
 		lines = lines.slice(lines.length - state.capacity);

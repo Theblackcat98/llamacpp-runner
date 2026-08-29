@@ -1,4 +1,4 @@
-import { useKeyboard } from "@opentui/react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import {
 	applySliderKey,
@@ -30,8 +30,7 @@ export function Slider({
 }: SliderProps) {
 	const current = Math.min(Math.max(value ?? min, min), max);
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys, (key) => {
 		const name = key.name ?? "";
 		if (
 			name !== "left" &&

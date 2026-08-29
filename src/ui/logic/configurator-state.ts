@@ -120,6 +120,35 @@ export function resetConfigurator(state: ConfiguratorState): ConfiguratorState {
 	return createConfigurator(state.model);
 }
 
+/**
+ * Phase 13: load a saved preset's flags into the configurator. Preserves the
+ * selected model (or the preset's model path) and replaces values wholesale;
+ * nudges nglMax to keep the slider in range. Returns a fresh state so
+ * restart-required/ctx warnings reset on load.
+ */
+export function loadPresetInto(
+	state: ConfiguratorState,
+	values: Record<string, unknown>,
+	modelPath?: string,
+): ConfiguratorState {
+	const model =
+		state.model && (modelPath === undefined || state.model.path === modelPath)
+			? state.model
+			: (state.model ?? null);
+	const nglMax = model?.blockCount === undefined ? 0 : model.blockCount + 1;
+	const merged = { ...effectiveValues(state), ...values };
+	if (typeof merged.n_gpu_layers !== "number") {
+		merged.n_gpu_layers = nglMax;
+	}
+	return {
+		model,
+		values: merged,
+		nglMax,
+		launched: false,
+		restartRequired: false,
+	};
+}
+
 /** Effective builder inputs: user values overlaying registry defaults. */
 export function effectiveValues(
 	state: ConfiguratorState,

@@ -9,8 +9,12 @@ import {
 } from "../../src/ui/themes/provider";
 
 const setups: { renderer: { destroy: () => void } }[] = [];
-afterEach(() => {
-	for (const s of setups.splice(0)) s.renderer.destroy();
+afterEach(async () => {
+	for (const s of setups.splice(0)) {
+		await act(async () => {
+			s.renderer.destroy();
+		});
+	}
 });
 
 function Probe() {
@@ -34,7 +38,9 @@ describe("theme provider runtime switch (P2-FR-14)", () => {
 			{ width: 40, height: 3 },
 		);
 		setups.push(setup);
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		expect(setup.captureCharFrame()).toContain("TokyoNight#0");
 
 		await act(async () => {

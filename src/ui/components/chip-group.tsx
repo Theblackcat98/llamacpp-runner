@@ -1,5 +1,5 @@
-import { useKeyboard } from "@opentui/react";
 import { useEffect, useState } from "react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import { applyChipKey, type ChipGroupOptions } from "./chip-group-state";
 
@@ -26,8 +26,7 @@ export function ChipGroup({
 		setCursor((c) => Math.min(c, Math.max(n - 1, 0)));
 	}, [n]);
 
-	useKeyboard((key) => {
-		if (!captureKeys || n === 0) return;
+	useScopedKeyboard(captureKeys && n > 0, (key) => {
 		const next = applyChipKey(
 			{ chips, cursor, activeIndex: active },
 			key.name ?? "",

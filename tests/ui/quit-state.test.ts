@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
 	type ConfirmKind,
 	createQuitState,
+	handleHostKey,
 	handleKillKey,
 	handleQuitKey,
 	type QuitState,
@@ -60,5 +61,32 @@ describe("x kill semantics (P5-FR-11)", () => {
 		const r = handleKillKey(armed("quit"), NOW + 500, true);
 		expect(r.action).toBe("confirm");
 		expect(r.state.pending).toBe("kill");
+	});
+});
+
+describe("Ctrl+Y host-exposure confirmation (Phase 13, P5-FR-11)", () => {
+	it("first Ctrl+Y arms and asks to confirm", () => {
+		const r = handleHostKey(createQuitState(), NOW);
+		expect(r.action).toBe("confirm");
+		expect(r.state.pending).toBe("host");
+		if (r.action === "confirm") expect(r.message).toContain("ALL interfaces");
+	});
+
+	it("second Ctrl+Y within the window executes", () => {
+		const r = handleHostKey(armed("host"), NOW + 1000);
+		expect(r.action).toBe("execute");
+		expect(r.state.pending).toBeNull();
+	});
+
+	it("second Ctrl+Y after the window re-arms", () => {
+		const r = handleHostKey(armed("host"), NOW + WINDOW + 1);
+		expect(r.action).toBe("confirm");
+		expect(r.state.armedAt).toBe(NOW + WINDOW + 1);
+	});
+
+	it("a pending kill does not satisfy the host arm", () => {
+		const r = handleHostKey(armed("kill"), NOW + 500);
+		expect(r.action).toBe("confirm");
+		expect(r.state.pending).toBe("host");
 	});
 });

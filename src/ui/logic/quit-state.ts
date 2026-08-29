@@ -4,7 +4,7 @@
  * force-quits. x = explicit kill with its own confirmation.
  */
 
-export type ConfirmKind = "quit" | "kill";
+export type ConfirmKind = "quit" | "kill" | "host";
 
 export interface QuitState {
 	pending: ConfirmKind | null;
@@ -33,7 +33,9 @@ function armed(kind: ConfirmKind, now: number): ConfirmAction {
 		message:
 			kind === "quit"
 				? "server running — Ctrl+C again within 2s to quit"
-				: "kill running server — press x again to confirm",
+				: kind === "kill"
+					? "kill running server — press x again to confirm"
+					: "host binds ALL interfaces — press Ctrl+Y again to confirm",
 		state: { pending: kind, armedAt: now },
 	};
 }
@@ -72,4 +74,24 @@ export function handleKillKey(
 		return { action: "execute", state: createQuitState() };
 	}
 	return armed("kill", nowMs);
+}
+
+/**
+ * Phase 13: host-exposure confirmation (P5-FR-11) — Ctrl+Y arms, a second
+ * Ctrl+Y within the window executes; the launch itself is never implicit.
+ */
+export function handleHostKey(
+	state: QuitState,
+	nowMs: number,
+	opts?: Partial<ConfirmWindow>,
+): ConfirmAction {
+	const window = { ...DEFAULTS, ...opts }.confirmWindowMs;
+	if (
+		state.pending === "host" &&
+		state.armedAt !== null &&
+		nowMs - state.armedAt <= window
+	) {
+		return { action: "execute", state: createQuitState() };
+	}
+	return armed("host", nowMs);
 }

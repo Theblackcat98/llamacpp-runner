@@ -18,7 +18,8 @@ export type TextInputKey =
 	| { kind: "right" }
 	| { kind: "home" }
 	| { kind: "end" }
-	| { kind: "insert-toggle" };
+	| { kind: "insert-toggle" }
+	| { kind: "reset"; value: string };
 
 export function createTextInputState(
 	options?: TextInputOptions,
@@ -69,6 +70,14 @@ export function applyKey(
 			return { ...state, cursor: state.buffer.length };
 		case "insert-toggle":
 			return { ...state, overwrite: !state.overwrite };
+		case "reset":
+			// Phase 13: external value sync (preset load / model change) replaces
+			// the buffer wholesale and moves the caret to the end.
+			return {
+				buffer: key.value,
+				cursor: key.value.length,
+				overwrite: false,
+			};
 	}
 }
 

@@ -5,7 +5,16 @@ import { App } from "../../src/ui/app";
 import { DEFAULT_THEME } from "../../src/ui/themes";
 
 async function flush(setup: { flush: () => Promise<void> }) {
-	await setup.flush();
+	await act(async () => {
+		await setup.flush();
+	});
+}
+
+/** Let the relayout debounce interval tick inside act so no update escapes. */
+async function settle(ms: number): Promise<void> {
+	await act(async () => {
+		await Bun.sleep(ms);
+	});
 }
 
 describe("degraded layout (§7, P1-NFR-04)", () => {
@@ -22,7 +31,9 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			expect(frame).not.toContain("Model Explorer");
 			expect(frame).not.toContain("[Enter] Launch");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 
@@ -37,7 +48,9 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			expect(frame).toContain("Model Explorer");
 			expect(frame).not.toContain("Resize");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 
@@ -52,13 +65,15 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			await act(async () => {
 				await setup.resize(120, 40);
 			});
-			await Bun.sleep(260); // debounce (120 ms) + settle poll
+			await settle(260); // debounce (120 ms) + settle poll
 			await flush(setup);
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Model Explorer");
 			expect(frame).not.toContain("Resize");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 
@@ -73,13 +88,15 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 			await act(async () => {
 				await setup.resize(50, 15);
 			});
-			await Bun.sleep(260);
+			await settle(260);
 			await flush(setup);
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Resize");
 			expect(frame).not.toContain("Model Explorer");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 
@@ -99,13 +116,15 @@ describe("degraded layout (§7, P1-NFR-04)", () => {
 					await setup.resize(w, h);
 				});
 			}
-			await Bun.sleep(300);
+			await settle(300);
 			await flush(setup);
 			const frame = setup.captureCharFrame();
 			expect(frame).toContain("Model Explorer");
 			expect(frame).not.toContain("Resize");
 		} finally {
-			setup.renderer.destroy();
+			await act(async () => {
+				setup.renderer.destroy();
+			});
 		}
 	});
 });

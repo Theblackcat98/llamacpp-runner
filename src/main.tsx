@@ -8,6 +8,7 @@ import { buildCommand } from "./core/flags/builder";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
 import { createSession, type LaunchPlan } from "./core/session";
+import { loadConfig, saveConfig } from "./core/store/config";
 import type { PresetFile } from "./core/store/presets";
 import {
 	loadPresets,
@@ -25,6 +26,7 @@ import {
 	clampContext,
 	createConfigurator,
 	effectiveValues,
+	loadPresetInto,
 	previewLine,
 } from "./ui/logic/configurator-state";
 import {
@@ -35,10 +37,12 @@ import {
 import {
 	clonePreset,
 	deletePreset,
+	relink,
 	setDefault,
 } from "./ui/logic/presets-state";
 import { buildTelemetryViewModel } from "./ui/logic/telemetry-state";
-import { TOKYO_NIGHT } from "./ui/themes";
+import type { ThemeName } from "./ui/themes";
+import { DEFAULT_THEME, themeByName } from "./ui/themes";
 
 const DRAWER_HEIGHT = 6;
 
@@ -99,6 +103,10 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	const [config, setConfig] = useState<ConfiguratorState>(() =>
 		createConfigurator(null),
 	);
+	const [themeName, setThemeName] = useState<ThemeName>(() => {
+		const saved = loadConfig(paths.configDir).theme;
+		return (themeByName(saved ?? "").name as ThemeName) ?? DEFAULT_THEME.name;
+	});
 	const [presetsFile, setPresetsFile] = useState<PresetFile>(() => ({
 		version: 2,
 		presets: [],
@@ -126,7 +134,9 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 
 	useEffect(() => {
 		const offLog = bus.onState("LOG_LINE", (event) => {
-			setDrawer((s) => appendLines(s, [event.text]));
+			setDrawer((s) =>
+				appendLines(s, [{ text: event.text, stream: event.stream }]),
+			);
 		});
 		const offProc = bus.onState("PROC_STATE", (event) => {
 			setProcState(event.state);
@@ -242,8 +252,48 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
 	}
 
+	/** F4: apply + persist the theme so palette switching is reachable. */
+	function switchTheme(name: string): void {
+		const next = themeByName(name);
+		setThemeName(next.name as ThemeName);
+		const config = loadConfig(paths.configDir);
+		saveConfig(paths.configDir, { ...config, theme: next.name });
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: `[SYS] theme switched to ${next.name}`,
+		});
+	}
+
 	function handleConfirmHost(): void {
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc", confirmedHost: true });
+	}
+
+	function handleLoadPreset(preset: {
+		model_path: string;
+		flags: Record<string, unknown>;
+	}): void {
+		setConfig(
+			clampContext(loadPresetInto(config, preset.flags, preset.model_path)),
+		);
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: "[SYS] preset loaded into configurator",
+		});
+	}
+
+	function handleRelinkPreset(id: string, newPath: string): void {
+		const preset = presetsFile.presets.find((p) => p.id === id);
+		if (!preset) return;
+		persistPresets({
+			...presetsFile,
+			presets: presetsFile.presets.map((p) =>
+				p.id === id ? relink(p, newPath) : p,
+			),
+		});
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: `[SYS] preset ${id} relinked to ${newPath}`,
+		});
 	}
 
 	function handleSavePreset(): void {
@@ -285,7 +335,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 
 	return (
 		<App
-			theme={TOKYO_NIGHT}
+			theme={themeByName(themeName)}
 			onQuit={onQuit}
 			onLaunch={handleLaunch}
 			onKill={() => bus.emitIntent("KILL", {})}
@@ -339,7 +389,13 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				onClone: (id) => persistPresets(clonePreset(presetsFile, id)),
 				onDelete: (id) => persistPresets(deletePreset(presetsFile, id)),
 				onSetDefault: (id) => persistPresets(setDefault(presetsFile, id, 3)),
+				onLoad: handleLoadPreset,
+				onRelink: handleRelinkPreset,
 			}}
+			paletteControl={{
+				switchTheme,
+			}}
+			serverRunning={procState !== "IDLE"}
 		/>
 	);
 }

@@ -6,6 +6,7 @@ import {
 	createConfigurator,
 	ctxValue,
 	effectiveValues,
+	loadPresetInto,
 	previewLine,
 	resetConfigurator,
 	setFlag,
@@ -110,5 +111,36 @@ describe("VRAM wiring (P4-FR-07)", () => {
 		const low = vramRangeText(cfg);
 		expect(full).toMatch(/estimated range/i);
 		expect(low).not.toBe(full);
+	});
+});
+
+describe("loadPresetInto (Phase 13)", () => {
+	it("replaces values wholesale and resets launch markers", () => {
+		let cfg = createConfigurator(MODEL);
+		cfg = { ...cfg, launched: true, restartRequired: true };
+		const loaded = loadPresetInto(cfg, {
+			ctx_size: 16384,
+			flash_attn: true,
+			alias: "qwen-preset",
+		});
+		expect(loaded.values.ctx_size).toBe(16384);
+		expect(loaded.values.flash_attn).toBe(true);
+		expect(loaded.values.alias).toBe("qwen-preset");
+		expect(loaded.launched).toBe(false);
+		expect(loaded.restartRequired).toBe(false);
+	});
+
+	it("keeps the selected model and clamps ngl max when unset", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { ctx_size: 8192 });
+		expect(loaded.model?.path).toBe(MODEL.path);
+		expect(loaded.nglMax).toBe(65);
+		expect(loaded.values.n_gpu_layers).toBe(65);
+	});
+
+	it("preserves explicitly stored ngl from the preset", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { n_gpu_layers: 10, ctx_size: 4096 });
+		expect(loaded.values.n_gpu_layers).toBe(10);
 	});
 });

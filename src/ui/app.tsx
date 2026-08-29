@@ -3,7 +3,13 @@ import {
 	useRenderer,
 	useTerminalDimensions,
 } from "@opentui/react";
-import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import {
+	type Dispatch,
+	type SetStateAction,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { Palette } from "./components/palette";
@@ -34,6 +40,7 @@ import {
 } from "./logic/palette-state";
 import {
 	createQuitState,
+	handleHostKey,
 	handleKillKey,
 	handleQuitKey,
 	type QuitState,
@@ -84,6 +91,8 @@ export interface PresetsControl {
 	onClone?: (id: string) => void;
 	onDelete?: (id: string) => void;
 	onSetDefault?: (id: string) => void;
+	onLoad?: (preset: import("../core/store/presets").Preset) => void;
+	onRelink?: (id: string, newPath: string) => void;
 }
 
 export interface TelemetryControl {
@@ -165,6 +174,10 @@ export function App({
 	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
 	const [confirm, setConfirm] = useState<QuitState>(createQuitState);
 	const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
+	// Phase 13: the Configurator reports its focused field so the shell can
+	// yield global printable keys (digits, o/k/q/…) while a text field owns
+	// typing — one owner per key, never two.
+	const activeConfiguratorField = useRef(0);
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
@@ -183,6 +196,15 @@ export function App({
 	useKeyboard((key: KeyRef) => {
 		if ((key.ctrl && key.name === "p") || palette.open) {
 			setPalette((prev) => applyPaletteKey(prev, paletteActions, key));
+			return;
+		}
+		// While a Configurator text field is focused, plain printable keys go
+		// to the input alone — digits must not switch tabs, o/x/k/q must not
+		// trigger shell actions (Phase 13 one-owner rule). Ctrl combos still
+		// pass: Ctrl+C/P/S/Y/L are non-printable shell bindings.
+		const textFieldActive =
+			tab === 1 && focusPane !== 3 && activeConfiguratorField.current >= 7;
+		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
 			return;
 		}
 		if (isQuitKey(key)) {
@@ -241,7 +263,15 @@ export function App({
 			return;
 		}
 		if (key.ctrl && key.name === "y" && onConfirmHost) {
-			onConfirmHost();
+			// Phase 13: host exposure needs an explicit second confirmation.
+			const result = handleHostKey(confirm, Date.now());
+			setConfirm(result.state);
+			if (result.action === "execute") {
+				setConfirmNotice(null);
+				onConfirmHost();
+			} else if (result.action === "confirm") {
+				setConfirmNotice(result.message ?? null);
+			}
 			return;
 		}
 		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {
@@ -260,6 +290,9 @@ export function App({
 		const digit = Number.parseInt(key.name ?? "", 10);
 		if (digit >= 1 && digit <= TAB_COUNT) {
 			setTab(digit - 1);
+			// Phase 13: switching screens remaps focus to the content pane so
+			// the newly shown screen is immediately interactive.
+			setFocusPane(2);
 			return;
 		}
 		if (focusPane === 3) {
@@ -272,30 +305,6 @@ export function App({
 	if (isDegraded(dims.width, dims.height)) {
 		return (
 			<DegradedLayout width={dims.width} height={dims.height} theme={theme} />
-		);
-	}
-
-	if (tab === 4) {
-		return (
-			<box
-				style={{
-					flexDirection: "column",
-					width: "100%",
-					height: "100%",
-					backgroundColor: theme.bg,
-				}}
-			>
-				<box style={{ flexDirection: "row", height: 1 }}>
-					{TAB_LABELS.map((label, i) => (
-						<text
-							key={label}
-							fg={i === tab ? theme.bg : theme.muted}
-							bg={i === tab ? theme.accent : undefined}
-						>{` [${i + 1}] ${label} `}</text>
-					))}
-				</box>
-				<Catalog theme={theme} />
-			</box>
 		);
 	}
 
@@ -319,6 +328,9 @@ export function App({
 				}}
 			>
 				<text fg={theme.fgBright}>v0.1.0 — llamacpp Manager</text>
+				<text fg={serverRunning ? theme.success : theme.muted}>
+					{`  [${procStateLabel(serverRunning)}]`}
+				</text>
 			</box>
 			<box style={{ flexDirection: "row", height: 1 }}>
 				{TAB_LABELS.map((label, i) => (
@@ -330,13 +342,19 @@ export function App({
 				))}
 			</box>
 			<box
+				// Phase 13: Catalog is a first-class tab in the same shell, but
+				// keeps its native full-width canvas. The key forces a fresh mount
+				// when entering/leaving the tab: opentui's box re-enables its border
+				// whenever borderColor changes on an existing instance, so toggling
+				// the prop in place would leave a stale border on Catalog.
+				key={tab === 4 ? "catalog-pane" : "screen-pane"}
 				title={TAB_LABELS[tab]}
 				style={{
 					flexGrow: 1,
-					border: focusPane === 2,
-					borderColor: theme.focusBg,
+					border: tab !== 4 && focusPane === 2,
+					borderColor: tab === 4 ? undefined : theme.focusBg,
 					marginTop: 1,
-					paddingLeft: 1,
+					paddingLeft: tab === 4 ? 0 : 1,
 				}}
 			>
 				{tab === 4 ? (
@@ -358,6 +376,9 @@ export function App({
 						onChange={configuratorControl.setState}
 						focused
 						captureKeys={focusPane !== 3}
+						onActiveFieldChange={(f) => {
+							activeConfiguratorField.current = f;
+						}}
 					/>
 				) : tab === 2 ? (
 					<Telemetry
@@ -392,6 +413,8 @@ export function App({
 						onClone={presetsControl.onClone}
 						onDelete={presetsControl.onDelete}
 						onSetDefault={presetsControl.onSetDefault}
+						onLoad={presetsControl.onLoad}
+						onRelink={presetsControl.onRelink}
 						focused
 						captureKeys={focusPane !== 3}
 					/>
@@ -424,4 +447,9 @@ export function App({
 			</box>
 		</box>
 	);
+}
+
+/** Phase 13: live process state shown in the shell header. */
+function procStateLabel(running: boolean): string {
+	return running ? "server running" : "idle";
 }

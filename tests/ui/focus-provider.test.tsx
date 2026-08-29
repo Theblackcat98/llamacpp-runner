@@ -9,8 +9,12 @@ import {
 } from "../../src/ui/focus/provider";
 
 const setups: { renderer: { destroy: () => void } }[] = [];
-afterEach(() => {
-	for (const s of setups.splice(0)) s.renderer.destroy();
+afterEach(async () => {
+	for (const s of setups.splice(0)) {
+		await act(async () => {
+			s.renderer.destroy();
+		});
+	}
 });
 
 function FakeTable() {
@@ -44,14 +48,18 @@ describe("focus provider (P2-FR-13)", () => {
 			{ width: 40, height: 3 },
 		);
 		setups.push(setup);
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		let frame = setup.captureCharFrame();
 		expect(frame).toContain("in<>");
 
 		await act(async () => {
 			await setup.mockInput.pressKeys(["j"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		frame = setup.captureCharFrame();
 		expect(frame).toContain("in<j>");
 		expect(frame).toContain("table:0");
@@ -67,7 +75,9 @@ describe("focus provider (P2-FR-13)", () => {
 		await act(async () => {
 			await setup.mockInput.pressKeys(["j"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		frame = setup.captureCharFrame();
 		expect(frame).toContain("table:1");
 	});
@@ -84,7 +94,9 @@ describe("focus provider (P2-FR-13)", () => {
 		await act(async () => {
 			await setup.mockInput.pressKeys(["\t"]);
 		});
-		await setup.flush();
+		await act(async () => {
+			await setup.flush();
+		});
 		expect(setup.captureCharFrame()).toContain("table:0");
 	});
 });

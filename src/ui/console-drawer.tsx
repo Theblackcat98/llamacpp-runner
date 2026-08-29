@@ -36,18 +36,34 @@ export function ConsoleDrawer({
 			}}
 		>
 			{lines.slice(-height).map((entry) => (
-				<SgrLine key={entry.id} line={entry.text} theme={theme} />
+				<SgrLine
+					key={entry.id}
+					line={entry.text}
+					stream={entry.stream}
+					theme={theme}
+				/>
 			))}
 		</box>
 	);
 }
 
-function SgrLine({ line, theme }: { line: string; theme: Theme }) {
+function SgrLine({
+	line,
+	stream,
+	theme,
+}: {
+	line: string;
+	stream: "out" | "err";
+	theme: Theme;
+}) {
 	const segments = parseSgr(line);
 	return (
 		<text>
 			{segments.map((seg) => {
-				const fg = seg.fg ?? tagColor(seg.text) ?? theme.fg;
+				const fg =
+					seg.fg ??
+					tagColor(seg.text) ??
+					(stream === "err" ? theme.error : theme.fg);
 				const key = `${seg.fg ?? ""}|${seg.bold ? "b" : ""}|${seg.text}`;
 				if (seg.bold) {
 					return (
