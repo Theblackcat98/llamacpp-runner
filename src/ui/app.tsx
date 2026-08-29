@@ -52,7 +52,6 @@ import {
 	TAB_COUNT,
 } from "./logic/shell-state";
 import { buildTelemetryViewModel } from "./logic/telemetry-state";
-import { Catalog } from "./screens/catalog";
 import { Configurator } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import { PresetsScreen } from "./screens/presets";
@@ -64,9 +63,8 @@ const TAB_LABELS = [
 	"Launch Config",
 	"Server Telemetry",
 	"Presets",
-	"Catalog",
 ];
-const PANE_COUNT = 5;
+const PANE_COUNT = 4;
 const DRAWER_HEIGHT = 6;
 
 export interface ExplorerControl {
@@ -342,24 +340,17 @@ export function App({
 				))}
 			</box>
 			<box
-				// Phase 13: Catalog is a first-class tab in the same shell, but
-				// keeps its native full-width canvas. The key forces a fresh mount
-				// when entering/leaving the tab: opentui's box re-enables its border
-				// whenever borderColor changes on an existing instance, so toggling
-				// the prop in place would leave a stale border on Catalog.
-				key={tab === 4 ? "catalog-pane" : "screen-pane"}
+				key="screen-pane"
 				title={TAB_LABELS[tab]}
 				style={{
 					flexGrow: 1,
-					border: tab !== 4 && focusPane === 2,
-					borderColor: tab === 4 ? undefined : theme.focusBg,
+					border: focusPane === 2,
+					borderColor: theme.focusBg,
 					marginTop: 1,
-					paddingLeft: tab === 4 ? 0 : 1,
+					paddingLeft: 1,
 				}}
 			>
-				{tab === 4 ? (
-					<Catalog theme={theme} />
-				) : tab === 0 && explorerControl ? (
+				{tab === 0 && explorerControl ? (
 					<Explorer
 						theme={theme}
 						entries={explorerControl.entries}
@@ -441,8 +432,9 @@ export function App({
 				}}
 			>
 				<text fg={confirmNotice ? theme.warn : theme.muted}>
+					{" "}
 					{confirmNotice ??
-						" [Tab] Cycle Focus | [1-5] Tabs | [Enter] Launch | [o] Console | [Ctrl+L] Clear | [q] Quit "}
+						"[Tab] Cycle Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [o] Console | [Ctrl+L] Clear | [q] Quit"}
 				</text>
 			</box>
 		</box>

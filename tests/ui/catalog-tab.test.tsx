@@ -4,8 +4,8 @@ import { act } from "react";
 import { App } from "../../src/ui/app";
 import { DEFAULT_THEME } from "../../src/ui/themes";
 
-describe("catalog tab in app shell (P2-FR-15)", () => {
-	it("key 5 opens the Components Catalog", async () => {
+describe("production shell tab contract", () => {
+	it("does not expose the development Catalog as a production tab", async () => {
 		const setup = await testRender(<App theme={DEFAULT_THEME} />, {
 			width: 100,
 			height: 30,
@@ -21,8 +21,8 @@ describe("catalog tab in app shell (P2-FR-15)", () => {
 				await setup.flush();
 			});
 			const frame = setup.captureCharFrame();
-			expect(frame).toContain("Container Borders");
-			expect(frame).toContain("Data Table");
+			expect(frame).not.toContain("Container Borders");
+			expect(frame).not.toContain("Data Table");
 		} finally {
 			await act(async () => {
 				setup.renderer.destroy();
@@ -30,7 +30,7 @@ describe("catalog tab in app shell (P2-FR-15)", () => {
 		}
 	});
 
-	it("key 1 returns to the app tab", async () => {
+	it("key 1 remains on the first production tab", async () => {
 		const setup = await testRender(<App theme={DEFAULT_THEME} />, {
 			width: 100,
 			height: 30,
