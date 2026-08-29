@@ -100,11 +100,34 @@ export function loadPresets(filePath: string): LoadResult {
 	const doc = raw as Record<string, unknown>;
 	const hadVersion = typeof doc.version === "number";
 	const migrated = migrate(doc) as unknown as PresetFile;
-	migrated.presets ??= [];
+	if (!isPresetFile(migrated)) {
+		return { data: emptyPresetFile(), migratedFrom: undefined };
+	}
 	return {
 		data: migrated,
 		migratedFrom: hadVersion ? (doc.version as number) : 1,
 	};
+}
+
+function isPresetFile(value: unknown): value is PresetFile {
+	if (typeof value !== "object" || value === null) return false;
+	const doc = value as Record<string, unknown>;
+	if (doc.version !== 2 || !Array.isArray(doc.presets)) return false;
+	return doc.presets.every((item) => {
+		if (typeof item !== "object" || item === null) return false;
+		const preset = item as Record<string, unknown>;
+		return (
+			typeof preset.id === "string" &&
+			typeof preset.name === "string" &&
+			typeof preset.model_path === "string" &&
+			typeof preset.flags === "object" &&
+			preset.flags !== null &&
+			typeof preset.env_vars === "object" &&
+			preset.env_vars !== null &&
+			typeof preset.created_at === "string" &&
+			(preset.last_used === null || typeof preset.last_used === "string")
+		);
+	});
 }
 
 /** Split stored flags into registry-known values and unknown leftovers. */

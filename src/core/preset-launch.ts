@@ -4,23 +4,31 @@
  * same registry-driven builder and exporters as the TUI.
  */
 
+import { isAbsolute, resolve } from "node:path";
 import { buildShellScript } from "./export/sh";
 import { buildSystemdUnit } from "./export/systemd";
 import { buildCommand, commandLine } from "./flags/builder";
 import type { LaunchPlan } from "./session";
 import type { Preset } from "./store/presets";
 
-export function presetToPlan(preset: Preset): LaunchPlan {
+export function presetToPlan(
+	preset: Preset & { binary_path?: string },
+): LaunchPlan {
 	const port =
 		typeof preset.flags.port === "number"
 			? (preset.flags.port as number)
 			: 8080;
+	const modelPath = isAbsolute(preset.model_path)
+		? preset.model_path
+		: preset.model_path.startsWith("./") || preset.model_path.startsWith("../")
+			? resolve(preset.model_path)
+			: preset.model_path;
 	const built = buildCommand({
-		modelPath: preset.model_path,
+		modelPath,
 		values: preset.flags,
 	});
 	return {
-		command: built.command,
+		command: preset.binary_path ? resolve(preset.binary_path) : built.command,
 		args: built.args,
 		port,
 		presetId: preset.id,

@@ -13,8 +13,15 @@ export function loadConfig(configDir: string): AppConfig {
 	try {
 		const raw = JSON.parse(
 			readFileSync(configFilePath(configDir), "utf8"),
-		) as AppConfig;
-		if (typeof raw === "object" && raw !== null) return raw;
+		) as unknown;
+		if (
+			typeof raw === "object" &&
+			raw !== null &&
+			(typeof (raw as Record<string, unknown>).modelsDir === "undefined" ||
+				typeof (raw as Record<string, unknown>).modelsDir === "string")
+		) {
+			return raw as AppConfig;
+		}
 	} catch {
 		// first run -> empty config (§7)
 	}
