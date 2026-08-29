@@ -305,5 +305,5 @@ The release checklist is complete, the full suite is green and warning-free, man
 ## Archive policy
 
 - `plans/llamamanager.md` remains the specification of record until superseded by an explicit versioned spec.
-- Existing `plans/prd-phase-1-walking-skeleton.md` and `plans/prd-phase-2-widget-library.md` should be moved to `plans/archive/` only after their phase gates are independently verified from current `main`.
+- Existing `plans/prd-phase-*` and `plans/phase-*` should be moved to `plans/archive/` only after their phase gates are independently verified from current `main`.
 - `docs/phase5-report.md` and `docs/error-audit.md` are historical reports and should not be treated as current completion evidence while the suite is failing.
