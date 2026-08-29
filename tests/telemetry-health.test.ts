@@ -169,10 +169,13 @@ describe("createTelemetryMonitor vs fake-server.sh --http", () => {
 });
 
 const FIXTURE = new URL("./fixtures/fake-server.sh", import.meta.url).pathname;
+let scenarioPort = 0;
 
 async function runMonitorScenario(args: string[]): Promise<string[]> {
 	const { Supervisor } = await import("../src/core/process/supervisor");
-	const port = await freePort();
+	const port = 20000 + scenarioPort++;
+	const portBlocker = Bun.serve({ port, fetch: () => new Response() });
+	portBlocker.stop(true);
 	const sv = new Supervisor({
 		command: "bash",
 		args: [FIXTURE, "--port", String(port), ...args],
@@ -201,15 +204,6 @@ async function runMonitorScenario(args: string[]): Promise<string[]> {
 	await sv.teardown();
 	phases.push(`terminal:${monitor.phase}`);
 	return phases;
-}
-
-async function freePort(): Promise<number> {
-	const s = Bun.serve({ port: 0, fetch: () => new Response() });
-	const p = s.port;
-	s.stop(true);
-	await bunSleep(30);
-	if (p === undefined) throw new Error("no ephemeral port");
-	return p;
 }
 
 async function waitFor(

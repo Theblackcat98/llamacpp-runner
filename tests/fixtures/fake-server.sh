@@ -50,8 +50,11 @@ if [ "$HTTP_503_MS" -ge 0 ]; then
 	bun run "$(cd "$(dirname "$0")" && pwd)/fake-http.ts" \
 		--port "$PORT" --health-503-ms "$HTTP_503_MS" &
 	HTTP_PID=$!
-	cleanup_http() { kill "$HTTP_PID" 2>/dev/null; wait "$HTTP_PID" 2>/dev/null; }
-	trap cleanup_http EXIT
+	cleanup_http() {
+		kill "$HTTP_PID" 2>/dev/null || true
+		wait "$HTTP_PID" 2>/dev/null || true
+	}
+	trap cleanup_http EXIT INT TERM
 	i=0
 	until { kill -0 "$HTTP_PID" 2>/dev/null && exec 3<>"/dev/tcp/127.0.0.1/$PORT"; } 2>/dev/null; do
 		exec 3>&- 2>/dev/null
@@ -82,6 +85,7 @@ printf '\033[32m[HTTP]\033[0m HTTP server listening on http://127.0.0.1:%s\n' "$
 if [ "$CRASH_AFTER" != "0" ]; then
 	sleep "$CRASH_AFTER"
 	printf '[ERR] CUDA out of memory\n'
+	cleanup_http 2>/dev/null || true
 	exit "$EXIT_CODE"
 fi
 

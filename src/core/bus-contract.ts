@@ -1,4 +1,5 @@
 import type { ModelEntry } from "./models/types";
+import type { TelemetrySnapshot } from "./telemetry/service";
 
 export type ProcState = "IDLE" | "STARTING" | "LOADING" | "READY" | "FAILED";
 
@@ -86,4 +87,5 @@ export interface StateMap {
 	CONFIRM_REQUIRED: ConfirmRequiredEvent;
 	PORT_CONFLICT: PortConflictEvent;
 	FAILURE_CLASSIFIED: FailureClassifiedEvent;
+	TELEMETRY_STATE: TelemetrySnapshot;
 }

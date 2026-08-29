@@ -15,6 +15,10 @@ import {
 	savePresets,
 } from "./core/store/presets";
 import { resolvePaths } from "./core/store/state-paths";
+import { HealthPoller } from "./core/telemetry/health";
+import { MetricsPoller } from "./core/telemetry/metrics";
+import { createTelemetryService } from "./core/telemetry/service";
+import { SlotsPoller } from "./core/telemetry/slots";
 import { App } from "./ui/app";
 import {
 	type ConfiguratorState,
@@ -33,6 +37,7 @@ import {
 	deletePreset,
 	setDefault,
 } from "./ui/logic/presets-state";
+import { buildTelemetryViewModel } from "./ui/logic/telemetry-state";
 import { TOKYO_NIGHT } from "./ui/themes";
 
 const DRAWER_HEIGHT = 6;
@@ -57,11 +62,15 @@ await session.boot();
 const modelsService = createModelsService(bus, paths);
 modelsService.boot();
 
+let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
+let metricsPoller: MetricsPoller | null = null;
+
 const renderer = await createCliRenderer();
 createRoot(renderer).render(
 	<SessionApp
 		onQuit={() => {
 			modelsService.dispose();
+			telemetryService?.stop();
 			void session.shutdown().then(() => renderer.destroy());
 		}}
 	/>,
@@ -72,6 +81,16 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		createDrawerState(DRAWER_HEIGHT),
 	);
 	const [, setTick] = useState(0);
+	const [procState, setProcState] =
+		useState<import("./core/bus-contract").ProcState>("IDLE");
+	const [telemetry, setTelemetry] = useState<
+		import("./core/telemetry/service").TelemetrySnapshot
+	>({
+		phase: "IDLE",
+		health: null,
+		metrics: null,
+		slots: [],
+	});
 	const [entries, setEntries] = useState<ModelEntry[]>([]);
 	const [scanning, setScanning] = useState(false);
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
@@ -109,8 +128,12 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		const offLog = bus.onState("LOG_LINE", (event) => {
 			setDrawer((s) => appendLines(s, [event.text]));
 		});
-		const offProc = bus.onState("PROC_STATE", () => {
+		const offProc = bus.onState("PROC_STATE", (event) => {
+			setProcState(event.state);
 			setTick((t) => t + 1);
+		});
+		const offTelemetry = bus.onState("TELEMETRY_STATE", (event) => {
+			setTelemetry(event);
 		});
 		const offModels = bus.onState("MODELS_STATE", (event) => {
 			setEntries(event.entries);
@@ -141,6 +164,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		return () => {
 			offLog();
 			offProc();
+			offTelemetry();
 			offModels();
 			offDir();
 			offConfirm();
@@ -196,6 +220,23 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		};
 	}
 	planSource = buildPlan;
+
+	if (!telemetryService) {
+		const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : "127.0.0.1"}:${typeof config.values.port === "number" ? config.values.port : 8080}`;
+		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
+		const service = createTelemetryService({
+			supervisor: session.supervisor,
+			health: new HealthPoller({ url: `${endpoint}/health` }),
+			metrics,
+			slots: new SlotsPoller({ url: `${endpoint}/slots` }),
+		});
+		service.onSnapshot((snapshot) =>
+			bus.emitState("TELEMETRY_STATE", snapshot),
+		);
+		telemetryService = service;
+		metricsPoller = metrics;
+		service.start();
+	}
 
 	function handleLaunch(): void {
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
@@ -265,6 +306,28 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				onRescan: () => bus.emitIntent("RESCAN", {}),
 				onUseDefaultDir: (dir: string) =>
 					bus.emitIntent("SET_MODELS_DIR", { dir }),
+			}}
+			telemetryControl={{
+				vm: buildTelemetryViewModel({
+					phase: telemetry.phase,
+					model: config.model?.path ?? null,
+					endpoint: telemetry.health
+						? config.values.host && config.values.port
+							? `http://${config.values.host}:${config.values.port}`
+							: null
+						: null,
+					startedAtMs: procState === "IDLE" ? null : Date.now(),
+					nowMs: Date.now(),
+					telemetryEnabled: true,
+					vramEstimatedBytes: null,
+					memUsedBytes: telemetry.metrics?.memUsedBytes ?? null,
+					kvUsageRatio: telemetry.metrics?.kvUsageRatio ?? null,
+					promptHistory: metricsPoller?.promptHistory.snapshot() ?? [],
+					decodeHistory: metricsPoller?.decodeHistory.snapshot() ?? [],
+					slots: telemetry.slots,
+					failure: null,
+					tailLines: [],
+				}),
 			}}
 			configuratorControl={{
 				state: config,
