@@ -6,14 +6,14 @@
 │ [ ] Flash Attention                                     ││                                       │
 │ [ ] mlock                                               ││ [Enter] Save & Launch                 │
 │ [ ] no-mmap                                             ││ [Ctrl+S] Save Preset   [Esc] Reset    │
-│ host 127.0.0.1 INS                                      ││ [Tab] cycle fields     [y] Yank cmd   │
+│ [ ] Slots endpoint                                      ││ [Tab] cycle fields     [y] Yank cmd   │
+│ [ ] Metrics endpoint                                    ││                                       │
+│ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)           ││                                       │
+│ Micro-batch [██░░░░░░░░░░░░░░░░] 512/4096 (1)           ││                                       │
+│ Threads [░░░░░░░░░░░░░░░░░░] 8/256 (1)                  ││                                       │
+│ host 127.0.0.1 INS                                      ││                                       │
 │ port 8080 INS                                           ││                                       │
 │ alias   INS                                             ││                                       │
-│                                                         ││                                       │
-│                                                         ││                                       │
-│                                                         ││                                       │
-│                                                         ││                                       │
-│                                                         ││                                       │
 │                                                         ││                                       │
 │                                                         ││                                       │
 │                                                         ││                                       │

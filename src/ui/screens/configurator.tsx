@@ -153,9 +153,44 @@ export function Configurator({
 						{boolRow("flash_attn")}
 						{boolRow("mlock")}
 						{boolRow("no_mmap")}
+						{boolRow("slots")}
+						{boolRow("metrics")}
+						<Slider
+							theme={theme}
+							captureKeys={captureKeys && field === 10}
+							focused={field === 10}
+							label="Batch Size"
+							min={1}
+							max={8192}
+							value={numValue(state.values.batch_size, 2048)}
+							width={18}
+							onChange={(v) => update((s) => setFlag(s, "batch_size", v))}
+						/>
+						<Slider
+							theme={theme}
+							captureKeys={captureKeys && field === 11}
+							focused={field === 11}
+							label="Micro-batch"
+							min={1}
+							max={4096}
+							value={numValue(state.values.ubatch_size, 512)}
+							width={18}
+							onChange={(v) => update((s) => setFlag(s, "ubatch_size", v))}
+						/>
+						<Slider
+							theme={theme}
+							captureKeys={captureKeys && field === 12}
+							focused={field === 12}
+							label="Threads"
+							min={1}
+							max={256}
+							value={numValue(state.values.threads, 8)}
+							width={18}
+							onChange={(v) => update((s) => setFlag(s, "threads", v))}
+						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 7}
+							captureKeys={captureKeys && field === 13}
 							label="host"
 							placeholder="127.0.0.1"
 							value={strValue(state.values.host)}
@@ -165,7 +200,7 @@ export function Configurator({
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 8}
+							captureKeys={captureKeys && field === 14}
 							label="port"
 							placeholder="8080"
 							numeric
@@ -179,7 +214,7 @@ export function Configurator({
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 9}
+							captureKeys={captureKeys && field === 15}
 							label="alias"
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
@@ -241,13 +276,14 @@ function nearestChip(ctx: number): number {
 	return best;
 }
 
-// Field focus order: 0 ngl slider, 1 ctx chips, 2 K cache, 3 V cache,
-// 4 flash_attn, 5 mlock, 6 no_mmap, 7 host, 8 port, 9 alias.
-const FIELD_COUNT = 10;
+// Field focus order: core controls, telemetry, sizing, then text inputs.
+const FIELD_COUNT = 16;
 const FIELD: Record<string, number> = {
 	flash_attn: 4,
 	mlock: 5,
 	no_mmap: 6,
+	slots: 7,
+	metrics: 8,
 };
 
 function text(content: string, color: string | undefined) {
