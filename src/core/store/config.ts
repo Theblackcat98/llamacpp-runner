@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { atomicWrite } from "./atomic";
 
 export interface AppConfig {
 	modelsDir?: string;
@@ -19,19 +20,15 @@ export function loadConfig(configDir: string): AppConfig {
 			raw !== null &&
 			(typeof (raw as Record<string, unknown>).modelsDir === "undefined" ||
 				typeof (raw as Record<string, unknown>).modelsDir === "string")
-		) {
+		)
 			return raw as AppConfig;
-		}
 	} catch {
 		// first run -> empty config (§7)
 	}
 	return {};
 }
 
-/** Atomic write: temp file + rename (D1). */
 export function saveConfig(configDir: string, config: AppConfig): void {
 	mkdirSync(configDir, { recursive: true });
-	const tmpPath = `${configFilePath(configDir)}.tmp`;
-	writeFileSync(tmpPath, JSON.stringify(config, null, "\t"));
-	renameSync(tmpPath, configFilePath(configDir));
+	atomicWrite(configFilePath(configDir), JSON.stringify(config, null, "\t"));
 }
