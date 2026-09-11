@@ -14,7 +14,7 @@ import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
-import { DRAWER_HEIGHT } from "./constants";
+import { CONFIGURATOR_TAB, DRAWER_HEIGHT, PRESETS_TAB } from "./constants";
 import {
 	buildDefaultActions,
 	type PaletteHandlers,
@@ -225,7 +225,7 @@ export function App({
 			if (result.action === "confirm") setConfirmNotice(result.message ?? null);
 			return;
 		}
-		if (key.name === "return" && onLaunch) {
+		if (key.name === "return" && onLaunch && tab !== PRESETS_TAB) {
 			onLaunch();
 			return;
 		}
@@ -310,6 +310,21 @@ export function App({
 			<DegradedLayout width={dims.width} height={dims.height} theme={theme} />
 		);
 	}
+
+	// F3: re-link target = the Explorer's selected healthy model, offered to
+	// broken presets on the Presets tab (P4-FR-18).
+	const explorerEntries = explorerControl?.entries ?? [];
+	const explorerSelected =
+		explorerEntries[
+			Math.min(
+				explorerControl?.selectedIndex ?? 0,
+				Math.max(explorerEntries.length - 1, 0),
+			)
+		];
+	const relinkTarget =
+		explorerSelected && !explorerSelected.error
+			? { path: explorerSelected.path }
+			: undefined;
 
 	return (
 		<box
@@ -409,8 +424,14 @@ export function App({
 						onClone={presetsControl.onClone}
 						onDelete={presetsControl.onDelete}
 						onSetDefault={presetsControl.onSetDefault}
-						onLoad={presetsControl.onLoad}
+						onLoad={(preset) => {
+							// F3: loading a preset drops you into the Configurator
+							// so Enter launches through the single tested path.
+							presetsControl.onLoad?.(preset);
+							setTab(CONFIGURATOR_TAB);
+						}}
 						onRelink={presetsControl.onRelink}
+						relinkTarget={relinkTarget}
 						focused
 						captureKeys={focusPane !== 3}
 					/>

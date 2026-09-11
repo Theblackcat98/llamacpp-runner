@@ -22,7 +22,7 @@ import { MetricsPoller } from "./core/telemetry/metrics";
 import { createTelemetryService } from "./core/telemetry/service";
 import { SlotsPoller } from "./core/telemetry/slots";
 import { App } from "./ui/app";
-import { DRAWER_HEIGHT } from "./ui/constants";
+import { DRAWER_HEIGHT, PRESETS_TAB } from "./ui/constants";
 import {
 	type ConfiguratorState,
 	clampContext,
@@ -47,8 +47,6 @@ import { TAB_COUNT } from "./ui/logic/shell-state";
 import { buildTelemetryViewModel } from "./ui/logic/telemetry-state";
 import type { ThemeName } from "./ui/themes";
 import { DEFAULT_THEME, themeByName } from "./ui/themes";
-
-const PRESETS_TAB = 3;
 
 /** Clamp a persisted tab index into the live tab range (F9). */
 function clampTab(tab: unknown): number {
