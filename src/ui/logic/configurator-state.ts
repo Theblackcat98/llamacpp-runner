@@ -182,8 +182,10 @@ export function previewLine(state: ConfiguratorState): string {
 	return commandLine(built);
 }
 
-/** VRAM estimate text wired to ngl/ctx/KV precision (P4-FR-07). */
-export function vramRangeText(state: ConfiguratorState): string | null {
+/** Numeric VRAM estimate range for telemetry actual-vs-estimated (F12). */
+export function vramRangeBytes(
+	state: ConfiguratorState,
+): { low: number; high: number } | null {
 	const m = state.model;
 	if (
 		!m ||
@@ -209,8 +211,14 @@ export function vramRangeText(state: ConfiguratorState): string | null {
 		kvQuantK: kvQuantValue(state, "cache_type_k"),
 		kvQuantV: kvQuantValue(state, "cache_type_v"),
 	};
-	const range = estimateVram(input);
-	return `${formatBytes(range.range.low)} – ${formatBytes(range.range.high)} (estimated range)`;
+	return estimateVram(input).range;
+}
+
+/** VRAM estimate text wired to ngl/ctx/KV precision (P4-FR-07). */
+export function vramRangeText(state: ConfiguratorState): string | null {
+	const range = vramRangeBytes(state);
+	if (!range) return null;
+	return `${formatBytes(range.low)} – ${formatBytes(range.high)} (estimated range)`;
 }
 
 export type KvQuant = "f16" | "q8_0" | "q4_0";
