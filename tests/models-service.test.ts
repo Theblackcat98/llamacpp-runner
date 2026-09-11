@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { afterAll, afterEach, describe, expect, it } from "bun:test";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBus } from "../src/core/bus";
@@ -81,5 +81,95 @@ describe("models service over the bus (P3-FR-17/19)", () => {
 
 		expect(scans).toBeGreaterThan(afterBoot);
 		service.dispose();
+	});
+});
+
+const SEED_TMP = new URL("./.tmp/models-service/", import.meta.url).pathname;
+
+function seedPaths(tag: string) {
+	const stateDir = join(SEED_TMP, tag, "state");
+	const configDir = join(SEED_TMP, tag, "config");
+	const modelsDir = join(SEED_TMP, tag, "models");
+	mkdirSync(stateDir, { recursive: true });
+	mkdirSync(configDir, { recursive: true });
+	mkdirSync(modelsDir, { recursive: true });
+	return {
+		stateDir,
+		configDir,
+		pidFile: join(stateDir, "server.pid"),
+		modelsDir,
+	};
+}
+
+afterAll(() => {
+	rmSync(SEED_TMP, { recursive: true, force: true });
+});
+
+describe("models service first-run seeding (F10, §7)", () => {
+	it("seeds modelsDir from presets default_model_dir when config is empty", () => {
+		const paths = seedPaths("seed");
+		writeFileSync(
+			join(paths.configDir, "presets.json"),
+			JSON.stringify({
+				version: 2,
+				presets: [],
+				default_model_dir: paths.modelsDir,
+			}),
+		);
+		const bus = createBus<IntentMap, StateMap>();
+		const dirs: (string | null)[] = [];
+		bus.onState("MODELS_DIR", (e) => dirs.push(e.dir));
+		const svc = createModelsService(bus, paths);
+		svc.boot();
+		expect(dirs).toEqual([paths.modelsDir]);
+		const saved = JSON.parse(
+			readFileSync(join(paths.configDir, "config.json"), "utf8"),
+		) as { modelsDir?: string };
+		expect(saved.modelsDir).toBe(paths.modelsDir);
+		svc.dispose();
+	});
+
+	it("config modelsDir wins over presets default_model_dir", () => {
+		const paths = seedPaths("explicit");
+		const other = join(SEED_TMP, "explicit", "other-models");
+		mkdirSync(other, { recursive: true });
+		writeFileSync(
+			join(paths.configDir, "config.json"),
+			JSON.stringify({ modelsDir: paths.modelsDir }),
+		);
+		writeFileSync(
+			join(paths.configDir, "presets.json"),
+			JSON.stringify({
+				version: 2,
+				presets: [],
+				default_model_dir: other,
+			}),
+		);
+		const bus = createBus<IntentMap, StateMap>();
+		const dirs: (string | null)[] = [];
+		bus.onState("MODELS_DIR", (e) => dirs.push(e.dir));
+		const svc = createModelsService(bus, paths);
+		svc.boot();
+		expect(dirs).toEqual([paths.modelsDir]);
+		svc.dispose();
+	});
+
+	it("ignores a default_model_dir that does not exist", () => {
+		const paths = seedPaths("missing");
+		writeFileSync(
+			join(paths.configDir, "presets.json"),
+			JSON.stringify({
+				version: 2,
+				presets: [],
+				default_model_dir: join(SEED_TMP, "missing", "nope"),
+			}),
+		);
+		const bus = createBus<IntentMap, StateMap>();
+		const dirs: (string | null)[] = [];
+		bus.onState("MODELS_DIR", (e) => dirs.push(e.dir));
+		const svc = createModelsService(bus, paths);
+		svc.boot();
+		expect(dirs).toEqual([null]);
+		svc.dispose();
 	});
 });
