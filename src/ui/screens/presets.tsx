@@ -15,13 +15,16 @@ export interface PresetsScreenProps {
 	onSetDefault?: (id: string) => void;
 	onLoad?: (preset: Preset) => void;
 	onRelink?: (id: string, newPath: string) => void;
+	/** Explorer's selected healthy model: `r` re-links a broken preset to it. */
+	relinkTarget?: { path: string };
 	focused?: boolean;
 	captureKeys?: boolean;
 }
 
 /**
  * Viewport 4 — Presets (§2, P4-FR-19): list, clone (c), delete (d),
- * set-default (Enter), load into configurator (l), re-link broken (r).
+ * set-default (Enter), load into configurator + go there (l), re-link
+ * broken to the Explorer selection (r).
  */
 export function PresetsScreen({
 	theme,
@@ -31,6 +34,8 @@ export function PresetsScreen({
 	onDelete,
 	onSetDefault,
 	onLoad,
+	onRelink,
+	relinkTarget,
 	focused = false,
 	captureKeys = true,
 }: PresetsScreenProps) {
@@ -57,6 +62,13 @@ export function PresetsScreen({
 			}
 		} else if (key.name === "return") onSetDefault?.(id);
 		else if (key.name === "l" && currentPreset) onLoad?.(currentPreset);
+		else if (
+			key.name === "r" &&
+			currentPreset &&
+			currentRow?.status === "broken" &&
+			relinkTarget
+		)
+			onRelink?.(id, relinkTarget.path);
 	});
 
 	return (
@@ -100,7 +112,9 @@ export function PresetsScreen({
 					</text>
 					{text(
 						currentRow?.status === "broken"
-							? " preset is BROKEN — model file missing; re-scan or re-link via Explorer + re-save"
+							? relinkTarget
+								? " preset is BROKEN — press [r] to relink to the Explorer selection"
+								: " preset is BROKEN — model file missing; select a model in Explorer to re-link"
 							: currentRow?.unknownFlags.length
 								? ` unknown flags kept verbatim: ${currentRow.unknownFlags.join(", ")}`
 								: "",
