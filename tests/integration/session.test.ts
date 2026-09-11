@@ -58,12 +58,18 @@ describe("session end-to-end (P1-FR-01,04; EXIT criterion)", () => {
 
 		await session.boot();
 		session.bus.emitIntent("LAUNCH", { presetId: "test-preset" });
-		await session.supervisor.start();
+		const starter = session.supervisor;
+		if (!starter) throw new Error("expected supervisor");
+		await starter.start();
 		await waitFor(() => sawReady);
 		expect(sawReady).toBe(true);
 		expect(logLines.some((l) => l.includes("listening on"))).toBe(true);
 
-		const pid = session.supervisor.pid;
+		// Re-read: the async LAUNCH swaps in a fresh supervisor instance,
+		// and the pidfile tracks whichever instance actually launched.
+		const current = session.supervisor;
+		if (!current) throw new Error("expected supervisor");
+		const pid = current.pid;
 		expect(pid).toBeDefined();
 		await waitFor(() => readPidFile(resolvePaths().pidFile)?.pid === pid);
 		expect(readPidFile(resolvePaths().pidFile)?.port).toBe(port);

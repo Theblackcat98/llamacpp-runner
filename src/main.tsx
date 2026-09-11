@@ -8,6 +8,7 @@ import { copyToClipboard } from "./core/export/clipboard";
 import { buildCommand } from "./core/flags/builder";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
+import type { Supervisor } from "./core/process/supervisor";
 import { createSession, type LaunchPlan } from "./core/session";
 import { loadConfig, saveConfig } from "./core/store/config";
 import type { PresetFile } from "./core/store/presets";
@@ -76,6 +77,7 @@ const modelsService = createModelsService(bus, paths);
 modelsService.boot();
 
 let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
+let telemetryServiceSupervisor: Supervisor | null = null;
 let metricsPoller: MetricsPoller | null = null;
 let telemetryEndpoint = "";
 
@@ -264,12 +266,24 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	if (telemetryService && telemetryEndpoint !== endpoint) {
 		telemetryService.stop();
 		telemetryService = null;
+		telemetryServiceSupervisor = null;
 		metricsPoller = null;
 	}
-	if (!telemetryService && telemetryEnabled) {
+	// The session has no supervisor until the first launch resolves a plan
+	// (boot uses resolveLaunch only), and every LAUNCH swaps in a fresh
+	// supervisor instance — so bind lazily and rebind on swap instead of
+	// assuming a supervisor exists during the first render.
+	const currentSupervisor = session.supervisor;
+	if (telemetryService && telemetryServiceSupervisor !== currentSupervisor) {
+		telemetryService.stop();
+		telemetryService = null;
+		telemetryServiceSupervisor = null;
+		metricsPoller = null;
+	}
+	if (!telemetryService && telemetryEnabled && currentSupervisor) {
 		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
 		const service = createTelemetryService({
-			supervisor: session.supervisor,
+			supervisor: currentSupervisor,
 			health: new HealthPoller({ url: `${endpoint}/health` }),
 			metrics,
 			slots: new SlotsPoller({ url: `${endpoint}/slots` }),
@@ -278,6 +292,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			bus.emitState("TELEMETRY_STATE", snapshot),
 		);
 		telemetryService = service;
+		telemetryServiceSupervisor = currentSupervisor;
 		metricsPoller = metrics;
 		telemetryEndpoint = endpoint;
 		service.start();
@@ -439,6 +454,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 						if (enabled) {
 							telemetryService?.stop();
 							telemetryService = null;
+							telemetryServiceSupervisor = null;
 							metricsPoller = null;
 						}
 						return !enabled;

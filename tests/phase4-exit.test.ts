@@ -97,24 +97,19 @@ describe("PHASE 4 EXIT", () => {
 		const t0 = Date.now();
 		// Wait through the async pre-flight gap until the supervisor exists.
 		while (Date.now() - t0 < 5000) {
-			try {
-				if (
-					session.supervisor.isRunning ||
-					session.supervisor.pid !== undefined
-				)
-					break;
-			} catch {
-				// supervisor not attached yet
-			}
+			const sup = session.supervisor;
+			if (sup && (sup.isRunning || sup.pid !== undefined)) break;
 			await Bun.sleep(10);
 		}
-		await session.supervisor.start();
+		const supervisor = session.supervisor;
+		if (!supervisor) throw new Error("expected supervisor after LAUNCH");
+		await supervisor.start();
 		const started = Date.now();
 		while (!sawReady && Date.now() - started < 5000) {
 			await Bun.sleep(10);
 		}
 		expect(sawReady).toBe(true);
-		const pid = session.supervisor.pid;
+		const pid = supervisor.pid;
 		expect(pid).toBeDefined();
 
 		// Yank parity: exported command argv equals what was actually spawned.

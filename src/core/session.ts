@@ -46,7 +46,12 @@ export interface SessionOptions {
 
 export interface Session {
 	bus: Bus<IntentMap, StateMap>;
-	supervisor: Supervisor;
+	/**
+	 * Null until the first launch resolves a plan. Sessions booted with
+	 * only `resolveLaunch` (the TUI boot path) have no supervisor yet —
+	 * callers must handle the pre-launch state instead of expecting a throw.
+	 */
+	supervisor: Supervisor | null;
 	foundOrphanPid?: number;
 	boot(): Promise<void>;
 	shutdown(): Promise<void>;
@@ -227,8 +232,7 @@ export function createSession(opts: SessionOptions): Session {
 
 	return {
 		bus,
-		get supervisor(): Supervisor {
-			if (!active) throw new Error("no supervisor: nothing launched yet");
+		get supervisor(): Supervisor | null {
 			return active;
 		},
 		get foundOrphanPid() {

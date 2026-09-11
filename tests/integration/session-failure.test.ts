@@ -40,7 +40,9 @@ describe("failure classification over the bus (P5-FR-07)", () => {
 			port: 19001,
 		});
 		await session.boot();
-		void session.supervisor.start();
+		const oomSupervisor = session.supervisor;
+		if (!oomSupervisor) throw new Error("expected supervisor");
+		void oomSupervisor.start();
 		await new Promise((r) => setTimeout(r, 1200));
 		expect(classified.length).toBeGreaterThanOrEqual(1);
 		expect(classified[0]?.kind).toBe("vram_oom");
@@ -63,7 +65,9 @@ describe("failure classification over the bus (P5-FR-07)", () => {
 			port: 19002,
 		});
 		await session.boot();
-		void session.supervisor.start();
+		const nobinSupervisor = session.supervisor;
+		if (!nobinSupervisor) throw new Error("expected supervisor");
+		void nobinSupervisor.start();
 		await new Promise((r) => setTimeout(r, 500));
 		expect(classified.length).toBeGreaterThanOrEqual(1);
 		expect(classified[0]?.kind).toBe("binary_not_found");
@@ -91,7 +95,9 @@ describe("failure classification over the bus (P5-FR-07)", () => {
 				port: 19003,
 			});
 			await session.boot();
-			void session.supervisor.start();
+			const portSupervisor = session.supervisor;
+			if (!portSupervisor) throw new Error("expected supervisor");
+			void portSupervisor.start();
 			await new Promise((r) => setTimeout(r, 500));
 			expect(classified.length).toBeGreaterThanOrEqual(1);
 			expect(classified[0]?.kind).toBe("port_in_use");
