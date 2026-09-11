@@ -1,5 +1,7 @@
+> Archive note (2026-09-11): automated acceptance green; manual checks tracked in plans/manual-verification-checklist.md — tick boxes there, not here.
+
 PRD — Phase 3: GGUF Parsing & Model Discovery
-llama-deck · Document: plans/prd-phase-3-gguf-parsing-discovery.md · Spec ref: llamamanager.md §9 Phase 3
+llama-deck · Document: plans/archive/prd-phase-3-gguf-parsing-discovery.md · Spec ref: llamamanager.md §9 Phase 3
 
  1. Summary
 

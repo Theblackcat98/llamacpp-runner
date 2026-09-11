@@ -1,5 +1,7 @@
+> Archive note (2026-09-11): automated acceptance green; manual checks tracked in plans/manual-verification-checklist.md — tick boxes there, not here.
+
 PRD — Phase 4: Configurator, Registry & Persistence
-llama-deck · Document: plans/prd-phase-4-configurator-registry-persistence.md · Spec ref: llamamanager.md §9 Phase 4
+llama-deck · Document: plans/archive/prd-phase-4-configurator-registry-persistence.md · Spec ref: llamamanager.md §9 Phase 4
 
  1. Summary
 

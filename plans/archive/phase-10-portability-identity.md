@@ -1,6 +1,6 @@
 # PR Plan — Phase 10: Portability and Process Identity
 
-Status: planned
+Status: archived (2026-09-11) — automated EXIT green; manual evidence tracked in ../manual-verification-checklist.md
 Source: `plans/audit-remediation-roadmap.md`
 Spec references: `plans/llamamanager.md` §6.3, §7, §8
 

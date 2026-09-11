@@ -1,6 +1,6 @@
 # PR Plan — Phase 8: Configuration, Presets, and Binary Completeness
 
-Status: planned
+Status: archived (2026-09-11) — automated EXIT green; manual evidence tracked in ../manual-verification-checklist.md
 Source: `plans/audit-remediation-roadmap.md`
 Spec references: `plans/llamamanager.md` §3.3, §3.4, §5, §7, §9 Phase 4
 

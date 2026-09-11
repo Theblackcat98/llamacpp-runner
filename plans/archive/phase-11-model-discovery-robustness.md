@@ -1,6 +1,6 @@
 # PR Plan — Phase 11: Model Discovery and GGUF Robustness
 
-Status: planned
+Status: archived (2026-09-11) — automated EXIT green; manual evidence tracked in ../manual-verification-checklist.md
 Source: `plans/audit-remediation-roadmap.md`
 Spec references: `plans/llamamanager.md` §3.1, §3.2, §7, §8
 

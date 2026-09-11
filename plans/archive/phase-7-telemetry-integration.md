@@ -1,6 +1,6 @@
 # PR Plan — Phase 7: Real Telemetry Integration
 
-Status: planned
+Status: archived (2026-09-11) — automated EXIT green; manual evidence tracked in ../manual-verification-checklist.md
 Source: `plans/audit-remediation-roadmap.md`
 Spec references: `plans/llamamanager.md` §3.5, §2.4, §7, §9 Phase 5
 

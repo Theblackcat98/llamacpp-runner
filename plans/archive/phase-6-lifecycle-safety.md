@@ -1,6 +1,6 @@
 # PR Plan — Phase 6: Lifecycle and Safety Correctness
 
-Status: planned
+Status: archived (2026-09-11) — automated EXIT green; manual evidence tracked in ../manual-verification-checklist.md
 Source: `plans/audit-remediation-roadmap.md`
 Spec references: `plans/llamamanager.md` §6.1–§6.4, §9 Phase 5 EXIT
 
