@@ -191,7 +191,6 @@ export function App({
 		killServer: () => (onKillOrphan ? onKillOrphan() : onKill?.()),
 		exportCommand: () => onYankCommand?.(),
 		rescanModels: () => explorerControl?.onRescan(),
-		adoptOrphan: () => paletteControl?.adoptOrphan?.(),
 		toggleTelemetry: () =>
 			paletteControl?.toggleTelemetry?.() ??
 			telemetryControl?.onEnableTelemetry?.(),

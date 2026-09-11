@@ -11,7 +11,6 @@ const actions = buildDefaultActions({
 	killServer: () => {},
 	exportCommand: () => {},
 	rescanModels: () => {},
-	adoptOrphan: () => {},
 	toggleTelemetry: () => {},
 	goToTab: () => {},
 	clearLog: () => {},
