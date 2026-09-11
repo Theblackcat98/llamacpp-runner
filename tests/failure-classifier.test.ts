@@ -48,6 +48,28 @@ describe("classifyFailure (§6.4, P5-FR-07)", () => {
 		expect(f?.summary.length).toBeGreaterThan(0);
 	});
 
+	it("supervisor binary_not_found detail -> actionable class with empty tail", () => {
+		const f = classifyFailure(null, null, [], "binary_not_found");
+		expect(f?.kind).toBe("binary_not_found");
+		expect(f?.suggestion).toMatch(/PATH|binary/i);
+	});
+
+	it("supervisor port_in_use detail -> actionable class with empty tail", () => {
+		const f = classifyFailure(null, null, [], "port_in_use");
+		expect(f?.kind).toBe("port_in_use");
+		expect(f?.suggestion).toMatch(/port/i);
+	});
+
+	it("supervisor detail wins over log-pattern fallback", () => {
+		const f = classifyFailure(1, null, OOM_LOG, "binary_not_found");
+		expect(f?.kind).toBe("binary_not_found");
+	});
+
+	it("unknown detail falls through to log patterns", () => {
+		const f = classifyFailure(1, null, BIND_LOG, "something_future");
+		expect(f?.kind).toBe("bind_failure");
+	});
+
 	it("clean exit / signal kill -> no classification", () => {
 		expect(classifyFailure(0, null, [])).toBeNull();
 		expect(classifyFailure(null, "SIGINT", OOM_LOG)).toBeNull();
