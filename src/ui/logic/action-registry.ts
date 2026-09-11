@@ -5,7 +5,6 @@ export interface PaletteHandlers {
 	killServer: () => void;
 	exportCommand: () => void;
 	rescanModels: () => void;
-	adoptOrphan: () => void;
 	toggleTelemetry: () => void;
 	goToTab: (tab: number) => void;
 	clearLog: () => void;
@@ -28,7 +27,6 @@ export const PALETTE_ACTION_IDS = [
 	"kill-server",
 	"export-command",
 	"rescan-models",
-	"adopt-orphan",
 	"toggle-telemetry",
 	"go-to-tab-1",
 	"go-to-tab-2",
@@ -86,12 +84,6 @@ export function buildDefaultActions(h: PaletteHandlers): PaletteAction[] {
 			label: "Rescan Models Directory",
 			keywords: "rescan scan models refresh",
 			run: () => h.rescanModels(),
-		},
-		{
-			id: "adopt-orphan",
-			label: "Adopt Orphaned Server (§6.3)",
-			keywords: "orphan adopt attach pidfile",
-			run: () => h.adoptOrphan(),
 		},
 		{
 			id: "toggle-telemetry",

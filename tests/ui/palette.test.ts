@@ -18,7 +18,6 @@ function actions(): PaletteAction[] {
 		killServer: () => {},
 		exportCommand: () => {},
 		rescanModels: () => {},
-		adoptOrphan: () => {},
 		toggleTelemetry: () => {},
 		goToTab: () => {},
 		clearLog: () => {},
@@ -34,8 +33,12 @@ describe("action registry coverage (P5-FR-09)", () => {
 		);
 	});
 
-	it("has 16 actions: 5 themes + 7 singletons + 4 tabs", () => {
-		expect(ACTIONS.length).toBe(16);
+	it("has 15 actions: 5 themes + 6 singletons + 4 tabs", () => {
+		expect(ACTIONS.length).toBe(15);
+	});
+
+	it("ships no orphan action until adopt lands (F4)", () => {
+		expect(ACTIONS.some((a) => a.id.includes("orphan"))).toBe(false);
 	});
 
 	it("every action has a non-empty label", () => {
@@ -50,7 +53,6 @@ describe("action registry coverage (P5-FR-09)", () => {
 			killServer: () => calls++,
 			exportCommand: () => calls++,
 			rescanModels: () => calls++,
-			adoptOrphan: () => calls++,
 			toggleTelemetry: () => calls++,
 			goToTab: () => calls++,
 			clearLog: () => calls++,
@@ -74,7 +76,7 @@ describe("fuzzy filter", () => {
 	});
 
 	it("empty query returns all", () => {
-		expect(filterActions(ACTIONS, "").length).toBe(16);
+		expect(filterActions(ACTIONS, "").length).toBe(15);
 	});
 
 	it("no match -> empty", () => {
@@ -135,7 +137,6 @@ describe("palette state machine (P5-FR-10)", () => {
 			},
 			exportCommand: () => {},
 			rescanModels: () => {},
-			adoptOrphan: () => {},
 			toggleTelemetry: () => {},
 			goToTab: () => {},
 			clearLog: () => {},
