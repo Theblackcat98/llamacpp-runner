@@ -14,6 +14,7 @@ import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
+import { DRAWER_HEIGHT } from "./constants";
 import {
 	buildDefaultActions,
 	type PaletteHandlers,
@@ -65,7 +66,6 @@ const TAB_LABELS = [
 	"Presets",
 ];
 const PANE_COUNT = 4;
-const DRAWER_HEIGHT = 6;
 
 export interface ExplorerControl {
 	entries: import("../core/models/types").ModelEntry[];
@@ -123,6 +123,8 @@ export interface AppProps {
 	paletteControl?: PaletteControl;
 	/** Live-server signal for quit/kill confirmation (P5-FR-11). */
 	serverRunning?: boolean;
+	/** Tab index restored from lastSession on boot (F9); defaults to 0. */
+	initialTab?: number;
 }
 
 export function App({
@@ -141,6 +143,7 @@ export function App({
 	telemetryControl,
 	paletteControl,
 	serverRunning = false,
+	initialTab = 0,
 }: AppProps) {
 	const renderer = useRenderer();
 	const { width, height } = useTerminalDimensions();
@@ -161,7 +164,9 @@ export function App({
 		}, 60);
 		return () => clearInterval(id);
 	}, [hasPending]);
-	const [tab, setTab] = useState(0);
+	const [tab, setTab] = useState(() =>
+		Math.min(Math.max(initialTab, 0), TAB_COUNT - 1),
+	);
 	const [focusPane, setFocusPane] = useState(0);
 	const [internalDrawer, setInternalDrawer] = useState(() =>
 		createDrawerState(DRAWER_HEIGHT),
@@ -325,7 +330,7 @@ export function App({
 					backgroundColor: theme.surface,
 				}}
 			>
-				<text fg={theme.fgBright}>v0.1.0 — llamacpp Manager</text>
+				<text fg={theme.fgBright}>v0.1.0 — llama-deck</text>
 				<text fg={serverRunning ? theme.success : theme.muted}>
 					{`  [${procStateLabel(serverRunning)}]`}
 				</text>

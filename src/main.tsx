@@ -3,6 +3,7 @@ import { createRoot } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { createBus } from "./core/bus";
 import type { IntentMap, StateMap } from "./core/bus-contract";
+import { DEFAULT_HOST, DEFAULT_PORT, LLAMA_SERVER_BIN } from "./core/constants";
 import { copyToClipboard } from "./core/export/clipboard";
 import { buildCommand } from "./core/flags/builder";
 import { createModelsService } from "./core/models/service";
@@ -21,6 +22,7 @@ import { MetricsPoller } from "./core/telemetry/metrics";
 import { createTelemetryService } from "./core/telemetry/service";
 import { SlotsPoller } from "./core/telemetry/slots";
 import { App } from "./ui/app";
+import { DRAWER_HEIGHT } from "./ui/constants";
 import {
 	type ConfiguratorState,
 	clampContext,
@@ -28,6 +30,7 @@ import {
 	effectiveValues,
 	loadPresetInto,
 	previewLine,
+	vramRangeBytes,
 } from "./ui/logic/configurator-state";
 import {
 	appendLines,
@@ -40,11 +43,19 @@ import {
 	relink,
 	setDefault,
 } from "./ui/logic/presets-state";
+import { TAB_COUNT } from "./ui/logic/shell-state";
 import { buildTelemetryViewModel } from "./ui/logic/telemetry-state";
 import type { ThemeName } from "./ui/themes";
 import { DEFAULT_THEME, themeByName } from "./ui/themes";
 
-const DRAWER_HEIGHT = 6;
+const PRESETS_TAB = 3;
+
+/** Clamp a persisted tab index into the live tab range (F9). */
+function clampTab(tab: unknown): number {
+	return typeof tab === "number" && Number.isInteger(tab)
+		? Math.min(Math.max(tab, 0), TAB_COUNT - 1)
+		: 0;
+}
 
 const bus = createBus<IntentMap, StateMap>();
 const paths = resolvePaths();
@@ -101,24 +112,41 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
 	const [modelsDir, setModelsDir] = useState<string | null>(null);
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [config, setConfig] = useState<ConfiguratorState>(() =>
-		createConfigurator(null),
-	);
+	const [initialState] = useState(() => {
+		const configFile = loadConfig(paths.configDir);
+		const presetStore = loadPresets(presetsFilePath(paths.configDir));
+		const last = presetStore.data?.lastSession;
+		const preset = last
+			? presetStore.data?.presets.find((item) => item.id === last.preset_id)
+			: undefined;
+		return { configFile, presetStore: presetStore.data, last, preset };
+	});
+	const [config, setConfig] = useState<ConfiguratorState>(() => {
+		const base = createConfigurator(null);
+		// lastSession restores the last preset into the configurator on boot
+		// (P4-FR-19); applied in the initializer so no post-mount effect is
+		// needed to converge on the restored state.
+		return initialState.preset
+			? loadPresetInto(
+					base,
+					initialState.preset.flags ?? {},
+					initialState.preset.model_path,
+				)
+			: base;
+	});
 	const [themeName, setThemeName] = useState<ThemeName>(() => {
-		const saved = loadConfig(paths.configDir).theme;
+		const saved =
+			initialState.configFile.theme ?? initialState.presetStore?.theme;
 		return (themeByName(saved ?? "").name as ThemeName) ?? DEFAULT_THEME.name;
 	});
-	const [presetsFile, setPresetsFile] = useState<PresetFile>(() => ({
-		version: 2,
-		presets: [],
-	}));
+	const [presetsFile, setPresetsFile] = useState<PresetFile>(
+		() => initialState.presetStore ?? { version: 2, presets: [] },
+	);
 	const [telemetryEnabled, setTelemetryEnabled] = useState(true);
 
 	useEffect(() => {
 		const store = loadPresets(presetsFilePath(paths.configDir));
 		if (store.data) {
-			setPresetsFile(store.data);
-			// lastSession restores last preset+tab on boot (P4-FR-19).
 			bus.emitState("LOG_LINE", {
 				stream: "out",
 				text: `[SYS] presets loaded: ${store.data.presets.length}`,
@@ -218,7 +246,9 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			values: effectiveValues(cfg),
 		});
 		return {
-			command: "llama-server",
+			// F10: honor the configured binary_path (Phase 8 file-level
+			// setting); the boot PATH check and pre-spawn which() follow it.
+			command: presetsFile.binary_path || LLAMA_SERVER_BIN,
 			args: built.args,
 			port:
 				typeof cfg.values.port === "number"
@@ -232,8 +262,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		};
 	}
 	planSource = buildPlan;
-
-	const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : "127.0.0.1"}:${typeof config.values.port === "number" ? config.values.port : 8080}`;
+	const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : DEFAULT_HOST}:${typeof config.values.port === "number" ? config.values.port : DEFAULT_PORT}`;
 	if (telemetryService && telemetryEndpoint !== endpoint) {
 		telemetryService.stop();
 		telemetryService = null;
@@ -344,6 +373,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	return (
 		<App
 			theme={themeByName(themeName)}
+			initialTab={clampTab(initialState.last?.tab)}
 			onQuit={onQuit}
 			onLaunch={handleLaunch}
 			onKill={() => bus.emitIntent("KILL", {})}
@@ -380,7 +410,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 					startedAtMs: procState === "IDLE" ? null : Date.now(),
 					nowMs: Date.now(),
 					telemetryEnabled,
-					vramEstimatedBytes: null,
+					vramEstimatedBytes: vramRangeBytes(config),
 					memUsedBytes: telemetry.metrics?.memUsedBytes ?? null,
 					kvUsageRatio: telemetry.metrics?.kvUsageRatio ?? null,
 					promptHistory: metricsPoller?.promptHistory.snapshot() ?? [],
@@ -399,7 +429,8 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				existingModelPaths: new Set(entries.map((e) => e.path)),
 				onClone: (id) => persistPresets(clonePreset(presetsFile, id)),
 				onDelete: (id) => persistPresets(deletePreset(presetsFile, id)),
-				onSetDefault: (id) => persistPresets(setDefault(presetsFile, id, 3)),
+				onSetDefault: (id) =>
+					persistPresets(setDefault(presetsFile, id, PRESETS_TAB)),
 				onLoad: handleLoadPreset,
 				onRelink: handleRelinkPreset,
 			}}

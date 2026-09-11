@@ -121,6 +121,11 @@ export function Explorer({
 							{scanError ? (
 								<text fg={theme.error}> scan failed: {scanError}</text>
 							) : null}
+							{!scanning && rows.length === 0 && !scanError ? (
+								<text fg={theme.warn}>
+									{" no .gguf files found — add models, press [r] to rescan"}
+								</text>
+							) : null}
 						</box>
 					</TuiBox>
 

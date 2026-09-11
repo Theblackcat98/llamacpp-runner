@@ -10,6 +10,7 @@ import {
 	previewLine,
 	resetConfigurator,
 	setFlag,
+	vramRangeBytes,
 	vramRangeText,
 } from "../../src/ui/logic/configurator-state";
 
@@ -111,6 +112,18 @@ describe("VRAM wiring (P4-FR-07)", () => {
 		const low = vramRangeText(cfg);
 		expect(full).toMatch(/estimated range/i);
 		expect(low).not.toBe(full);
+	});
+
+	it("vramRangeBytes returns the numeric range behind the label (F12)", () => {
+		const cfg = createConfigurator(MODEL);
+		const range = vramRangeBytes(cfg);
+		expect(range).not.toBeNull();
+		expect(range?.low).toBeGreaterThan(0);
+		expect(range?.high).toBeGreaterThanOrEqual(range?.low ?? 0);
+	});
+
+	it("vramRangeBytes is null without model metadata (F12)", () => {
+		expect(vramRangeBytes(createConfigurator(null))).toBeNull();
 	});
 });
 

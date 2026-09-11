@@ -73,4 +73,12 @@ describe("explorer golden frames (P3-FR-15/16)", () => {
 			{ width: 100, height: 22 },
 		);
 	});
+
+	it("renders empty-dir guidance when the configured dir has no models (F19)", async () => {
+		await expectGoldenFrame(
+			"explorer-empty-dir",
+			<Explorer theme={TOKYO_NIGHT} entries={[]} modelsDir="/models/llm" />,
+			{ width: 100, height: 22 },
+		);
+	});
 });
