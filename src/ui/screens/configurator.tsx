@@ -219,6 +219,15 @@ export function Configurator({
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
 						/>
+						<TextInput
+							theme={theme}
+							captureKeys={captureKeys && field === 16}
+							label="chat-template"
+							value={strValue(state.values.chat_template)}
+							onChange={(st) =>
+								update((s) => setFlag(s, "chat_template", st.buffer))
+							}
+						/>
 					</box>
 				</TuiBox>
 				<TuiBox theme={theme} title="RUNTIME" flexGrow={1}>
@@ -230,7 +239,7 @@ export function Configurator({
 							? text(`ctx warning: ${state.ctxWarning}`, theme.error)
 							: text("", theme.muted)}
 						{text("", theme.muted)}
-						{text("[Enter] Save & Launch", theme.fgBright)}
+						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
 						{text("[Tab] cycle fields     [y] Yank cmd", theme.muted)}
 					</box>
@@ -277,7 +286,7 @@ function nearestChip(ctx: number): number {
 }
 
 // Field focus order: core controls, telemetry, sizing, then text inputs.
-const FIELD_COUNT = 16;
+const FIELD_COUNT = 17;
 const FIELD: Record<string, number> = {
 	flash_attn: 4,
 	mlock: 5,

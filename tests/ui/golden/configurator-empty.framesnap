@@ -4,7 +4,7 @@
 │ K Cache <f16>                                           ││ VRAM: n/a (missing model metadata)    │
 │ V Cache <f16>                                           ││                                       │
 │ [ ] Flash Attention                                     ││                                       │
-│ [ ] mlock                                               ││ [Enter] Save & Launch                 │
+│ [ ] mlock                                               ││ [Enter] Launch                        │
 │ [ ] no-mmap                                             ││ [Ctrl+S] Save Preset   [Esc] Reset    │
 │ [ ] Slots endpoint                                      ││ [Tab] cycle fields     [y] Yank cmd   │
 │ [ ] Metrics endpoint                                    ││                                       │
@@ -14,7 +14,7 @@
 │ host 127.0.0.1 INS                                      ││                                       │
 │ port 8080 INS                                           ││                                       │
 │ alias   INS                                             ││                                       │
-│                                                         ││                                       │
+│ chat-template   INS                                     ││                                       │
 │                                                         ││                                       │
 │                                                         ││                                       │
 │                                                         ││                                       │
