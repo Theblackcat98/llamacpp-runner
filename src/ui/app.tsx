@@ -177,6 +177,9 @@ export function App({
 	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
 	const [confirm, setConfirm] = useState<QuitState>(createQuitState);
 	const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
+	// F8: killing the orphan is destructive — k arms, k again within 2 s
+	// executes (mirrors the preset-delete arm in presets.tsx).
+	const [killArmedAt, setKillArmedAt] = useState<number | null>(null);
 	// Phase 13: the Configurator reports its focused field so the shell can
 	// yield global printable keys (digits, o/k/q/…) while a text field owns
 	// typing — one owner per key, never two.
@@ -242,7 +245,15 @@ export function App({
 			return;
 		}
 		if (key.name === "k") {
-			if (onKillOrphan) onKillOrphan();
+			const now = Date.now();
+			if (killArmedAt !== null && now - killArmedAt <= 2000) {
+				setKillArmedAt(null);
+				setConfirmNotice(null);
+				if (onKillOrphan) onKillOrphan();
+			} else {
+				setKillArmedAt(now);
+				setConfirmNotice("press k again within 2s to kill the orphaned server");
+			}
 			return;
 		}
 		if (key.ctrl && key.name === "l") {
