@@ -1,6 +1,8 @@
+import { existsSync } from "node:fs";
 import type { createBus } from "../bus";
 import type { IntentMap, StateMap } from "../bus-contract";
 import { loadConfig, saveConfig } from "../store/config";
+import { loadPresets, presetsFilePath } from "../store/presets";
 import type { AppPaths } from "../store/state-paths";
 import { scanModels } from "./scanner";
 import { createModelWatcher } from "./watcher";
@@ -56,7 +58,18 @@ export function createModelsService(bus: Bus, paths: AppPaths): ModelsService {
 
 	return {
 		boot(): void {
-			currentDir = loadConfig(paths.configDir).modelsDir ?? null;
+			const config = loadConfig(paths.configDir);
+			currentDir = config.modelsDir ?? null;
+			if (!currentDir) {
+				// F10: seed first run from the presets default_model_dir (§7).
+				// Persisted into config.json so scanner ownership stays there.
+				const seeded = loadPresets(presetsFilePath(paths.configDir)).data
+					?.default_model_dir;
+				if (typeof seeded === "string" && existsSync(seeded)) {
+					currentDir = seeded;
+					saveConfig(paths.configDir, { ...config, modelsDir: seeded });
+				}
+			}
 			bus.emitState("MODELS_DIR", { dir: currentDir });
 			if (currentDir) {
 				void scan(currentDir);

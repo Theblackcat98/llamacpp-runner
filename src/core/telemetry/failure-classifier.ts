@@ -7,6 +7,9 @@ export type FailureKind =
 	| "vram_oom"
 	| "bind_failure"
 	| "model_missing"
+	| "binary_not_found"
+	| "port_in_use"
+	| "spawn_error"
 	| "unknown_error";
 
 export interface FailurePattern {
@@ -50,14 +53,37 @@ export interface ClassifiedFailure {
 }
 
 /**
- * Classify a server failure from exit code + log tail. Returns null when the
- * run did not fail (clean exit) or was user-signalled.
+ * Classify a server failure from exit code + log tail. The supervisor's
+ * pre-spawn `detail` (binary_not_found / port_in_use / spawn_error, §7) is
+ * authoritative and wins over log patterns: those FAILED events carry no
+ * exit code and an empty tail, so without it they degrade to a generic
+ * "exited with code 1" (F6).
  */
 export function classifyFailure(
 	exitCode: number | null,
 	signal: string | null,
 	logTail: string[],
+	detail?: string | null,
 ): ClassifiedFailure | null {
+	if (detail === "binary_not_found")
+		return {
+			kind: "binary_not_found",
+			summary: "llama-server binary not found on PATH",
+			suggestion: "Install llama-server on PATH or set binary_path, then retry",
+		};
+	if (detail === "port_in_use")
+		return {
+			kind: "port_in_use",
+			summary: "Port already in use — spawn refused before launch",
+			suggestion:
+				"Free the port or pick a different --port (pre-flight suggests one)",
+		};
+	if (detail === "spawn_error")
+		return {
+			kind: "spawn_error",
+			summary: "Failed to spawn the llama-server process",
+			suggestion: "Check the binary path and execute permissions, then retry",
+		};
 	if (signal !== null) return null;
 	if (exitCode === null || exitCode === 0) return null;
 

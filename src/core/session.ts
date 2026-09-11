@@ -98,9 +98,10 @@ export function createSession(opts: SessionOptions): Session {
 			});
 			if (event.state === "FAILED") {
 				const classified = classifyFailure(
-					event.exitCode ?? 1,
+					event.exitCode ?? null,
 					null,
 					event.tail ?? supervisor.snapshotTail(50),
+					event.detail,
 				);
 				if (classified) {
 					bus.emitState("FAILURE_CLASSIFIED", classified);

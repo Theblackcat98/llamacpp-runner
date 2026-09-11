@@ -4,6 +4,7 @@ import { atomicWrite } from "./atomic";
 
 export interface AppConfig {
 	modelsDir?: string;
+	binaryPath?: string;
 	/** Persisted theme name (P5-FR-17); restored on boot (Phase 13). */
 	theme?: string;
 }
@@ -22,7 +23,9 @@ export function loadConfig(configDir: string): AppConfig {
 			const modelsDirOk =
 				r.modelsDir === undefined || typeof r.modelsDir === "string";
 			const themeOk = r.theme === undefined || typeof r.theme === "string";
-			if (modelsDirOk && themeOk) return raw as AppConfig;
+			const binaryPathOk =
+				r.binaryPath === undefined || typeof r.binaryPath === "string";
+			if (modelsDirOk && themeOk && binaryPathOk) return raw as AppConfig;
 		}
 	} catch {
 		// first run -> empty config (§7)
