@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
+import { HelpOverlay } from "./components/help-overlay";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
 import { CONFIGURATOR_TAB, DRAWER_HEIGHT, PRESETS_TAB } from "./constants";
@@ -175,6 +176,8 @@ export function App({
 	const setDrawer = drawerControl?.setState ?? setInternalDrawer;
 	const [collapsed, setCollapsed] = useState(false);
 	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
+	// F15: `?` legend over the tab-conditional bindings.
+	const [helpOpen, setHelpOpen] = useState(false);
 	const [confirm, setConfirm] = useState<QuitState>(createQuitState);
 	const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
 	// F8: killing the orphan is destructive — k arms, k again within 2 s
@@ -210,6 +213,10 @@ export function App({
 		const textFieldActive =
 			tab === 1 && focusPane !== 3 && activeConfiguratorField.current >= 7;
 		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
+			return;
+		}
+		if (key.name === "?" && !key.ctrl) {
+			setHelpOpen((open) => !open);
 			return;
 		}
 		if (isQuitKey(key)) {
@@ -459,6 +466,11 @@ export function App({
 				theme={theme}
 			/>
 			<Palette theme={theme} state={palette} actions={paletteActions} />
+			<HelpOverlay
+				theme={theme}
+				open={helpOpen}
+				tabName={TAB_LABELS[tab] ?? ""}
+			/>
 			<box
 				style={{
 					borderStyle: "single",
@@ -470,7 +482,7 @@ export function App({
 				<text fg={confirmNotice ? theme.warn : theme.muted}>
 					{" "}
 					{confirmNotice ??
-						"[Tab] Cycle Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [o] Console | [Ctrl+L] Clear | [q] Quit"}
+						"[Tab] Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [Ctrl+L] Clear | [q] Quit | [?] Help"}
 				</text>
 			</box>
 		</box>
