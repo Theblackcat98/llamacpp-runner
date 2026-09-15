@@ -197,4 +197,30 @@ describe("models service first-run seeding (F10, §7)", () => {
 		expect(saved.modelsDir).toBe(expected);
 		svc.dispose();
 	});
+
+	it("surfaces scanner walk errors in MODELS_STATE event (Issue #27)", async () => {
+		const paths = seedPaths("scanner-errors");
+		const invalidDir = join(paths.modelsDir, "does-not-exist");
+		writeFileSync(
+			join(paths.configDir, "config.json"),
+			JSON.stringify({ modelsDir: invalidDir }),
+		);
+		const bus = createBus<IntentMap, StateMap>();
+		let lastError: string | undefined;
+		let receivedScanningFalse = false;
+		bus.onState("MODELS_STATE", (e) => {
+			if (!e.scanning) {
+				receivedScanningFalse = true;
+				lastError = e.error;
+			}
+		});
+		const svc = createModelsService(bus, paths);
+		svc.boot();
+
+		await new Promise((r) => setTimeout(r, 200));
+		expect(receivedScanningFalse).toBe(true);
+		expect(lastError).toBeDefined();
+		expect(lastError).toContain(invalidDir);
+		svc.dispose();
+	});
 });
