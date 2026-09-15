@@ -1,0 +1,39 @@
+name: Task / Feature / Bug
+description: Add a task, feature request, or bug report to the work queue.
+title: "[task]: "
+labels: ["ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill out the task details below. The agent will read this description and acceptance criteria when instructed to "work on the next issue".
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Architectural Layer
+      description: Which layer does this task target? (Note: core and UI changes never share a branch)
+      options:
+        - "core (src/core)"
+        - "ui (src/ui)"
+        - "cli (src/cli.ts)"
+        - "docs / tests / meta"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description & Context
+      description: Explain the goal, spec reference (e.g. plans/llamamanager.md §ref), or problem.
+      placeholder: "e.g. Spec §6.2: Add exponential backoff retry on telemetry connection drop."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will the agent and tests verify this is done?
+      placeholder: |
+        - Unit test in tests/core/telemetry.test.ts verifies retry interval
+        - bun run lint && bun test passes
+    validations:
+      required: true

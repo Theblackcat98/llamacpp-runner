@@ -48,3 +48,29 @@ One WORK ITEM (§9 bullet) → one branch → one merge.
 - `bun run dev` — TUI against a scratch config/state home
 
 Never leave a documented command broken; fix code or docs in the same change.
+
+## Autonomous Issue Protocol
+
+When the user says **"work on the next issue"**, **"work on issue #<id>"**, or uses the `issue-runner` skill:
+
+1. **Find next issue**:
+   - For next issue: query `gh issue list --state open --label "ready" --limit 5`. Prioritize `priority:high` over standard, then oldest issue first.
+   - If no `ready` label exists, list open issues with `bug` or `enhancement`.
+   - Announce the selected issue (number, title, requirements) to the user before cutting the branch.
+2. **Claim**:
+   - Add `in-progress` label: `gh issue edit <id> --add-label "in-progress"`.
+3. **Branch**:
+   - Determine target layer from labels/description (`core`, `ui`, `cli`, etc.). Never mix core and UI.
+   - Cut branch from latest `main`: `git checkout -b issue/<id>-<slug>` (e.g. `issue/42-telemetry-retry`).
+4. **Implement**:
+   - Write failing test first in `tests/`.
+   - Implement change. Delegate substantial work to the `coder` subagent per `.agents/skills/subagent-delegation/SKILL.md`.
+5. **Verify**:
+   - Run `bun run lint && bun run typecheck && bun test`.
+   - If `src/core/supervisor` is modified, run the teardown/orphan suite.
+6. **Merge & Close**:
+   - Merge into `main` with `--no-ff`: `git checkout main && git merge --no-ff issue/<id>-<slug>`.
+   - Delete local branch: `git branch -d issue/<id>-<slug>`.
+   - Close GitHub issue: `gh issue close <id> --comment "Resolved on main in commit $(git rev-parse --short HEAD)"`.
+   - Remove `in-progress` label: `gh issue edit <id> --remove-label "in-progress"`.
+
