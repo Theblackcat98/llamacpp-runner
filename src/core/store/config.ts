@@ -7,6 +7,8 @@ export interface AppConfig {
 	binaryPath?: string;
 	/** Persisted theme name (P5-FR-17); restored on boot (Phase 13). */
 	theme?: string;
+	/** Cached hardware probe result (Issue #7). */
+	hardware?: import("../hardware/detect").HardwareInfo;
 }
 
 export function configFilePath(configDir: string): string {
@@ -25,7 +27,11 @@ export function loadConfig(configDir: string): AppConfig {
 			const themeOk = r.theme === undefined || typeof r.theme === "string";
 			const binaryPathOk =
 				r.binaryPath === undefined || typeof r.binaryPath === "string";
-			if (modelsDirOk && themeOk && binaryPathOk) return raw as AppConfig;
+			const hardwareOk =
+				r.hardware === undefined ||
+				(typeof r.hardware === "object" && r.hardware !== null);
+			if (modelsDirOk && themeOk && binaryPathOk && hardwareOk)
+				return raw as AppConfig;
 		}
 	} catch {
 		// first run -> empty config (§7)
