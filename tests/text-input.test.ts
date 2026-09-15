@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { keyEventToInputKey } from "../src/ui/components/text-input";
 import {
 	applyKey,
 	createTextInputState,
@@ -136,5 +137,46 @@ describe("text input state (P2-FR-01)", () => {
 				if (opts.numeric) expect(st.buffer).toMatch(/^\d*$/);
 			}
 		}
+	});
+
+	describe("keyEventToInputKey (Issue #26)", () => {
+		it("converts shifted letter keys to uppercase", () => {
+			const res = keyEventToInputKey({ name: "a", shift: true });
+			expect(res).toEqual({ kind: "printable", ch: "A" });
+		});
+
+		it("prefers sequence if available and printable", () => {
+			const resLetter = keyEventToInputKey({
+				name: "a",
+				sequence: "A",
+				shift: true,
+			});
+			expect(resLetter).toEqual({ kind: "printable", ch: "A" });
+
+			const resSymbol = keyEventToInputKey({
+				name: "1",
+				sequence: "!",
+				shift: true,
+			});
+			expect(resSymbol).toEqual({ kind: "printable", ch: "!" });
+		});
+
+		it("correctly handles path characters with capitals into buffer", () => {
+			const path = "~/Models/LLMs/DeepSeek";
+			let st = createTextInputState();
+			for (const char of path) {
+				const isUpper = char >= "A" && char <= "Z";
+				const key = keyEventToInputKey({
+					name: isUpper ? char.toLowerCase() : char,
+					sequence: char,
+					shift: isUpper,
+				});
+				expect(key).not.toBeNull();
+				if (key) {
+					st = applyKey(st, key);
+				}
+			}
+			expect(st.buffer).toBe("~/Models/LLMs/DeepSeek");
+		});
 	});
 });

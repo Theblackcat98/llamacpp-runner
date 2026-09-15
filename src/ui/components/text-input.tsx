@@ -24,6 +24,7 @@ export interface TextInputProps extends TextInputOptions {
 
 export function keyEventToInputKey(key: {
 	name?: string;
+	sequence?: string;
 	ctrl?: boolean;
 	meta?: boolean;
 	shift?: boolean;
@@ -47,8 +48,18 @@ export function keyEventToInputKey(key: {
 		case "space":
 			return { kind: "printable", ch: " " };
 	}
+	if (
+		key.sequence &&
+		key.sequence.length === 1 &&
+		!/[\p{Cc}]/u.test(key.sequence)
+	) {
+		return { kind: "printable", ch: key.sequence };
+	}
 	const name = key.name ?? "";
-	if (name.length === 1) return { kind: "printable", ch: name };
+	if (name.length === 1) {
+		const ch = key.shift ? name.toUpperCase() : name;
+		return { kind: "printable", ch };
+	}
 	return null;
 }
 
