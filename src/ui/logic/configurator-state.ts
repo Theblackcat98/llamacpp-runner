@@ -132,8 +132,10 @@ export function loadPresetInto(
 	modelPath?: string,
 ): ConfiguratorState {
 	const model =
-		state.model && (modelPath === undefined || state.model.path === modelPath)
-			? state.model
+		modelPath !== undefined
+			? state.model && state.model.path === modelPath
+				? state.model
+				: { ...(state.model ?? { fileSize: 0 }), path: modelPath }
 			: (state.model ?? null);
 	const nglMax = model?.blockCount === undefined ? 0 : model.blockCount + 1;
 	const merged = { ...effectiveValues(state), ...values };

@@ -48,7 +48,7 @@ done
 # --http N: serve /health (503 for N ms then 200), /slots, /metrics via fake-http.ts
 if [ "$HTTP_503_MS" -ge 0 ]; then
 	bun run "$(cd "$(dirname "$0")" && pwd)/fake-http.ts" \
-		--port "$PORT" --health-503-ms "$HTTP_503_MS" &
+		--port "$PORT" --health-503-ms "$HTTP_503_MS" >/dev/null 2>&1 &
 	HTTP_PID=$!
 	cleanup_http() {
 		kill "$HTTP_PID" 2>/dev/null || true
@@ -94,6 +94,7 @@ waiter=$!
 finish() {
 	kill "$waiter" 2>/dev/null
 	wait "$waiter" 2>/dev/null
+	cleanup_http 2>/dev/null || true
 	exit "$EXIT_CODE"
 }
 if [ "$IGNORE_INT" -eq 1 ]; then
