@@ -25,6 +25,7 @@ const GLOBAL_ROWS: Row[] = [
 /** Tab-conditional bindings, keyed by the shell tab label. */
 const TAB_ROWS: Record<string, Row[]> = {
 	"Model Explorer": [
+		["[m]", "set / change models directory"],
 		["[s]", "use ~/models/llm (first run)"],
 		["[r]", "rescan models directory"],
 		["[↑↓]", "select model"],

@@ -318,11 +318,6 @@ export function App({
 			}
 			return;
 		}
-		if (key.name === "s" && tab === 0 && explorerControl?.modelsDir === null) {
-			const home = process.env.HOME ?? "~";
-			explorerControl.onUseDefaultDir(`${home}/models/llm`);
-			return;
-		}
 		if (key.name === "t" && !key.ctrl && tab === 2) {
 			telemetryControl?.onEnableTelemetry?.();
 			return;
