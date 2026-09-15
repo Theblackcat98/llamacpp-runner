@@ -78,6 +78,15 @@ bun run dev
 `llama-deck` includes a dedicated CLI for automation and shell scripting:
 
 ```bash
+# 10-second path: parse metadata, auto-fit GPU VRAM, and generate optimal launch command
+bun run cli quick /path/to/model.gguf
+
+# Run immediately under zero-orphan supervisor (§6.2 teardown)
+bun run cli quick /path/to/model.gguf --run
+
+# Emit launch plan and VRAM estimate as JSON
+bun run cli quick /path/to/model.gguf --json
+
 # Scan a directory for GGUF models
 bun run cli scan /path/to/models [--json]
 

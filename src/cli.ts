@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { formatBytes } from "./core/estimate/vram";
 import { registryAvailability } from "./core/flags/help-parser";
 import { captureHelp, resolveBinaryPath } from "./core/flags/validate";
@@ -18,6 +19,8 @@ function usage(): never {
 	console.log(`llama-deck — llama.cpp manager
 
 Usage:
+  llama-deck quick <model.gguf> [--run] [--json] [--binary <path>]
+                              Resolve or run optimal command for model
   llama-deck scan [dir ...] [--json]
                               Scan directories (default: configured models dir)
   llama-deck list [dir ...] [--json]
@@ -201,6 +204,67 @@ async function main(): Promise<void> {
 		process.on("SIGINT", () => child.kill("SIGINT"));
 		await child.exited;
 		process.exit(child.exitCode ?? 0);
+	}
+
+	if (command === "quick") {
+		const { rest, json } = jsonFlag(args);
+		const run = rest.includes("--run");
+		const filtered = rest.filter((a) => a !== "--run");
+		const binaryIdx = filtered.indexOf("--binary");
+		let binaryPath: string | undefined;
+		let modelArgs = filtered;
+		if (binaryIdx >= 0) {
+			binaryPath = filtered[binaryIdx + 1];
+			modelArgs = filtered.filter(
+				(_, i) => i !== binaryIdx && i !== binaryIdx + 1,
+			);
+		}
+		const modelPath = modelArgs[0];
+		if (!modelPath) {
+			console.error(
+				"Missing model file. Usage: llama-deck quick <model.gguf> [--run] [--json]",
+			);
+			process.exit(1);
+		}
+
+		if (!existsSync(modelPath)) {
+			console.error(`Model file not found: ${modelPath}`);
+			process.exit(1);
+		}
+
+		const resolvedBinary = binaryPath || configuredBinary();
+		const { resolveQuick, runQuickSupervisor } = await import("./core/quick");
+		const result = await resolveQuick(modelPath, {
+			configDir: paths.configDir,
+			binaryPath: resolvedBinary,
+		});
+
+		if (run) {
+			const code = await runQuickSupervisor(result.plan, {
+				pidFile: paths.pidFile,
+				onLog: (line) => console.log(line),
+			});
+			process.exit(code);
+		}
+
+		if (json) {
+			console.log(
+				JSON.stringify({
+					plan: result.plan,
+					estimate: result.estimate,
+				}),
+			);
+			return;
+		}
+
+		if (result.conservativeFallback) {
+			console.log(
+				`Note: ${result.fallbackReason ?? "Hardware detection unavailable; falling back to conservative defaults (n_gpu_layers=0)"}`,
+			);
+		}
+		const { commandLine } = await import("./core/flags/builder");
+		console.log(commandLine(result.plan));
+		return;
 	}
 
 	if (command !== "scan" && command !== "list") {
