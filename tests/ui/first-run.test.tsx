@@ -20,7 +20,7 @@ describe("first-run onboarding (§7)", () => {
 		);
 	});
 
-	it("onboarding names the [s] shortcut and scan command", async () => {
+	it("onboarding offers [m] and no hardcoded default dir", async () => {
 		const setup = await renderWithAct(
 			<Explorer theme={TOKYO_NIGHT} entries={[]} modelsDir={null} />,
 			{ width: 100, height: 12 },
@@ -28,6 +28,7 @@ describe("first-run onboarding (§7)", () => {
 		const frame = setup.captureCharFrame();
 		await teardownWithAct(setup);
 		expect(frame).toContain("No model directory configured");
-		expect(frame).toContain("[s] use ~/models/llm");
+		expect(frame).toContain("[m] set models directory");
+		expect(frame).not.toContain("[s]");
 	});
 });

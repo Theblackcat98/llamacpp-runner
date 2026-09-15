@@ -26,7 +26,6 @@ export interface ExplorerProps {
 	selectedIndex?: number;
 	onSelectIndex?: (index: number) => void;
 	onSetModelsDir?: (dir: string) => void;
-	onUseDefaultDir?: (dir: string) => void;
 	onEditingChange?: (editing: boolean) => void;
 }
 
@@ -45,7 +44,6 @@ export function Explorer({
 	selectedIndex,
 	onSelectIndex,
 	onSetModelsDir,
-	onUseDefaultDir,
 	onEditingChange,
 }: ExplorerProps) {
 	const rows = buildRows(entries);
@@ -61,15 +59,6 @@ export function Explorer({
 		if (key.name === "m" && !key.ctrl && onSetModelsDir) {
 			setDirInput(createTextInputState());
 			setEditingDir(true);
-			return;
-		}
-		if (key.name === "s" && !key.ctrl && modelsDir === null) {
-			// First-run shortcut: one dir-set callback, never both — the
-			// shell wires them to the same SET_MODELS_DIR intent and a
-			// double emit would scan twice.
-			const fallback = "~/models/llm";
-			if (onSetModelsDir) onSetModelsDir(fallback);
-			else onUseDefaultDir?.(fallback);
 			return;
 		}
 	});
@@ -139,9 +128,7 @@ export function Explorer({
 							Set one to begin scanning for .gguf files:
 						</text>
 						<text fg={theme.accent}>{"  [m] set models directory"}</text>
-						<text fg={theme.accent}>
-							{"  [s] use ~/models/llm   |   run: llama-deck scan <dir>"}
-						</text>
+						<text fg={theme.muted}>{"  run: llama-deck scan <dir>"}</text>
 					</box>
 				</TuiBox>
 			) : (
