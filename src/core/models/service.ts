@@ -57,12 +57,17 @@ export function createModelsService(
 		try {
 			const result = await scanModels([dir], { stateDir: paths.stateDir });
 			if (disposed) return;
+			const scanError =
+				result.errors && result.errors.length > 0
+					? result.errors.join("; ")
+					: undefined;
 			lastEntries = result.entries;
-			lastError = undefined;
+			lastError = scanError;
 			bus.emitState("MODELS_STATE", {
 				dir: currentDir,
 				entries: result.entries,
 				scanning: false,
+				error: scanError,
 			});
 		} catch (err) {
 			if (disposed) return;
