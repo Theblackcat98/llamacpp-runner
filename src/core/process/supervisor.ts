@@ -38,6 +38,7 @@ type StateListener = (event: {
 	exitCode?: number;
 	signal?: string | null;
 	tail?: string[];
+	startedAtMs?: number | null;
 }) => void;
 
 const TAIL_SIZE = 50;
@@ -57,6 +58,15 @@ export class Supervisor {
 	private readonly transportFactory: (opts: SpawnOptions) => Transport;
 	private readonly whichFn: (command: string) => string | null;
 	pid: number | undefined;
+	startedAtMs: number | null = null;
+
+	get port(): number | undefined {
+		return this.opts.port;
+	}
+
+	get host(): string | undefined {
+		return this.opts.host;
+	}
 
 	constructor(private readonly opts: SupervisorOptions) {
 		this.timings = { ...DEFAULT_TIMINGS, ...opts.timings };
@@ -141,6 +151,7 @@ export class Supervisor {
 			this.emitState({ state: "FAILED", detail: "spawn_error", exitCode: -1 });
 			throw err;
 		}
+		this.startedAtMs = Date.now();
 		this.pid = this.transport.pid;
 		this.transport.onData((chunk) => this.ingest(chunk));
 		this.transport.onExit((info) => this.handleExit(info));
@@ -184,6 +195,7 @@ export class Supervisor {
 		for (const line of this.assembler.flush()) this.recordLine(line);
 		this.exited = true;
 		this.exitInfo = info;
+		this.startedAtMs = null;
 		if (info.code === 0 && info.signal === null) {
 			this.emitState({ state: "IDLE", detail: "exited_cleanly", exitCode: 0 });
 		} else if (info.signal !== null) {
@@ -203,7 +215,8 @@ export class Supervisor {
 	}
 
 	private emitState(event: Parameters<StateListener>[0]): void {
-		for (const cb of [...this.stateListeners]) cb(event);
+		const payload = { startedAtMs: this.startedAtMs, ...event };
+		for (const cb of [...this.stateListeners]) cb(payload);
 	}
 }
 
