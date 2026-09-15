@@ -25,6 +25,8 @@ Usage:
   llama-deck presets [--json] List saved presets
   llama-deck export <preset> [--format cmd|sh|systemd]
                               Export a preset's launch command
+  llama-deck import <file|-> [--name <name>] [--save]
+                              Import shell command into preset or preview
   llama-deck start <preset>   Launch a preset (llama-server in foreground)
   llama-deck kill [--json]    Stop a running instance via pidfile (§6.2)
 `);
@@ -132,6 +134,54 @@ async function main(): Promise<void> {
 		const preset = findPreset(presetId);
 		const availability = await runtimeAvailability(configuredBinary());
 		process.stdout.write(exportPreset(preset, format, { availability }));
+		return;
+	}
+
+	if (command === "import") {
+		const target = args[0];
+		if (!target) usage();
+		let content = "";
+		if (target === "-") {
+			content = await Bun.stdin.text();
+		} else {
+			content = await Bun.file(target).text();
+		}
+
+		const { parseShellCommand } = await import("./core/import/shell");
+		const imported = parseShellCommand(content);
+
+		const nameIdx = args.indexOf("--name");
+		const specifiedName = nameIdx >= 0 ? args[nameIdx + 1] : undefined;
+		const presetName =
+			specifiedName && specifiedName.length > 0
+				? specifiedName
+				: `Imported (${new Date().toISOString().slice(0, 10)})`;
+
+		const shouldSave = args.includes("--save");
+		const presetId = `preset-${Date.now()}`;
+		const preset: import("./core/store/presets").Preset = {
+			id: presetId,
+			name: presetName,
+			model_path: imported.modelPath,
+			flags: imported.values,
+			env_vars: imported.envVars,
+			created_at: new Date().toISOString(),
+			last_used: null,
+		};
+
+		if (shouldSave) {
+			const store = loadPresets(presetsFilePath(paths.configDir));
+			const file = (store.data as PresetFile | null) ?? {
+				version: 2,
+				presets: [],
+			};
+			file.presets.push(preset);
+			const { savePresets } = await import("./core/store/presets");
+			savePresets(presetsFilePath(paths.configDir), file);
+			console.log(`Saved preset "${presetName}" (${presetId})`);
+		} else {
+			console.log(JSON.stringify(preset, null, 2));
+		}
 		return;
 	}
 
