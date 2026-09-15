@@ -1,6 +1,6 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createBus } from "./core/bus";
 import type { IntentMap, StateMap } from "./core/bus-contract";
 import { DEFAULT_HOST, DEFAULT_PORT, LLAMA_SERVER_BIN } from "./core/constants";
@@ -151,6 +151,8 @@ export function SessionApp({
 				)
 			: base;
 	});
+	const configRef = useRef(config);
+	configRef.current = config;
 	const [themeName, setThemeName] = useState<ThemeName>(() => {
 		const saved =
 			initialState.configFile.theme ?? initialState.presetStore?.theme;
@@ -227,6 +229,46 @@ export function SessionApp({
 			if (event.dir !== undefined && event.dir !== null) {
 				setModelsDir(event.dir);
 			}
+			if (event.entries.length > 0) {
+				const current = configRef.current;
+				if (current.model) {
+					const idx = event.entries.findIndex(
+						(e) => e.path === current.model?.path,
+					);
+					if (idx !== -1) {
+						setSelectedIndex(idx);
+						const matched = event.entries[idx];
+						if (matched) {
+							setConfig((prev) => {
+								if (!prev.model || prev.model.path !== matched.path) return prev;
+								return {
+									...prev,
+									model: {
+										path: matched.path,
+										blockCount: matched.blockCount,
+										contextLength: matched.contextLength,
+										fileSize: matched.totalBytes,
+										headCount: matched.headCount,
+										headCountKv: matched.headCountKv,
+										embeddingLength: matched.embeddingLength,
+										keyLength: matched.keyLength,
+									},
+								};
+							});
+						}
+					} else {
+						const firstValid = event.entries.findIndex((e) => !e.error);
+						if (firstValid !== -1) {
+							selectModelFromEntries(event.entries, firstValid);
+						}
+					}
+				} else {
+					const firstValid = event.entries.findIndex((e) => !e.error);
+					if (firstValid !== -1) {
+						selectModelFromEntries(event.entries, firstValid);
+					}
+				}
+			}
 		});
 		const offDir = bus.onState("MODELS_DIR", (event) => {
 			setModelsDir(event.dir);
@@ -266,9 +308,9 @@ export function SessionApp({
 		return entries[Math.min(selectedIndex, Math.max(entries.length - 1, 0))];
 	}
 
-	function selectModel(index: number): void {
+	function selectModelFromEntries(list: ModelEntry[], index: number): void {
 		setSelectedIndex(index);
-		const entry = entries[index];
+		const entry = list[index];
 		if (!entry || entry.error) return;
 		setConfig(
 			clampContext(
@@ -284,6 +326,10 @@ export function SessionApp({
 				}),
 			),
 		);
+	}
+
+	function selectModel(index: number): void {
+		selectModelFromEntries(entries, index);
 	}
 
 	function buildPlan(): LaunchPlan | null {
