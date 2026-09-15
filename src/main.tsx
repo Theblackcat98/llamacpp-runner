@@ -70,9 +70,7 @@ const defaultSession = createSession({
 	resolveLaunch: () => planSource?.() ?? null,
 });
 
-const defaultModelsService = createModelsService(defaultBus, defaultPaths, {
-	defaultDir: process.cwd(),
-});
+const defaultModelsService = createModelsService(defaultBus, defaultPaths);
 
 export interface SessionAppProps {
 	bus?: ReturnType<typeof createBus<IntentMap, StateMap>>;
