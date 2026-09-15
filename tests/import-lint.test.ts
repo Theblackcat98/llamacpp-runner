@@ -50,7 +50,10 @@ describe("core boundary rule (D5)", () => {
 				}
 				if (spec.startsWith(".")) {
 					const target = resolve(dirname(file), spec);
-					if (!target.startsWith(`${CORE_ROOT}/`)) {
+					if (
+						!target.startsWith(`${CORE_ROOT}/`) &&
+						!target.startsWith(`${CORE_ROOT}\\`)
+					) {
 						violations.push(
 							`${file}: "${spec}" crosses the core boundary (D5)`,
 						);

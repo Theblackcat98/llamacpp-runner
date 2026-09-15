@@ -205,13 +205,16 @@ export async function runQuickSupervisor(
 	const pidFile = opts?.pidFile;
 
 	const onSig = async () => {
-		await supervisor.teardown();
 		if (pidFile) clearPidFile(pidFile);
+		await supervisor.teardown();
 		process.exit(0);
 	};
 
 	process.on("SIGINT", onSig);
 	process.on("SIGTERM", onSig);
+	process.on("exit", () => {
+		if (pidFile) clearPidFile(pidFile);
+	});
 
 	const exitPromise = new Promise<number>((resolve) => {
 		supervisor.onState((event) => {

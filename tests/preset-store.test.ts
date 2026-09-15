@@ -207,5 +207,5 @@ describe("unknown flags (P4-FR-15)", () => {
 });
 
 it("presetsFilePath joins config dir", () => {
-	expect(presetsFilePath("/cfg")).toBe("/cfg/presets.json");
+	expect(presetsFilePath("/cfg")).toBe(join("/cfg", "presets.json"));
 });

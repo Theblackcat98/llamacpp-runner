@@ -131,7 +131,7 @@ function signature(files: WalkedFile[]): string {
 }
 
 function baseFileName(path: string): string {
-	const idx = path.lastIndexOf("/");
+	const idx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 	return idx === -1 ? path : path.slice(idx + 1);
 }
 

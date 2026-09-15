@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { createBus } from "../../src/core/bus";
 import type { IntentMap, StateMap } from "../../src/core/bus-contract";
 import { exportPreset, presetToPlan } from "../../src/core/preset-launch";
+import { shellQuote } from "../../src/core/export/quote";
 import { createSession } from "../../src/core/session";
 import {
 	loadPresets,
@@ -157,7 +158,7 @@ describe("PRD-4: automated real-server loop", () => {
 		};
 
 		const plan = presetToPlan(preset);
-		const spawnedLine = `${plan.command} ${plan.args.join(" ")}`;
+		const spawnedLine = [plan.command, ...plan.args.map(shellQuote)].join(" ");
 		expect(expectedYank).toBe(spawnedLine);
 	});
 

@@ -37,8 +37,48 @@ export class ProcProcessInspector implements ProcessInspector {
 	}
 }
 
+export function isPidAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code !== "ESRCH";
+	}
+}
+
+export class WindowsProcessInspector implements ProcessInspector {
+	inspect(pid: number): ProcessInspectionStatus | ProcessIdentity {
+		if (!isPidAlive(pid)) return "dead";
+		try {
+			const res = Bun.spawnSync([
+				"tasklist",
+				"/FI",
+				`PID eq ${pid}`,
+				"/FO",
+				"CSV",
+				"/NH",
+			]);
+			const out = res.stdout.toString().trim();
+			if (!out || out.startsWith("INFO: No tasks")) {
+				return "dead";
+			}
+			const match = out.match(/^"([^"]+)"/);
+			if (match && match[1]) {
+				return { pid, command: [match[1]] };
+			}
+			return "unknown";
+		} catch {
+			return "unknown";
+		}
+	}
+	canSignal(pid: number): boolean {
+		return isPidAlive(pid);
+	}
+}
+
 export class UnsupportedProcessInspector implements ProcessInspector {
-	inspect(_pid: number): ProcessInspectionStatus {
+	inspect(pid: number): ProcessInspectionStatus {
+		if (!isPidAlive(pid)) return "dead";
 		return "unknown";
 	}
 	canSignal(_pid: number): boolean {
@@ -47,16 +87,24 @@ export class UnsupportedProcessInspector implements ProcessInspector {
 }
 
 export function defaultProcessInspector(): ProcessInspector {
-	return process.platform === "linux"
-		? new ProcProcessInspector()
-		: new UnsupportedProcessInspector();
+	if (process.platform === "linux") return new ProcProcessInspector();
+	if (process.platform === "win32") return new WindowsProcessInspector();
+	return new UnsupportedProcessInspector();
 }
 
 export function isLlamaServerCommand(command: string[] | undefined): boolean {
 	return (
-		command?.some(
-			(arg) => arg === "llama-server" || arg.endsWith("/llama-server"),
-		) ?? false
+		command?.some((arg) => {
+			const lower = arg.toLowerCase();
+			return (
+				lower === "llama-server" ||
+				lower === "llama-server.exe" ||
+				lower.endsWith("/llama-server") ||
+				lower.endsWith("\\llama-server") ||
+				lower.endsWith("/llama-server.exe") ||
+				lower.endsWith("\\llama-server.exe")
+			);
+		}) ?? false
 	);
 }
 

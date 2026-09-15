@@ -5,7 +5,7 @@ import { testRender } from "@opentui/react/test-utils";
 import type { ReactNode } from "react";
 import { act } from "react";
 
-const GOLDEN_DIR = new URL("./", import.meta.url).pathname;
+const GOLDEN_DIR = import.meta.dir;
 const UPDATE = process.env.UPDATE_GOLDEN === "1";
 
 export interface GoldenOptions {
@@ -64,11 +64,11 @@ export async function expectGoldenFrame(
 	}
 	let expected: string;
 	try {
-		expected = readFileSync(file, "utf8");
+		expected = readFileSync(file, "utf8").replaceAll("\r\n", "\n");
 	} catch {
 		throw new Error(
 			`missing golden frame ${name}.framesnap — run UPDATE_GOLDEN=1 bun test to create it`,
 		);
 	}
-	expect(frame).toEqual(expected);
+	expect(frame.replaceAll("\r\n", "\n")).toEqual(expected);
 }

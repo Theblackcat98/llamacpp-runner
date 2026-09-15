@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.golden text eol=lf
+*.framesnap text eol=lf
+*.prometheus text eol=lf

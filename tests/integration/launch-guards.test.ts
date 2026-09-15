@@ -5,7 +5,9 @@ import type { IntentMap, StateMap } from "../../src/core/bus-contract";
 import { createSession } from "../../src/core/session";
 import { resolvePaths } from "../../src/core/store/state-paths";
 
-const FIXTURE = new URL("../fixtures/fake-server.sh", import.meta.url).pathname;
+import { resolve } from "node:path";
+
+const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
 
 interface Harness {
 	bus: ReturnType<typeof createBus<IntentMap, StateMap>>;

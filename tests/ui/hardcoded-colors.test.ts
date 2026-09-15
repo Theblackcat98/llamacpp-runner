@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-const UI_ROOT = new URL("../../src/ui/", import.meta.url).pathname;
+const UI_ROOT = resolve(import.meta.dir, "../../src/ui");
 
 const ALLOWED = new Set([
 	"src/ui/themes", // theme definitions are the single source of color
@@ -41,7 +42,10 @@ describe("hardcoded color gate (P2-FR-16)", () => {
 	it("widget code contains zero color literals outside the theme module", () => {
 		const violations: string[] = [];
 		for (const file of collectFiles(UI_ROOT)) {
-			const rel = file.replace(UI_ROOT, "src/ui/").replace(/\/{2,}/g, "/");
+			const rel = file
+				.replaceAll("\\", "/")
+				.replace(UI_ROOT.replaceAll("\\", "/"), "src/ui/")
+				.replace(/\/{2,}/g, "/");
 			if ([...ALLOWED].some((a) => rel.startsWith(a))) continue;
 			const lines = readFileSync(file, "utf8").split("\n");
 			lines.forEach((line, idx) => {

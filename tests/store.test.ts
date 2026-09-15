@@ -16,9 +16,11 @@ function scratch(): string {
 describe("state paths (P1-FR-19)", () => {
 	it("defaults under home when XDG vars absent", () => {
 		const p = resolvePaths({}, "/home/tester");
-		expect(p.stateDir).toBe("/home/tester/.local/state/llama-deck");
-		expect(p.configDir).toBe("/home/tester/.config/llama-deck");
-		expect(p.pidFile).toBe("/home/tester/.local/state/llama-deck/server.pid");
+		expect(p.stateDir).toBe(join("/home/tester", ".local/state/llama-deck"));
+		expect(p.configDir).toBe(join("/home/tester", ".config/llama-deck"));
+		expect(p.pidFile).toBe(
+			join("/home/tester", ".local/state/llama-deck/server.pid"),
+		);
 	});
 
 	it("honors XDG_STATE_HOME and XDG_CONFIG_HOME independently", () => {
@@ -26,8 +28,8 @@ describe("state paths (P1-FR-19)", () => {
 			{ XDG_STATE_HOME: "/tmp/st", XDG_CONFIG_HOME: "/tmp/cf" },
 			"/home/x",
 		);
-		expect(p.stateDir).toBe("/tmp/st/llama-deck");
-		expect(p.configDir).toBe("/tmp/cf/llama-deck");
+		expect(p.stateDir).toBe(join("/tmp/st", "llama-deck"));
+		expect(p.configDir).toBe(join("/tmp/cf", "llama-deck"));
 	});
 });
 

@@ -11,8 +11,10 @@ import {
 } from "../src/core/telemetry/slots";
 import { HistoryRing, sparkline } from "../src/core/telemetry/sparkline";
 
+import { join } from "node:path";
+
 const FIX = (name: string) =>
-	new URL(`./fixtures/metrics/${name}`, import.meta.url).pathname;
+	join(import.meta.dir, "fixtures/metrics", name);
 
 describe("parseMetrics — Prometheus text keyed on llamacpp: prefix (P5-FR-03)", () => {
 	it("sync parse of captured payload", async () => {

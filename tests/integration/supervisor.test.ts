@@ -1,8 +1,10 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import * as net from "node:net";
+import { resolve } from "node:path";
 import { Supervisor } from "../../src/core/process/supervisor";
+import { isPidAlive } from "../../src/core/process/identity";
 
-const FIXTURE = new URL("../fixtures/fake-server.sh", import.meta.url).pathname;
+const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
 const FAST = { sigintGraceMs: 400, sigkillGraceMs: 400 };
 const READY = /listening on/;
 
@@ -69,12 +71,7 @@ async function waitFor(
 }
 
 async function pidAlive(pid: number): Promise<boolean> {
-	try {
-		const stat = await Bun.file(`/proc/${pid}/stat`).exists();
-		return stat;
-	} catch {
-		return false;
-	}
+	return isPidAlive(pid);
 }
 
 describe("supervisor vs fake-server.sh (§6)", () => {

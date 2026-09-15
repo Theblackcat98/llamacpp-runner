@@ -1,22 +1,23 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
+import { join, resolve } from "node:path";
 import { createBus } from "../../src/core/bus";
 import type { StateMap } from "../../src/core/bus-contract";
 import { createSession } from "../../src/core/session";
 
-const FIXTURE = new URL("../fixtures/fake-server.sh", import.meta.url).pathname;
-const TMP = new URL("../.tmp/session-failure/", import.meta.url).pathname;
+const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
+const TMP = resolve(import.meta.dir, "../.tmp/session-failure");
 
 function tmpPaths(tag: string) {
-	const stateDir = `${TMP}${tag}/state`;
-	const configDir = `${TMP}${tag}/config`;
+	const stateDir = join(TMP, `${tag}/state`);
+	const configDir = join(TMP, `${tag}/config`);
 	mkdirSync(stateDir, { recursive: true });
 	mkdirSync(configDir, { recursive: true });
 	return {
 		stateDir,
 		configDir,
-		pidFile: `${stateDir}/server.pid`,
+		pidFile: join(stateDir, "server.pid"),
 	};
 }
 

@@ -123,7 +123,8 @@ export class Supervisor {
 	async #start(): Promise<void> {
 		if (
 			this.whichFn(this.opts.command) === null &&
-			!this.opts.command.includes("/")
+			!this.opts.command.includes("/") &&
+			!this.opts.command.includes("\\")
 		) {
 			this.emitState({ state: "FAILED", detail: "binary_not_found" });
 			return;

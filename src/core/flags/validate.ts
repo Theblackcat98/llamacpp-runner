@@ -40,7 +40,12 @@ const HELP_TIMEOUT_MS = 5000;
  */
 export async function captureHelp(command: string): Promise<string> {
 	try {
-		const proc = Bun.spawn([command, "--help"], {
+		let spawnArgs = [command, "--help"];
+		if (process.platform === "win32" && command.endsWith(".sh")) {
+			const { resolveBash } = await import("../process/transport");
+			spawnArgs = [resolveBash(), command, "--help"];
+		}
+		const proc = Bun.spawn(spawnArgs, {
 			stdout: "pipe",
 			stderr: "pipe",
 			stdin: "ignore",

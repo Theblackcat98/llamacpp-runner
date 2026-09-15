@@ -1,26 +1,27 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = resolve(import.meta.dir, "..");
 
 afterAll(() => {
-	rmSync(`${ROOT}.tmp/exit-gate`, { recursive: true, force: true });
+	rmSync(join(ROOT, ".tmp/exit-gate"), { recursive: true, force: true });
 });
 
 describe("Phase 5 EXIT gate (spec §9)", () => {
 	it("§7 audit table exists and every referenced test file is present", () => {
-		const doc = readFileSync(`${ROOT}docs/error-audit.md`, "utf8");
+		const doc = readFileSync(join(ROOT, "docs/error-audit.md"), "utf8");
 		const refs = [...doc.matchAll(/tests\/[A-Za-z0-9/._-]+/g)].map((m) =>
 			m[0].replace(/[.,]$/, ""),
 		);
 		expect(refs.length).toBeGreaterThanOrEqual(15);
 		for (const ref of new Set(refs)) {
-			expect(existsSync(`${ROOT}${ref}`)).toBe(true);
+			expect(existsSync(join(ROOT, ref))).toBe(true);
 		}
 	});
 
 	it("§7 audit covers all 11 inventory rows", () => {
-		const doc = readFileSync(`${ROOT}docs/error-audit.md`, "utf8");
+		const doc = readFileSync(join(ROOT, "docs/error-audit.md"), "utf8");
 		for (const row of [
 			"Port in use",
 			"VRAM OOM",
@@ -39,7 +40,7 @@ describe("Phase 5 EXIT gate (spec §9)", () => {
 	});
 
 	it("compat matrix document exists with the 6 required terminals", () => {
-		const doc = readFileSync(`${ROOT}docs/compat-matrix.md`, "utf8");
+		const doc = readFileSync(join(ROOT, "docs/compat-matrix.md"), "utf8");
 		for (const term of [
 			"tmux",
 			"kitty",
@@ -74,9 +75,9 @@ describe("CLI/TUI export artifact parity (P5 acceptance)", () => {
 			created_at: "2026-08-24T00:00:00Z",
 			last_used: null,
 		};
-		const base = `${ROOT}.tmp/exit-gate/${Date.now()}`;
-		const dir = `${base}/config/llama-deck`;
-		await Bun.$`mkdir -p ${dir}`.quiet();
+		const base = join(ROOT, `.tmp/exit-gate/${Date.now()}`);
+		const dir = join(base, "config/llama-deck");
+		mkdirSync(dir, { recursive: true });
 		await Bun.write(
 			`${dir}/presets.json`,
 			JSON.stringify({ version: 2, presets: [preset] }),

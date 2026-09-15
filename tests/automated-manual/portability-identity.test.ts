@@ -17,6 +17,7 @@ import { requiresHostConfirmation } from "../../src/core/process/preflight";
 
 describe("Phase 10: automated portability & process identity", () => {
 	it("probes current Linux process through /proc inspector", () => {
+		if (process.platform !== "linux") return;
 		const inspector = new ProcProcessInspector();
 		const myPid = process.pid;
 

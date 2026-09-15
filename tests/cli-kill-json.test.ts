@@ -1,15 +1,15 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-const TMP = new URL("../.tmp/cli-kill/", import.meta.url).pathname;
+const TMP = resolve(import.meta.dir, "../.tmp/cli-kill");
 
 function cli(args: string[], env?: Record<string, string>) {
 	return Bun.spawnSync([process.execPath, "src/cli.ts", ...args], {
 		env: {
 			...process.env,
-			XDG_STATE_HOME: `${TMP}state`,
-			XDG_CONFIG_HOME: `${TMP}config`,
+			XDG_STATE_HOME: join(TMP, "state"),
+			XDG_CONFIG_HOME: join(TMP, "config"),
 			...env,
 		},
 	});
@@ -21,7 +21,7 @@ afterAll(() => {
 
 describe("CLI kill (P5-FR-12)", () => {
 	it("no pidfile -> exit 0, reports nothing to kill", () => {
-		mkdirSync(`${TMP}state/llama-deck`, { recursive: true });
+		mkdirSync(join(TMP, "state/llama-deck"), { recursive: true });
 		const proc = cli(["kill"]);
 		expect(proc.exitCode).toBe(0);
 		expect(proc.stdout.toString()).toMatch(/no server|nothing/i);
@@ -36,8 +36,9 @@ describe("CLI kill (P5-FR-12)", () => {
 	});
 
 	it("stale pidfile is cleaned and reported", () => {
+		mkdirSync(join(TMP, "state/llama-deck"), { recursive: true });
 		writeFileSync(
-			`${TMP}state/llama-deck/server.pid`,
+			join(TMP, "state/llama-deck/server.pid"),
 			JSON.stringify({
 				pid: 999_999_999,
 				port: 8080,
@@ -53,21 +54,31 @@ describe("CLI kill (P5-FR-12)", () => {
 	});
 
 	it("live llama-server-like process is torn down via §6.2 path", async () => {
-		// Double-fork: the sleeper is reparented away from this test process,
-		// so it cannot linger as an un-reaped zombie mid-assertion.
-		const spawner = Bun.spawnSync(
-			["bash", "-c", "exec -a llama-server sleep 30 >/dev/null 2>&1 & echo $!"],
-			{
-				stdout: "pipe",
+		let pid: number;
+		if (process.platform === "win32") {
+			const winExe = join(TMP, "llama-server.exe");
+			mkdirSync(TMP, { recursive: true });
+			copyFileSync(process.execPath, winExe);
+			const child = Bun.spawn([winExe, "-e", "await Bun.sleep(30000)"], {
+				stdout: "ignore",
 				stderr: "ignore",
-			},
-		);
-		const pid = Number(spawner.stdout.toString().trim());
+			});
+			pid = child.pid;
+		} else {
+			const spawner = Bun.spawnSync(
+				["bash", "-c", "exec -a llama-server sleep 30 >/dev/null 2>&1 & echo $!"],
+				{
+					stdout: "pipe",
+					stderr: "ignore",
+				},
+			);
+			pid = Number(spawner.stdout.toString().trim());
+		}
 		expect(pid).toBeGreaterThan(0);
 		await Bun.sleep(100);
-		mkdirSync(`${TMP}state/llama-deck`, { recursive: true });
+		mkdirSync(join(TMP, "state/llama-deck"), { recursive: true });
 		writeFileSync(
-			`${TMP}state/llama-deck/server.pid`,
+			join(TMP, "state/llama-deck/server.pid"),
 			JSON.stringify({
 				pid,
 				port: 8080,
@@ -81,9 +92,12 @@ describe("CLI kill (P5-FR-12)", () => {
 		expect(parsed.killed).toBe(true);
 		expect(parsed.pid).toBe(pid);
 		await Bun.sleep(200);
-		expect(Bun.spawnSync(["bash", "-c", `kill -0 ${pid}`]).exitCode).not.toBe(
-			0,
-		);
+		let stillAlive = false;
+		try {
+			process.kill(pid, 0);
+			stillAlive = true;
+		} catch {}
+		expect(stillAlive).toBe(false);
 	}, 10_000);
 });
 
