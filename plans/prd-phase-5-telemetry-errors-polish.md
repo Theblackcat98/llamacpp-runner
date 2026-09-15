@@ -48,7 +48,7 @@ llama-deck · Document: plans/prd-phase-5-telemetry-errors-polish.md · Spec ref
   | P5-FR-06 | Telemetry prerequisite flags (--slots/--metrics) verified present at launch; if user disabled telemetry, screen shows dormant state with enable action | §3.5 |
   | P5-FR-07 | Failure classification: exit code + log patterns for CUDA OOM, port bind failure, missing model file; each presents a suggested fix (lower ngl/ctx/kv-quant, free port, re-link) | §6.4 |
   | P5-FR-08 | Error-state inventory §7 fully implemented: port in use, VRAM OOM, model missing/changed, corrupt GGUF (P3), multi-part (P3), first-run (P3), binary missing (P4), binary too old (P4), below 100x30 (P1), TUI crash recovery (P1), split sibling deleted (P3) — audit table in repo, each row → test or manual script | §7 |
-  | P5-FR-09 | Command palette: fuzzy search over complete action registry (switch theme ×5, set port, kill server, export command, rescan models, adopt orphan, toggle telemetry, go to tab 1–4, clear log) | §2.6 |
+  | P5-FR-09 | Command palette: fuzzy search over complete 15-action registry (switch theme ×5, set port, kill server, export command, rescan models, toggle telemetry, go to tab 1–4, clear log; adopt-orphan retired per F8/commit 8dd2fb2) | §2.6 |
   | P5-FR-10 | Palette uses Phase 2 modal focus capture; Esc closes; Ctrl+P toggles | §2.6, P2-FR-13 |
   | P5-FR-11 | Ctrl+C final semantics: quit + teardown; confirmation when server running; second press within 2 s force-quits; x = explicit kill with confirmation | §4 |
   | P5-FR-12 | CLI: `llama-deck start <preset>` (headless run: spawn + tail logs + teardown on signal), `export <preset> --format sh|systemd|cmd`, `scan` (rebuild cache), `list` (models/presets), `kill` (pidfile-aware) | §1.1 |

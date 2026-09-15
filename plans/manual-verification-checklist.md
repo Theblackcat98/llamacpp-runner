@@ -147,12 +147,10 @@ batch sensitivity, units, invalid values).
 
 ## PRD-5 / Phase 13 / Phase 14 — remaining work (active docs, not archived)
 
-- [ ] Decide adopt-orphan: implement it or remove it from P5-FR-09 and the
-      palette test pin.
-- [ ] Decide Catalog F5: delete/gate `src/ui/screens/catalog.tsx` or amend the
-      spec to ship it as a supported fifth tab.
-- [ ] Eliminate `act(...)` / listener warnings (`preset-launch.test.tsx`,
-      `help-overlay.test.tsx`) — Phase 13 EXIT is warning-free.
+- [x] Decide adopt-orphan: retired from v1 per F8 (commit 8dd2fb2); P5-FR-09 updated to 15 actions; orphan kill with 2-press confirmation is the supported recovery path. (2026-09-14)
+- [x] Decide Catalog F5: excluded from production 4-tab shell (commit 410cb93); retained in src/ui/screens/catalog.tsx as internal widget regression artifact tested by tests/ui/golden/catalog.test.tsx. (2026-09-14)
+- [x] Eliminate `act(...)` / listener warnings (`preset-launch.test.tsx`,
+      `help-overlay.test.tsx`) — Phase 13 EXIT is warning-free (commit 813ce6c). (2026-09-14)
 - [ ] Terminal compat sign-off in `docs/compat-matrix.md`: tmux, kitty,
       ghostty, wezterm, alacritty, VS Code terminal.
 - [ ] One-hour real-server soak (`scripts/soak-check.sh`): no orphan, no leak,
