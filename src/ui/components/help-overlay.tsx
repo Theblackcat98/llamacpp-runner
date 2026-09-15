@@ -35,6 +35,7 @@ const TAB_ROWS: Record<string, Row[]> = {
 		["[Esc]", "reset configurator"],
 		["[y]", "yank launch command"],
 		["[Ctrl+Y]", "confirm host-exposing launch"],
+		["[i]", "import shell command"],
 	],
 	"Server Telemetry": [["[t]", "toggle telemetry on / off"]],
 	Presets: [
@@ -43,6 +44,7 @@ const TAB_ROWS: Record<string, Row[]> = {
 		["[Enter]", "set default preset"],
 		["[l]", "load into Configurator and go there"],
 		["[r]", "relink broken preset to Explorer pick"],
+		["[i]", "import shell command"],
 	],
 };
 

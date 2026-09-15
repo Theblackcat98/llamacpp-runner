@@ -18,7 +18,7 @@
         │   [Esc]  reset configurator                                              │                
         │   [y]  yank launch command                                               │                
         │   [Ctrl+Y]  confirm host-exposing launch                                 │                
+        │   [i]  import shell command                                              │                
         │  press [?] to close                                                      │                
         │                                                                          │                
         │                                                                          │                
-        └──────────────────────────────────────────────────────────────────────────┘                
