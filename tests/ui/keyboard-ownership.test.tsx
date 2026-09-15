@@ -133,7 +133,7 @@ describe("shell yields printables while typing (Phase 13)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		// Go to Launch Config, then walk focus down to the host field (7).
+		// Go to Launch Config, then walk focus down to the host field (12).
 		await act(async () => {
 			await setup.mockInput.pressKeys(["2"]);
 		});
@@ -141,7 +141,7 @@ describe("shell yields printables while typing (Phase 13)", () => {
 			await setup.flush();
 		});
 		expect(setup.captureCharFrame()).toContain("LAUNCH CONFIG");
-		for (let i = 0; i < 7; i++) {
+		for (let i = 0; i < 12; i++) {
 			await act(async () => {
 				await setup.mockInput.pressKeys(["\x1b[B"]); // down
 			});
@@ -152,16 +152,16 @@ describe("shell yields printables while typing (Phase 13)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		// Typing "5" must reach the input buffer, not switch to Catalog (tab 5).
+		// Typing "1" must reach the input buffer, not switch to Model Explorer (tab 1).
 		await act(async () => {
-			await setup.mockInput.pressKeys(["5"]);
+			await setup.mockInput.pressKeys(["1"]);
 		});
 		await act(async () => {
 			await setup.flush();
 		});
 		const frame = setup.captureCharFrame();
 		expect(frame).toContain("LAUNCH CONFIG");
-		expect(frame).not.toContain("Container Borders");
+		expect(frame).not.toContain("MODEL EXPLORER");
 	});
 
 	it("printables in a text field never trigger the console toggle", async () => {
@@ -185,8 +185,8 @@ describe("shell yields printables while typing (Phase 13)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		for (let i = 0; i < 9; i++) {
-			// down to the alias field (9)
+		for (let i = 0; i < 14; i++) {
+			// down to the alias field (14)
 			await act(async () => {
 				await setup.mockInput.pressKeys(["\x1b[B"]);
 			});
