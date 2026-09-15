@@ -228,6 +228,9 @@ export function createSession(opts: SessionOptions): Session {
 
 	async function shutdown(): Promise<void> {
 		await active?.kill();
+		// Issue #16: no misleading active reference after shutdown — consumers
+		// keying off `supervisor` must see pre-launch null, not a dead object.
+		active = null;
 		hooks.unregister();
 	}
 
