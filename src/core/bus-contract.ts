@@ -40,6 +40,7 @@ export type RescanIntent = Record<string, never>;
 export interface ModelsStateEvent {
 	entries: ModelEntry[];
 	scanning: boolean;
+	dir?: string | null;
 	error?: string;
 }
 
