@@ -20,7 +20,15 @@ type Bus = ReturnType<typeof createBus<IntentMap, StateMap>>;
  * emits MODELS_STATE/MODELS_DIR, and keeps an incremental watcher running
  * (P3-FR-11, P3-FR-17..19). All traffic flows over the typed bus (D5).
  */
-export function createModelsService(bus: Bus, paths: AppPaths): ModelsService {
+export interface ModelsServiceOptions {
+	defaultDir?: string;
+}
+
+export function createModelsService(
+	bus: Bus,
+	paths: AppPaths,
+	options?: ModelsServiceOptions,
+): ModelsService {
 	let watcher: { close(): void } | null = null;
 	let scanning = false;
 	let disposed = false;
@@ -68,6 +76,8 @@ export function createModelsService(bus: Bus, paths: AppPaths): ModelsService {
 				if (typeof seeded === "string" && existsSync(seeded)) {
 					currentDir = seeded;
 					saveConfig(paths.configDir, { ...config, modelsDir: seeded });
+				} else if (options?.defaultDir) {
+					currentDir = options.defaultDir;
 				}
 			}
 			bus.emitState("MODELS_DIR", { dir: currentDir });
@@ -76,7 +86,10 @@ export function createModelsService(bus: Bus, paths: AppPaths): ModelsService {
 				watch(currentDir);
 			}
 			bus.onIntent("SET_MODELS_DIR", ({ dir }) => {
-				saveConfig(paths.configDir, { modelsDir: dir });
+				saveConfig(paths.configDir, {
+					...loadConfig(paths.configDir),
+					modelsDir: dir,
+				});
 				currentDir = dir;
 				bus.emitState("MODELS_DIR", { dir: currentDir });
 				watch(dir);

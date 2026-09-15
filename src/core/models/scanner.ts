@@ -28,6 +28,8 @@ export interface ScanOptions {
 	stateDir?: string;
 	/** Worker pool size (P3-FR-18). Defaults to 4. */
 	concurrency?: number;
+	/** Maximum directory recursion depth (defaults to 3 layers). */
+	maxDepth?: number;
 }
 
 export const DEFAULT_CONCURRENCY = 4;
@@ -41,6 +43,7 @@ function walk(
 	out: WalkedFile[],
 	options: ScanOptions,
 	errors: string[],
+	depth = 0,
 ): void {
 	let dirEntries: ReturnType<typeof walkDirents>;
 	try {
@@ -52,11 +55,14 @@ function walk(
 		options.onError?.(dir, error);
 		return;
 	}
+	const maxDepth = options.maxDepth ?? 3;
 	for (const de of dirEntries) {
 		const path = join(dir, de.name);
 		if (de.isSymbolicLink() && !options.followSymlinks) continue;
 		if (de.isDirectory()) {
-			walk(path, out, options, errors);
+			if (depth < maxDepth) {
+				walk(path, out, options, errors, depth + 1);
+			}
 			continue;
 		}
 		if (!de.isFile() || !de.name.toLowerCase().endsWith(".gguf")) continue;

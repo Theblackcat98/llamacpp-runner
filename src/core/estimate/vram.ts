@@ -165,6 +165,12 @@ export function estimateVram(input: EstimateInput): VramEstimate {
 			message: "q4_0 KV is lossy and its real footprint is backend-dependent",
 		});
 	}
+	if (input.fileSize <= 0) {
+		limitations.push({
+			code: "missing-file-size",
+			message: "model missing — estimate unavailable",
+		});
+	}
 
 	return {
 		range: {
@@ -185,6 +191,7 @@ export function estimateFromModelInfo(
 	contextLength: number,
 ): VramEstimate | null {
 	if (
+		fileSize <= 0 ||
 		info.blockCount === undefined ||
 		info.headCount === undefined ||
 		info.headCountKv === undefined ||
