@@ -33,8 +33,8 @@ describe("action registry coverage (P5-FR-09)", () => {
 		);
 	});
 
-	it("has 15 actions: 5 themes + 6 singletons + 4 tabs", () => {
-		expect(ACTIONS.length).toBe(15);
+	it("has 16 actions: 5 themes + 7 singletons + 4 tabs (Issue #8)", () => {
+		expect(ACTIONS.length).toBe(16);
 	});
 
 	it("ships no orphan action until adopt lands (F4)", () => {
@@ -56,6 +56,7 @@ describe("action registry coverage (P5-FR-09)", () => {
 			toggleTelemetry: () => calls++,
 			goToTab: () => calls++,
 			clearLog: () => calls++,
+			autoFitNgl: () => calls++,
 		});
 		for (const a of spy) a.run();
 		expect(calls).toBe(spy.length);
@@ -76,7 +77,7 @@ describe("fuzzy filter", () => {
 	});
 
 	it("empty query returns all", () => {
-		expect(filterActions(ACTIONS, "").length).toBe(15);
+		expect(filterActions(ACTIONS, "").length).toBe(16);
 	});
 
 	it("no match -> empty", () => {

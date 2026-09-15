@@ -6,6 +6,7 @@ import type { IntentMap, StateMap } from "./core/bus-contract";
 import { DEFAULT_HOST, DEFAULT_PORT, LLAMA_SERVER_BIN } from "./core/constants";
 import { copyToClipboard } from "./core/export/clipboard";
 import { buildCommand } from "./core/flags/builder";
+import { getOrDetectHardware, type HardwareInfo } from "./core/hardware/detect";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
 import type { Supervisor } from "./core/process/supervisor";
@@ -31,6 +32,8 @@ import {
 	effectiveValues,
 	loadPresetInto,
 	previewLine,
+	setFlag,
+	solveAutoFitNgl,
 	vramRangeBytes,
 } from "./ui/logic/configurator-state";
 import {
@@ -126,6 +129,15 @@ export function SessionApp({
 	const [modelsDir, setModelsDir] = useState<string | null>(
 		() => initialState.configFile.modelsDir ?? null,
 	);
+	const [hardware, setHardware] = useState<HardwareInfo | null>(
+		() => initialState.configFile.hardware ?? null,
+	);
+
+	useEffect(() => {
+		void getOrDetectHardware(paths.configDir)
+			.then(setHardware)
+			.catch(() => {});
+	}, [paths.configDir]);
 	const [config, setConfig] = useState<ConfiguratorState>(() => {
 		const base = createConfigurator(null);
 		// lastSession restores the last preset into the configurator on boot
@@ -421,6 +433,18 @@ export function SessionApp({
 		});
 	}
 
+	function handleAutoFit(): void {
+		if (!config.model) return;
+		const res = solveAutoFitNgl(config, hardware?.vramBytes);
+		setConfig((s) => setFlag(s, "n_gpu_layers", res.ngl));
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: res.fits
+				? `[SYS] auto-fit solved ngl=${res.ngl}`
+				: `[SYS] auto-fit warning: ${res.message ?? "cannot fit in VRAM"}`,
+		});
+	}
+
 	return (
 		<App
 			theme={themeByName(themeName)}
@@ -475,6 +499,8 @@ export function SessionApp({
 			configuratorControl={{
 				state: config,
 				setState: (next) => setConfig(next),
+				hardware,
+				onAutoFit: handleAutoFit,
 			}}
 			presetsControl={{
 				file: presetsFile,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { REGISTRY } from "../../core/flags/registry";
+import type { HardwareInfo } from "../../core/hardware/detect";
 import { TuiBox } from "../components/box";
 import { Checkbox } from "../components/checkbox";
 import { ChipGroup } from "../components/chip-group";
@@ -16,6 +17,7 @@ import {
 	resetConfigurator,
 	setFlag,
 	vramRangeText,
+	willItFitVerdict,
 } from "../logic/configurator-state";
 import type { Theme } from "../themes";
 
@@ -24,9 +26,11 @@ const KV_OPTIONS: KvQuant[] = ["f16", "q8_0", "q4_0"];
 export interface ConfiguratorProps {
 	theme: Theme;
 	state: ConfiguratorState;
+	hardware?: HardwareInfo | null;
 	onChange?: (next: ConfiguratorState) => void;
 	focused?: boolean;
 	captureKeys?: boolean;
+	onAutoFit?: () => void;
 	/** Phase 13: reports the focused field index so the shell can yield global
 	 * printable keys (digits, o/k/q/…) while a text field owns typing. */
 	onActiveFieldChange?: (field: number) => void;
@@ -40,9 +44,11 @@ export interface ConfiguratorProps {
 export function Configurator({
 	theme,
 	state,
+	hardware,
 	onChange,
 	focused = false,
 	captureKeys = true,
+	onAutoFit,
 	onActiveFieldChange,
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
@@ -73,6 +79,10 @@ export function Configurator({
 			onChange?.(resetConfigurator(state));
 			return;
 		}
+		if (key.name === "a" && !isConfiguratorTextField(field)) {
+			onAutoFit?.();
+			return;
+		}
 		if (key.name === "up") {
 			setField((f) => (f + FIELD_COUNT - 1) % FIELD_COUNT);
 			return;
@@ -89,6 +99,13 @@ export function Configurator({
 	const ctx = numValue(state.values.ctx_size, CTX_CHIPS[0] ?? 4096);
 	const vram = vramRangeText(state);
 	const preview = previewLine(state);
+	const verdict = willItFitVerdict(state, hardware);
+	const verdictColor =
+		verdict.status === "fits"
+			? theme.success
+			: verdict.status === "no-fit"
+				? theme.error
+				: theme.warn;
 
 	return (
 		<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
@@ -242,7 +259,7 @@ export function Configurator({
 						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
 						{text("[Tab] cycle fields     [y] Yank cmd", theme.muted)}
-						{text("[i] Import shell cmd", theme.muted)}
+						{text("[a] Auto-fit ngl       [i] Import shell cmd", theme.muted)}
 					</box>
 				</TuiBox>
 			</box>
@@ -253,13 +270,16 @@ export function Configurator({
 						? "PREVIEW — RESTART REQUIRED"
 						: "QUICK LAUNCH COMMAND PREVIEW"
 				}
-				height={4}
+				height={5}
 			>
 				<text fg={state.restartRequired ? theme.warn : theme.success}>
 					{preview.length > 0
 						? ` $ ${preview}`
 						: " <select a model in the Explorer>"}
 				</text>
+				{verdict.text ? (
+					<text fg={verdictColor}>{` ${verdict.text}`}</text>
+				) : null}
 			</TuiBox>
 		</box>
 	);

@@ -33,6 +33,7 @@ const TAB_ROWS: Record<string, Row[]> = {
 		["[↑↓]", "move between fields"],
 		["[Ctrl+S]", "save preset"],
 		["[Esc]", "reset configurator"],
+		["[a]", "auto-fit GPU layers to VRAM"],
 		["[y]", "yank launch command"],
 		["[Ctrl+Y]", "confirm host-exposing launch"],
 		["[i]", "import shell command"],
