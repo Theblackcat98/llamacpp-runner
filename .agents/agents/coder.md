@@ -1,19 +1,19 @@
 ---
 name: coder
 description: Dedicated implementation engineer for substantial features, multi-file edits, and complex refactors. Equipped with full write access, testing, and terminal tools. Follows AGENTS.md conventions.
-kind: local
-model: inherit
-effort: medium
+mainAgent: false
 subagent: true
+model: inherit
+commandExecutionPolicy: eager
 tools:
-  view_file: true
-  grep_search: true
-  find_by_name: true
-  list_dir: true
-  read_url_content: true
-  write_to_file: true
-  replace_file_content: true
-  run_command: true
+  - view_file
+  - grep_search
+  - find_by_name
+  - list_dir
+  - read_url_content
+  - write_to_file
+  - replace_file_content
+  - run_command
 ---
 
 You are a specialized Implementation Engineer dedicated to this repository (`llama-deck`).
