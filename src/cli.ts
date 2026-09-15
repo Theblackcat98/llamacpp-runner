@@ -192,18 +192,27 @@ async function main(): Promise<void> {
 		const presetId = args[0];
 		if (!presetId) usage();
 		const { presetToPlan } = await import("./core/preset-launch");
+		// Exactly one managed instance (D4): refuse a second start while the
+		// pidfile points at a live server — same guard as the TUI path.
+		const inspection = await inspectOrphan(paths.pidFile);
+		if (inspection.status === "alive") {
+			console.error(
+				`A managed server is already running (pid=${inspection.record?.pid ?? "?"}). Stop it first: llama-deck kill`,
+			);
+			process.exit(1);
+		}
 		const preset = findPreset(presetId);
 		const availability = await runtimeAvailability(configuredBinary());
 		const plan = presetToPlan(preset, { availability });
-		const child = Bun.spawn([plan.command, ...plan.args], {
-			stdin: "inherit",
-			stdout: "inherit",
-			stderr: "inherit",
-			env: { ...process.env, ...plan.env },
+		// Shared Supervisor lifecycle (§6.2, Issue #13): pidfile ownership,
+		// SIGINT → wait ≤5 s → SIGKILL escalation, deterministic cleanup.
+		// No ad-hoc spawn — one process-lifecycle implementation.
+		const { runQuickSupervisor } = await import("./core/quick");
+		const code = await runQuickSupervisor(plan, {
+			pidFile: paths.pidFile,
+			onLog: (line) => console.log(line),
 		});
-		process.on("SIGINT", () => child.kill("SIGINT"));
-		await child.exited;
-		process.exit(child.exitCode ?? 0);
+		process.exit(code);
 	}
 
 	if (command === "quick") {
