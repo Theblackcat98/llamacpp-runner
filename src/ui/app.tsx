@@ -191,7 +191,7 @@ export function App({
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
 		setPort: () => setTab(1),
-		killServer: () => (onKillOrphan ? onKillOrphan() : onKill?.()),
+		killServer: () => (onKill ? onKill() : onKillOrphan?.()),
 		exportCommand: () => onYankCommand?.(),
 		rescanModels: () => explorerControl?.onRescan(),
 		toggleTelemetry: () =>
@@ -243,14 +243,13 @@ export function App({
 			setConfirm(result.state);
 			if (result.action === "execute") {
 				setConfirmNotice(null);
-				if (onKillOrphan) onKillOrphan();
-				else if (onKill) onKill();
+				if (onKill) onKill();
 			} else if (result.action === "confirm") {
 				setConfirmNotice(result.message ?? null);
 			}
 			return;
 		}
-		if (key.name === "k") {
+		if (key.name === "k" && !key.ctrl) {
 			const now = Date.now();
 			if (killArmedAt !== null && now - killArmedAt <= 2000) {
 				setKillArmedAt(null);
