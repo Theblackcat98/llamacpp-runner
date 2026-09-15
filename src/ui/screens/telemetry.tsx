@@ -116,8 +116,9 @@ export function Telemetry({
 							<text fg={theme.warn}>{` fix: ${vm.failureSuggestion}`}</text>
 						) : null}
 						<text fg={theme.muted}> last lines:</text>
-						{vm.errorTail.slice(-4).map((line) => (
-							<text key={line} fg={theme.fg}>
+						{vm.errorTail.slice(-4).map((line, idx) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: error tail lines may be identical
+							<text key={idx} fg={theme.fg}>
 								{` | ${line}`}
 							</text>
 						))}
