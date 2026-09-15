@@ -8,6 +8,9 @@ import { DEFAULT_THEME, TOKYO_NIGHT } from "../../src/ui/themes";
 const setups: { renderer: { destroy: () => void } }[] = [];
 afterEach(async () => {
 	for (const s of setups.splice(0)) {
+		(
+			globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }
+		).IS_REACT_ACT_ENVIRONMENT = true;
 		await act(async () => {
 			s.renderer.destroy();
 		});
