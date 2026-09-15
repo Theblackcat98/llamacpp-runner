@@ -83,10 +83,13 @@ export interface SessionAppProps {
 	setPlanSource?: (fn: () => LaunchPlan | null) => void;
 }
 
-let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
-let telemetryServiceSupervisor: Supervisor | null = null;
-let metricsPoller: MetricsPoller | null = null;
-let telemetryEndpoint = "";
+/**
+ * Stop handle for the telemetry set bound by the SessionApp effect below
+ * (Issue #16). Owned exclusively by that effect: assigned on bind, cleared
+ * on dispose. Consumed only by the process-quit path, which runs outside
+ * React and therefore cannot rely on effect cleanup ordering.
+ */
+let telemetryStopHandle: (() => void) | null = null;
 
 export function SessionApp({
 	bus: propsBus,
@@ -162,6 +165,9 @@ export function SessionApp({
 		() => initialState.presetStore ?? { version: 2, presets: [] },
 	);
 	const [telemetryEnabled, setTelemetryEnabled] = useState(true);
+	const [telemetryEndpoint, setTelemetryEndpoint] = useState("");
+	const metricsRef = useRef<MetricsPoller | null>(null);
+	const boundSupervisorRef = useRef<Supervisor | null>(null);
 	const [procStartedAtMs, setProcStartedAtMs] = useState<number | null>(null);
 	const [failure, setFailure] = useState<{
 		summary: string;
@@ -304,6 +310,55 @@ export function SessionApp({
 		};
 	}, []);
 
+	// Telemetry follows the managed server lifecycle — never React render
+	// (Issue #16). Exactly one poller set is bound while a server instance
+	// is active; it is disposed on exit/kill/swap or when telemetry is
+	// toggled off. PROC_STATE transitions drive the effect: React re-runs
+	// the previous cleanup before each re-run, so STARTING→LOADING→READY
+	// churn keeps the single binding while the transition to IDLE/FAILED
+	// (or a supervisor swap) disposes it promptly.
+	useEffect(() => {
+		const supervisor = session.supervisor;
+		if (
+			!telemetryEnabled ||
+			procState === "IDLE" ||
+			procState === "FAILED" ||
+			supervisor === null ||
+			boundSupervisorRef.current === supervisor
+		) {
+			return;
+		}
+		// The session has no supervisor until the first launch resolves a
+		// plan (boot uses resolveLaunch only), and every LAUNCH swaps in a
+		// fresh supervisor instance — so bind lazily and rebind on swap.
+		// Pollers bind to the launch plan's supervisor endpoint at spawn
+		// time rather than tracking live configurator edits.
+		const endpoint = `http://${supervisor.host ?? DEFAULT_HOST}:${supervisor.port ?? DEFAULT_PORT}`;
+		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
+		const service = createTelemetryService({
+			supervisor,
+			health: new HealthPoller({ url: `${endpoint}/health` }),
+			metrics,
+			slots: new SlotsPoller({ url: `${endpoint}/slots` }),
+		});
+		service.onSnapshot((snapshot) =>
+			bus.emitState("TELEMETRY_STATE", snapshot),
+		);
+		boundSupervisorRef.current = supervisor;
+		metricsRef.current = metrics;
+		setTelemetryEndpoint(endpoint);
+		service.start();
+		const stopHandle = () => service.stop();
+		telemetryStopHandle = stopHandle;
+		return () => {
+			service.stop();
+			if (telemetryStopHandle === stopHandle) telemetryStopHandle = null;
+			if (boundSupervisorRef.current === supervisor)
+				boundSupervisorRef.current = null;
+			if (metricsRef.current === metrics) metricsRef.current = null;
+		};
+	}, [bus, procState, session, telemetryEnabled]);
+
 	function selectedEntry(): ModelEntry | undefined {
 		return entries[Math.min(selectedIndex, Math.max(entries.length - 1, 0))];
 	}
@@ -360,38 +415,6 @@ export function SessionApp({
 		setPlanSource(buildPlan);
 	} else {
 		planSource = buildPlan;
-	}
-	// The session has no supervisor until the first launch resolves a plan
-	// (boot uses resolveLaunch only), and every LAUNCH swaps in a fresh
-	// supervisor instance — so bind lazily and rebind on swap instead of
-	// assuming a supervisor exists during the first render. Pollers bind to
-	// the launch plan's supervisor endpoint at spawn time rather than tracking
-	// live configurator edits against a dead endpoint.
-	const currentSupervisor = session.supervisor;
-	if (telemetryService && telemetryServiceSupervisor !== currentSupervisor) {
-		telemetryService.stop();
-		telemetryService = null;
-		telemetryServiceSupervisor = null;
-		metricsPoller = null;
-		telemetryEndpoint = "";
-	}
-	if (!telemetryService && telemetryEnabled && currentSupervisor) {
-		const endpoint = `http://${currentSupervisor.host ?? DEFAULT_HOST}:${currentSupervisor.port ?? DEFAULT_PORT}`;
-		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
-		const service = createTelemetryService({
-			supervisor: currentSupervisor,
-			health: new HealthPoller({ url: `${endpoint}/health` }),
-			metrics,
-			slots: new SlotsPoller({ url: `${endpoint}/slots` }),
-		});
-		service.onSnapshot((snapshot) =>
-			bus.emitState("TELEMETRY_STATE", snapshot),
-		);
-		telemetryService = service;
-		telemetryServiceSupervisor = currentSupervisor;
-		metricsPoller = metrics;
-		telemetryEndpoint = endpoint;
-		service.start();
 	}
 
 	function handleLaunch(): void {
@@ -535,8 +558,8 @@ export function SessionApp({
 					vramEstimatedBytes: vramRangeBytes(config),
 					memUsedBytes: telemetry.metrics?.memUsedBytes ?? null,
 					kvUsageRatio: telemetry.metrics?.kvUsageRatio ?? null,
-					promptHistory: metricsPoller?.promptHistory.snapshot() ?? [],
-					decodeHistory: metricsPoller?.decodeHistory.snapshot() ?? [],
+					promptHistory: metricsRef.current?.promptHistory.snapshot() ?? [],
+					decodeHistory: metricsRef.current?.decodeHistory.snapshot() ?? [],
 					slots: telemetry.slots,
 					failure,
 					tailLines,
@@ -561,15 +584,9 @@ export function SessionApp({
 			paletteControl={{
 				switchTheme,
 				toggleTelemetry: () => {
-					setTelemetryEnabled((enabled) => {
-						if (enabled) {
-							telemetryService?.stop();
-							telemetryService = null;
-							telemetryServiceSupervisor = null;
-							metricsPoller = null;
-						}
-						return !enabled;
-					});
+					// The telemetry effect binds/disposes on this flag — no
+					// direct service handling here (Issue #16).
+					setTelemetryEnabled((enabled) => !enabled);
 				},
 			}}
 			serverRunning={procState !== "IDLE"}
@@ -585,7 +602,7 @@ if (import.meta.main) {
 		<SessionApp
 			onQuit={() => {
 				defaultModelsService.dispose();
-				telemetryService?.stop();
+				telemetryStopHandle?.();
 				void defaultSession.shutdown().then(() => renderer.destroy());
 			}}
 		/>,
