@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import type { createBus } from "../bus";
 import type { IntentMap, StateMap } from "../bus-contract";
-import { loadConfig, saveConfig } from "../store/config";
+import { expandPath, loadConfig, saveConfig } from "../store/config";
 import { loadPresets, presetsFilePath } from "../store/presets";
 import type { AppPaths } from "../store/state-paths";
 import { scanModels } from "./scanner";
@@ -94,9 +94,17 @@ export function createModelsService(
 				// Persisted into config.json so scanner ownership stays there.
 				const seeded = loadPresets(presetsFilePath(paths.configDir)).data
 					?.default_model_dir;
-				if (typeof seeded === "string" && existsSync(seeded)) {
-					currentDir = seeded;
-					saveConfig(paths.configDir, { ...config, modelsDir: seeded });
+				if (typeof seeded === "string") {
+					const expandedSeeded = expandPath(seeded);
+					if (existsSync(expandedSeeded)) {
+						currentDir = expandedSeeded;
+						saveConfig(paths.configDir, {
+							...config,
+							modelsDir: expandedSeeded,
+						});
+					} else if (options?.defaultDir) {
+						currentDir = options.defaultDir;
+					}
 				} else if (options?.defaultDir) {
 					currentDir = options.defaultDir;
 				}
@@ -107,14 +115,15 @@ export function createModelsService(
 				watch(currentDir);
 			}
 			bus.onIntent("SET_MODELS_DIR", ({ dir }) => {
+				const resolvedDir = expandPath(dir);
 				saveConfig(paths.configDir, {
 					...loadConfig(paths.configDir),
-					modelsDir: dir,
+					modelsDir: resolvedDir,
 				});
-				currentDir = dir;
+				currentDir = resolvedDir;
 				bus.emitState("MODELS_DIR", { dir: currentDir });
-				watch(dir);
-				void scan(dir);
+				watch(resolvedDir);
+				void scan(resolvedDir);
 			});
 			bus.onIntent("RESCAN", () => {
 				if (!currentDir) return;

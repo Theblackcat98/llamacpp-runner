@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBus } from "../src/core/bus";
 import type { IntentMap, StateMap } from "../src/core/bus-contract";
@@ -12,7 +12,7 @@ const DIRS: string[] = [];
 
 afterEach(() => {
 	for (const dir of DIRS.splice(0)) {
-		Bun.spawnSync(["rm", "-rf", dir]);
+		rmSync(dir, { recursive: true, force: true });
 	}
 });
 
@@ -84,7 +84,11 @@ describe("models service over the bus (P3-FR-17/19)", () => {
 	});
 });
 
-const SEED_TMP = new URL("./.tmp/models-service/", import.meta.url).pathname;
+import { fileURLToPath } from "node:url";
+
+const SEED_TMP = fileURLToPath(
+	new URL("./.tmp/models-service/", import.meta.url),
+);
 
 function seedPaths(tag: string) {
 	const stateDir = join(SEED_TMP, tag, "state");
@@ -170,6 +174,27 @@ describe("models service first-run seeding (F10, §7)", () => {
 		const svc = createModelsService(bus, paths);
 		svc.boot();
 		expect(dirs).toEqual([null]);
+		svc.dispose();
+	});
+
+	it("expands ~ in SET_MODELS_DIR intent before saving and scanning (Issue #28)", async () => {
+		const paths = seedPaths("tilde-intent");
+		const bus = createBus<IntentMap, StateMap>();
+		const dirs: (string | null)[] = [];
+		bus.onState("MODELS_DIR", (e) => dirs.push(e.dir));
+		const svc = createModelsService(bus, paths);
+		svc.boot();
+
+		bus.emitIntent("SET_MODELS_DIR", { dir: "~/models/llm" });
+		await new Promise((r) => setTimeout(r, 50));
+
+		const expected = join(homedir(), "models/llm");
+		expect(dirs).toContain(expected);
+
+		const saved = JSON.parse(
+			readFileSync(join(paths.configDir, "config.json"), "utf8"),
+		) as { modelsDir?: string };
+		expect(saved.modelsDir).toBe(expected);
 		svc.dispose();
 	});
 });

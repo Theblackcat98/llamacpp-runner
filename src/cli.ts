@@ -6,7 +6,7 @@ import { scanModels } from "./core/models/scanner";
 import type { ModelEntry } from "./core/models/types";
 import { type ExportFormat, exportPreset } from "./core/preset-launch";
 import { inspectOrphan, killOrphan } from "./core/process/orphan";
-import { loadConfig } from "./core/store/config";
+import { expandPath, loadConfig } from "./core/store/config";
 import { clearPidFile } from "./core/store/pidfile";
 import {
 	loadPresets,
@@ -61,7 +61,7 @@ function findPresetById(
 }
 
 function resolveDirs(args: string[]): string[] {
-	if (args.length > 0) return args;
+	if (args.length > 0) return args.map(expandPath);
 	const paths = resolvePaths();
 	const modelsDir = loadConfig(paths.configDir).modelsDir;
 	if (!modelsDir) {
@@ -70,7 +70,7 @@ function resolveDirs(args: string[]): string[] {
 		);
 		process.exit(1);
 	}
-	return [modelsDir];
+	return [expandPath(modelsDir)];
 }
 
 async function main(): Promise<void> {
@@ -219,14 +219,15 @@ async function main(): Promise<void> {
 				(_, i) => i !== binaryIdx && i !== binaryIdx + 1,
 			);
 		}
-		const modelPath = modelArgs[0];
-		if (!modelPath) {
+		const rawModelPath = modelArgs[0];
+		if (!rawModelPath) {
 			console.error(
 				"Missing model file. Usage: llama-deck quick <model.gguf> [--run] [--json]",
 			);
 			process.exit(1);
 		}
 
+		const modelPath = expandPath(rawModelPath);
 		if (!existsSync(modelPath)) {
 			console.error(`Model file not found: ${modelPath}`);
 			process.exit(1);

@@ -7,7 +7,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 export interface AtomicWriteOptions {
 	durable?: boolean;
@@ -19,7 +19,7 @@ export interface AtomicWriteOptions {
 function tempPath(target: string): string {
 	return join(
 		dirname(target),
-		`.${target.split("/").pop() ?? "file"}.tmp-${process.pid}-${crypto.randomUUID()}`,
+		`.${basename(target) || "file"}.tmp-${process.pid}-${crypto.randomUUID()}`,
 	);
 }
 
