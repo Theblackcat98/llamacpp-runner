@@ -12,6 +12,7 @@ Development rules for llama-deck. Spec of record: `plans/llamamanager.md` â€” `Â
 ## User preferences
 
 - Scratch/temp files go in the project's `.tmp/` folder, never `/tmp/*`.
+- RULE FOR GEMINI MODELS: When reading/analyzing files, instead of reading 10-20 lines at a time, increase to 100-200 lines at a time. Don't be afraid to read the whole file, or even multiple files. We have a generous context window, so use it. Multiple tool calls hurt more than one big tool call.
 
 ## Hard rules (violations fail CI, not review)
 

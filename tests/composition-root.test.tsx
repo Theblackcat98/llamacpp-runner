@@ -5,7 +5,7 @@ import { act } from "react";
 import { createBus } from "../src/core/bus";
 import type { IntentMap, StateMap } from "../src/core/bus-contract";
 import { createModelsService } from "../src/core/models/service";
-import { createSession } from "../src/core/session";
+import { createSession, type LaunchPlan } from "../src/core/session";
 import { saveConfig } from "../src/core/store/config";
 import { resolvePaths } from "../src/core/store/state-paths";
 import { SessionApp } from "../src/main";
@@ -86,4 +86,70 @@ describe("composition root E2E (Issue #25)", () => {
 		modelsService.dispose();
 		await teardownWithAct(setup);
 	});
+
+	it("preserves selected model and custom configured values across RESCAN and MODELS_STATE (Issue #29)", async () => {
+		scratch = createScratchDir();
+		const configDir = join(scratch, "config", "llama-deck");
+		const modelsDir = join(scratch, "models");
+		mkdirSync(configDir, { recursive: true });
+		mkdirSync(modelsDir, { recursive: true });
+
+		writeFixture(modelsDir, "alpha-model.gguf", sampleLlamaQ4Km().buffer);
+		writeFixture(modelsDir, "beta-model.gguf", sampleLlamaQ4Km().buffer);
+		saveConfig(configDir, { modelsDir });
+
+		const bus = createBus<IntentMap, StateMap>();
+		const paths = resolvePaths({
+			XDG_CONFIG_HOME: join(scratch, "config"),
+			XDG_STATE_HOME: join(scratch, "state"),
+		});
+
+		const session = createSession({ paths, bus });
+		await session.boot();
+
+		const modelsService = createModelsService(bus, paths, {
+			defaultDir: modelsDir,
+		});
+		modelsService.boot();
+
+		let currentPlanSource: { current?: () => LaunchPlan | null } = {};
+		const setup = await renderWithAct(
+			<SessionApp
+				bus={bus}
+				paths={paths}
+				session={session}
+				modelsService={modelsService}
+				setPlanSource={(fn) => {
+					currentPlanSource.current = fn;
+				}}
+			/>,
+			{ width: 120, height: 30 },
+		);
+
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			await setup.flush();
+		});
+
+		// Verify initial auto-selection or plan
+		let plan = currentPlanSource.current?.();
+		expect(plan).not.toBeNull();
+		expect(plan?.command).toBeDefined();
+
+		// Trigger rescan via RESCAN intent
+		await act(async () => {
+			bus.emitIntent("RESCAN", {});
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			await setup.flush();
+		});
+
+		// Check plan again
+		plan = currentPlanSource.current?.();
+		expect(plan).not.toBeNull();
+		expect(plan?.presetId).toBe("ad-hoc");
+
+		modelsService.dispose();
+		await teardownWithAct(setup);
+	});
 });
+
