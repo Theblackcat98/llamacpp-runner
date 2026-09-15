@@ -5,6 +5,7 @@ import { loadConfig, saveConfig } from "../store/config";
 import { loadPresets, presetsFilePath } from "../store/presets";
 import type { AppPaths } from "../store/state-paths";
 import { scanModels } from "./scanner";
+import type { ModelEntry } from "./types";
 import { createModelWatcher } from "./watcher";
 
 export interface ModelsService {
@@ -33,24 +34,44 @@ export function createModelsService(
 	let scanning = false;
 	let disposed = false;
 	let currentDir: string | null = null;
+	let lastEntries: ModelEntry[] = [];
+	let lastError: string | undefined;
 
 	async function scan(dir: string): Promise<void> {
-		if (scanning || disposed) return;
+		if (disposed) return;
+		if (scanning) {
+			bus.emitState("MODELS_STATE", {
+				dir: currentDir,
+				entries: lastEntries,
+				scanning: true,
+				error: lastError,
+			});
+			return;
+		}
 		scanning = true;
-		bus.emitState("MODELS_STATE", { entries: [], scanning: true });
+		bus.emitState("MODELS_STATE", {
+			dir: currentDir,
+			entries: lastEntries,
+			scanning: true,
+		});
 		try {
 			const result = await scanModels([dir], { stateDir: paths.stateDir });
 			if (disposed) return;
+			lastEntries = result.entries;
+			lastError = undefined;
 			bus.emitState("MODELS_STATE", {
+				dir: currentDir,
 				entries: result.entries,
 				scanning: false,
 			});
 		} catch (err) {
 			if (disposed) return;
+			lastError = err instanceof Error ? err.message : String(err);
 			bus.emitState("MODELS_STATE", {
+				dir: currentDir,
 				entries: [],
 				scanning: false,
-				error: err instanceof Error ? err.message : String(err),
+				error: lastError,
 			});
 		} finally {
 			scanning = false;
@@ -97,6 +118,7 @@ export function createModelsService(
 			});
 			bus.onIntent("RESCAN", () => {
 				if (!currentDir) return;
+				bus.emitState("MODELS_DIR", { dir: currentDir });
 				void scan(currentDir);
 			});
 		},

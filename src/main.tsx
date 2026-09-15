@@ -17,7 +17,7 @@ import {
 	presetsFilePath,
 	savePresets,
 } from "./core/store/presets";
-import { resolvePaths } from "./core/store/state-paths";
+import { type AppPaths, resolvePaths } from "./core/store/state-paths";
 import { HealthPoller } from "./core/telemetry/health";
 import { MetricsPoller } from "./core/telemetry/metrics";
 import { createTelemetryService } from "./core/telemetry/service";
@@ -56,45 +56,46 @@ function clampTab(tab: unknown): number {
 		: 0;
 }
 
-const bus = createBus<IntentMap, StateMap>();
-const paths = resolvePaths();
+const defaultBus = createBus<IntentMap, StateMap>();
+const defaultPaths = resolvePaths();
 
-/**
- * Set by SessionApp on every render; resolves the launch plan from the live
- * configurator values so the spawned argv matches the preview byte-for-byte
- * (P4-FR-03/06, EXIT criterion).
- */
 let planSource: (() => LaunchPlan | null) | null = null;
 
-const session = createSession({
-	paths,
-	bus,
+const defaultSession = createSession({
+	paths: defaultPaths,
+	bus: defaultBus,
 	resolveLaunch: () => planSource?.() ?? null,
 });
 
-await session.boot();
-const modelsService = createModelsService(bus, paths, {
+const defaultModelsService = createModelsService(defaultBus, defaultPaths, {
 	defaultDir: process.cwd(),
 });
-modelsService.boot();
+
+export interface SessionAppProps {
+	bus?: ReturnType<typeof createBus<IntentMap, StateMap>>;
+	paths?: AppPaths;
+	session?: ReturnType<typeof createSession>;
+	modelsService?: ReturnType<typeof createModelsService>;
+	onQuit?: () => void;
+	setPlanSource?: (fn: () => LaunchPlan | null) => void;
+}
 
 let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
 let telemetryServiceSupervisor: Supervisor | null = null;
 let metricsPoller: MetricsPoller | null = null;
 let telemetryEndpoint = "";
 
-const renderer = await createCliRenderer();
-createRoot(renderer).render(
-	<SessionApp
-		onQuit={() => {
-			modelsService.dispose();
-			telemetryService?.stop();
-			void session.shutdown().then(() => renderer.destroy());
-		}}
-	/>,
-);
+export function SessionApp({
+	bus: propsBus,
+	paths: propsPaths,
+	session: propsSession,
+	onQuit = () => {},
+	setPlanSource,
+}: SessionAppProps = {}) {
+	const bus = propsBus ?? defaultBus;
+	const paths = propsPaths ?? defaultPaths;
+	const session = propsSession ?? defaultSession;
 
-function SessionApp({ onQuit }: { onQuit: () => void }) {
 	const [drawer, setDrawer] = useState<DrawerState>(() =>
 		createDrawerState(DRAWER_HEIGHT),
 	);
@@ -112,7 +113,6 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 	const [entries, setEntries] = useState<ModelEntry[]>([]);
 	const [scanning, setScanning] = useState(false);
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
-	const [modelsDir, setModelsDir] = useState<string | null>(null);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [initialState] = useState(() => {
 		const configFile = loadConfig(paths.configDir);
@@ -123,6 +123,9 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			: undefined;
 		return { configFile, presetStore: presetStore.data, last, preset };
 	});
+	const [modelsDir, setModelsDir] = useState<string | null>(
+		() => initialState.configFile.modelsDir ?? null,
+	);
 	const [config, setConfig] = useState<ConfiguratorState>(() => {
 		const base = createConfigurator(null);
 		// lastSession restores the last preset into the configurator on boot
@@ -160,7 +163,10 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				text: `[SYS] presets loaded: ${store.data.presets.length}`,
 			});
 		}
-	}, []);
+		// Boot-sync: trigger rescan on mount so if modelsService.boot() completed
+		// before React mounted, we synchronize state immediately (Issue #25).
+		bus.emitIntent("RESCAN", {});
+	}, [bus, paths.configDir]);
 
 	function persistPresets(next: PresetFile): void {
 		setPresetsFile(next);
@@ -170,6 +176,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		});
 	}
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: event subscriptions are bound on mount
 	useEffect(() => {
 		const offLog = bus.onState("LOG_LINE", (event) => {
 			setDrawer((s) =>
@@ -205,6 +212,9 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			setEntries(event.entries);
 			setScanning(event.scanning);
 			setScanError(event.error);
+			if (event.dir !== undefined && event.dir !== null) {
+				setModelsDir(event.dir);
+			}
 		});
 		const offDir = bus.onState("MODELS_DIR", (event) => {
 			setModelsDir(event.dir);
@@ -288,7 +298,11 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 					: DEFAULT_HOST,
 		};
 	}
-	planSource = buildPlan;
+	if (setPlanSource) {
+		setPlanSource(buildPlan);
+	} else {
+		planSource = buildPlan;
+	}
 	// The session has no supervisor until the first launch resolves a plan
 	// (boot uses resolveLaunch only), and every LAUNCH swaps in a fresh
 	// supervisor instance — so bind lazily and rebind on swap instead of
@@ -488,5 +502,20 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			}}
 			serverRunning={procState !== "IDLE"}
 		/>
+	);
+}
+
+if (import.meta.main) {
+	await defaultSession.boot();
+	defaultModelsService.boot();
+	const renderer = await createCliRenderer();
+	createRoot(renderer).render(
+		<SessionApp
+			onQuit={() => {
+				defaultModelsService.dispose();
+				telemetryService?.stop();
+				void defaultSession.shutdown().then(() => renderer.destroy());
+			}}
+		/>,
 	);
 }
