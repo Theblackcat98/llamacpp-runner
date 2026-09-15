@@ -100,6 +100,7 @@ export function createSession(opts: SessionOptions): Session {
 				detail: event.detail,
 				exitCode: event.exitCode,
 				tail: event.tail,
+				startedAtMs: event.startedAtMs ?? supervisor.startedAtMs,
 			});
 			if (event.state === "FAILED") {
 				const classified = classifyFailure(
@@ -220,7 +221,7 @@ export function createSession(opts: SessionOptions): Session {
 			foundOrphanPid = inspection.record.pid;
 			bus.emitState("ORPHAN_FOUND", { ...inspection.record });
 			sysLog(
-				`orphaned llama-server pid=${inspection.record.pid} port=${inspection.record.port ?? "?"} — press K to kill`,
+				`orphaned llama-server pid=${inspection.record.pid} port=${inspection.record.port ?? "?"} — press k to kill`,
 			);
 		}
 	}

@@ -14,6 +14,7 @@ export interface ProcStateEvent {
 	detail?: string;
 	exitCode?: number;
 	tail?: string[];
+	startedAtMs?: number | null;
 }
 
 export interface LogLineEvent {
