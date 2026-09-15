@@ -1,0 +1,20 @@
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+      ┌─IMPORT SHELL COMMAND─────────────────────────────────────────────────┐                      
+      │ Paste a llama-server command (HF model card or export):              │                      
+      │ cmd llama-server -m                                                  │                      
+      │ model.gguf -c 4096...                                                │                      
+      │ INS                                                                  │                      
+      │                                                                      │                      
+      │ Awaiting input...                                                    │                      
+      │                                                                      │                      
+      │ [Esc] Cancel                                                         │                      
+      │                                                                      │                      
+      │                                                                      │                      
+      └──────────────────────────────────────────────────────────────────────┘                      
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    

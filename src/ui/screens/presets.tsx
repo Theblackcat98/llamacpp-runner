@@ -107,7 +107,7 @@ export function PresetsScreen({
 				<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 					<text fg={theme.muted}>
 						{
-							" [c] Clone   [d] Delete   [Enter] Set Default   [l] Load into Configurator"
+							" [c] Clone   [d] Delete   [Enter] Set Default   [l] Load into Configurator   [i] Import"
 						}
 					</text>
 					{text(

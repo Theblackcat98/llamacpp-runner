@@ -242,6 +242,7 @@ export function Configurator({
 						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
 						{text("[Tab] cycle fields     [y] Yank cmd", theme.muted)}
+						{text("[i] Import shell cmd", theme.muted)}
 					</box>
 				</TuiBox>
 			</box>

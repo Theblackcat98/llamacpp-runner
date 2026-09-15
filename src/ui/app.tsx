@@ -13,6 +13,7 @@ import {
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
 import { HelpOverlay } from "./components/help-overlay";
+import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
 import { CONFIGURATOR_TAB, DRAWER_HEIGHT, PRESETS_TAB } from "./constants";
@@ -20,7 +21,11 @@ import {
 	buildDefaultActions,
 	type PaletteHandlers,
 } from "./logic/action-registry";
-import type { ConfiguratorState } from "./logic/configurator-state";
+import {
+	type ConfiguratorState,
+	clampContext,
+	loadPresetInto,
+} from "./logic/configurator-state";
 import {
 	createDrawerState,
 	type DrawerState,
@@ -179,6 +184,7 @@ export function App({
 	const [palette, setPalette] = useState<CmdPaletteState>(createPaletteState);
 	// F15: `?` legend over the tab-conditional bindings.
 	const [helpOpen, setHelpOpen] = useState(false);
+	const [importOpen, setImportOpen] = useState(false);
 	const [confirm, setConfirm] = useState<QuitState>(createQuitState);
 	const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
 	// F8: killing the orphan is destructive — k arms, k again within 2 s
@@ -204,6 +210,9 @@ export function App({
 	});
 
 	useKeyboard((key: KeyRef) => {
+		if (importOpen) {
+			return;
+		}
 		if ((key.ctrl && key.name === "p") || palette.open) {
 			setPalette((prev) => applyPaletteKey(prev, paletteActions, key));
 			return;
@@ -284,6 +293,14 @@ export function App({
 		}
 		if (key.name === "y" && !key.ctrl && tab === 1 && onYankCommand) {
 			onYankCommand();
+			return;
+		}
+		if (
+			key.name === "i" &&
+			!key.ctrl &&
+			(tab === CONFIGURATOR_TAB || tab === PRESETS_TAB)
+		) {
+			setImportOpen(true);
 			return;
 		}
 		if (key.ctrl && key.name === "y" && onConfirmHost) {
@@ -410,7 +427,7 @@ export function App({
 						state={configuratorControl.state}
 						onChange={configuratorControl.setState}
 						focused
-						captureKeys={focusPane !== 3}
+						captureKeys={focusPane !== 3 && !importOpen}
 						onActiveFieldChange={(f) => {
 							activeConfiguratorField.current = f;
 						}}
@@ -457,7 +474,7 @@ export function App({
 						onRelink={presetsControl.onRelink}
 						relinkTarget={relinkTarget}
 						focused
-						captureKeys={focusPane !== 3}
+						captureKeys={focusPane !== 3 && !importOpen}
 					/>
 				) : (
 					<text
@@ -477,6 +494,26 @@ export function App({
 				theme={theme}
 				open={helpOpen}
 				tabName={TAB_LABELS[tab] ?? ""}
+			/>
+			<ImportModal
+				theme={theme}
+				open={importOpen}
+				onClose={() => setImportOpen(false)}
+				onImport={(parsed) => {
+					if (configuratorControl) {
+						configuratorControl.setState(
+							clampContext(
+								loadPresetInto(
+									configuratorControl.state,
+									parsed.values,
+									parsed.modelPath || undefined,
+								),
+							),
+						);
+					}
+					setTab(CONFIGURATOR_TAB);
+					setImportOpen(false);
+				}}
 			/>
 			<box
 				style={{
