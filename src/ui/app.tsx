@@ -81,7 +81,6 @@ export interface ExplorerControl {
 	selectedIndex?: number;
 	onSelectIndex?: (index: number) => void;
 	onRescan: () => void;
-	onUseDefaultDir: (dir: string) => void;
 	onSetModelsDir?: (dir: string) => void;
 }
 
@@ -416,7 +415,6 @@ export function App({
 						selectedIndex={explorerControl.selectedIndex}
 						onSelectIndex={explorerControl.onSelectIndex}
 						onSetModelsDir={explorerControl.onSetModelsDir}
-						onUseDefaultDir={explorerControl.onUseDefaultDir}
 						onEditingChange={setExplorerEditing}
 					/>
 				) : tab === 1 && configuratorControl ? (

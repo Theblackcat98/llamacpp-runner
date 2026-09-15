@@ -26,7 +26,6 @@ const GLOBAL_ROWS: Row[] = [
 const TAB_ROWS: Record<string, Row[]> = {
 	"Model Explorer": [
 		["[m]", "set / change models directory"],
-		["[s]", "use ~/models/llm (first run)"],
 		["[r]", "rescan models directory"],
 		["[↑↓]", "select model"],
 	],

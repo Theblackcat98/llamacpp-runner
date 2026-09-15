@@ -251,7 +251,6 @@ describe("preset re-link (F3, P4-FR-18)", () => {
 					modelsDir: "/models/llm",
 					selectedIndex: 0,
 					onRescan: () => {},
-					onUseDefaultDir: () => {},
 				}}
 				presetsControl={{
 					file: BROKEN_FILE,

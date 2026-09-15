@@ -27,7 +27,7 @@ describe("models directory onboarding hints (phase3/models-dir-onboarding)", () 
 		});
 	});
 
-	it("pressing s with no dir set emits exactly one dir-set callback", async () => {
+	it("pressing s with no dir set does nothing (no default-dir shortcut)", async () => {
 		let calls = 0;
 		const setup = await testRender(
 			<Explorer
@@ -35,9 +35,6 @@ describe("models directory onboarding hints (phase3/models-dir-onboarding)", () 
 				entries={[]}
 				modelsDir={null}
 				onSetModelsDir={() => {
-					calls++;
-				}}
-				onUseDefaultDir={() => {
 					calls++;
 				}}
 				captureKeys={true}
@@ -53,7 +50,7 @@ describe("models directory onboarding hints (phase3/models-dir-onboarding)", () 
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(calls).toBe(1);
+		expect(calls).toBe(0);
 		await act(async () => {
 			setup.renderer.destroy();
 		});

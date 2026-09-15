@@ -70,7 +70,11 @@ const defaultSession = createSession({
 	resolveLaunch: () => planSource?.() ?? null,
 });
 
-const defaultModelsService = createModelsService(defaultBus, defaultPaths);
+const defaultModelsService = createModelsService(defaultBus, defaultPaths, {
+	// Default scan root is the launch folder; the user can point elsewhere
+	// at any time with [m] (persisted to config.json via SET_MODELS_DIR).
+	defaultDir: process.cwd(),
+});
 
 export interface SessionAppProps {
 	bus?: ReturnType<typeof createBus<IntentMap, StateMap>>;
@@ -534,8 +538,6 @@ export function SessionApp({
 				selectedIndex,
 				onSelectIndex: selectModel,
 				onRescan: () => bus.emitIntent("RESCAN", {}),
-				onUseDefaultDir: (dir: string) =>
-					bus.emitIntent("SET_MODELS_DIR", { dir }),
 				onSetModelsDir: (dir: string) =>
 					bus.emitIntent("SET_MODELS_DIR", { dir }),
 			}}
