@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { atomicWrite } from "./atomic";
 
@@ -9,6 +10,18 @@ export interface AppConfig {
 	theme?: string;
 	/** Cached hardware probe result (Issue #7). */
 	hardware?: import("../hardware/detect").HardwareInfo;
+}
+
+/**
+ * Expands leading `~` or `~/` / `~\` in paths to user's home directory.
+ * Preserves paths that do not start with `~` or `~/` / `~\`.
+ */
+export function expandPath(inputPath: string): string {
+	if (inputPath === "~") return homedir();
+	if (inputPath.startsWith("~/") || inputPath.startsWith("~\\")) {
+		return join(homedir(), inputPath.slice(2));
+	}
+	return inputPath;
 }
 
 export function configFilePath(configDir: string): string {
@@ -30,8 +43,13 @@ export function loadConfig(configDir: string): AppConfig {
 			const hardwareOk =
 				r.hardware === undefined ||
 				(typeof r.hardware === "object" && r.hardware !== null);
-			if (modelsDirOk && themeOk && binaryPathOk && hardwareOk)
-				return raw as AppConfig;
+			if (modelsDirOk && themeOk && binaryPathOk && hardwareOk) {
+				const cfg = raw as AppConfig;
+				if (cfg.modelsDir) {
+					cfg.modelsDir = expandPath(cfg.modelsDir);
+				}
+				return cfg;
+			}
 		}
 	} catch {
 		// first run -> empty config (§7)
@@ -41,5 +59,9 @@ export function loadConfig(configDir: string): AppConfig {
 
 export function saveConfig(configDir: string, config: AppConfig): void {
 	mkdirSync(configDir, { recursive: true });
-	atomicWrite(configFilePath(configDir), JSON.stringify(config, null, "\t"));
+	const toSave: AppConfig = { ...config };
+	if (toSave.modelsDir) {
+		toSave.modelsDir = expandPath(toSave.modelsDir);
+	}
+	atomicWrite(configFilePath(configDir), JSON.stringify(toSave, null, "\t"));
 }
