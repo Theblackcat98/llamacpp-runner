@@ -143,6 +143,12 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		() => initialState.presetStore ?? { version: 2, presets: [] },
 	);
 	const [telemetryEnabled, setTelemetryEnabled] = useState(true);
+	const [procStartedAtMs, setProcStartedAtMs] = useState<number | null>(null);
+	const [failure, setFailure] = useState<{
+		summary: string;
+		suggestion?: string;
+	} | null>(null);
+	const [tailLines, setTailLines] = useState<string[]>([]);
 
 	useEffect(() => {
 		const store = loadPresets(presetsFilePath(paths.configDir));
@@ -170,7 +176,25 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		});
 		const offProc = bus.onState("PROC_STATE", (event) => {
 			setProcState(event.state);
+			if (event.state === "IDLE") {
+				setProcStartedAtMs(null);
+			} else if (event.startedAtMs) {
+				setProcStartedAtMs(event.startedAtMs);
+			}
+			if (event.state === "FAILED") {
+				if (event.tail && event.tail.length > 0) {
+					setTailLines(event.tail);
+				} else if (session.supervisor) {
+					setTailLines(session.supervisor.snapshotTail(50));
+				}
+			} else if (event.state === "STARTING" || event.state === "LOADING") {
+				setFailure(null);
+				setTailLines([]);
+			}
 			setTick((t) => t + 1);
+		});
+		const offFailure = bus.onState("FAILURE_CLASSIFIED", (event) => {
+			setFailure({ summary: event.summary, suggestion: event.suggestion });
 		});
 		const offTelemetry = bus.onState("TELEMETRY_STATE", (event) => {
 			setTelemetry(event);
@@ -204,6 +228,7 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 		return () => {
 			offLog();
 			offProc();
+			offFailure();
 			offTelemetry();
 			offModels();
 			offDir();
@@ -253,34 +278,31 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 			port:
 				typeof cfg.values.port === "number"
 					? (cfg.values.port as number)
-					: 8080,
+					: DEFAULT_PORT,
 			presetId: "ad-hoc",
 			host:
 				typeof cfg.values.host === "string"
 					? (cfg.values.host as string)
-					: "127.0.0.1",
+					: DEFAULT_HOST,
 		};
 	}
 	planSource = buildPlan;
-	const endpoint = `http://${typeof config.values.host === "string" ? config.values.host : DEFAULT_HOST}:${typeof config.values.port === "number" ? config.values.port : DEFAULT_PORT}`;
-	if (telemetryService && telemetryEndpoint !== endpoint) {
-		telemetryService.stop();
-		telemetryService = null;
-		telemetryServiceSupervisor = null;
-		metricsPoller = null;
-	}
 	// The session has no supervisor until the first launch resolves a plan
 	// (boot uses resolveLaunch only), and every LAUNCH swaps in a fresh
 	// supervisor instance — so bind lazily and rebind on swap instead of
-	// assuming a supervisor exists during the first render.
+	// assuming a supervisor exists during the first render. Pollers bind to
+	// the launch plan's supervisor endpoint at spawn time rather than tracking
+	// live configurator edits against a dead endpoint.
 	const currentSupervisor = session.supervisor;
 	if (telemetryService && telemetryServiceSupervisor !== currentSupervisor) {
 		telemetryService.stop();
 		telemetryService = null;
 		telemetryServiceSupervisor = null;
 		metricsPoller = null;
+		telemetryEndpoint = "";
 	}
 	if (!telemetryService && telemetryEnabled && currentSupervisor) {
+		const endpoint = `http://${currentSupervisor.host ?? DEFAULT_HOST}:${currentSupervisor.port ?? DEFAULT_PORT}`;
 		const metrics = new MetricsPoller({ url: `${endpoint}/metrics` });
 		const service = createTelemetryService({
 			supervisor: currentSupervisor,
@@ -415,12 +437,11 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				vm: buildTelemetryViewModel({
 					phase: telemetry.phase,
 					model: config.model?.path ?? null,
-					endpoint: telemetry.health
-						? config.values.host && config.values.port
-							? `http://${config.values.host}:${config.values.port}`
-							: null
-						: null,
-					startedAtMs: procState === "IDLE" ? null : Date.now(),
+					endpoint: telemetry.health ? telemetryEndpoint || null : null,
+					startedAtMs:
+						procState === "IDLE"
+							? null
+							: (procStartedAtMs ?? session.supervisor?.startedAtMs ?? null),
 					nowMs: Date.now(),
 					telemetryEnabled,
 					vramEstimatedBytes: vramRangeBytes(config),
@@ -429,8 +450,8 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 					promptHistory: metricsPoller?.promptHistory.snapshot() ?? [],
 					decodeHistory: metricsPoller?.decodeHistory.snapshot() ?? [],
 					slots: telemetry.slots,
-					failure: null,
-					tailLines: [],
+					failure,
+					tailLines,
 				}),
 			}}
 			configuratorControl={{
