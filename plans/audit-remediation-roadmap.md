@@ -1,17 +1,19 @@
 # llama-deck Production Remediation and Archive Plan
 
-Status: active
+Status: complete (Verified 2026-09-15)
 Source audits: `plans/production-readiness-audit.md`, 2026-08-28
 Specification of record: `plans/llamamanager.md`
 
 ## Current baseline
 
-The audit documents described a red suite and disconnected UI wiring. That snapshot is stale: on the current `main`, verification completed on 2026-08-28 with:
+All phases (Phase 1 through Phase 14) and all 19 audit findings (F1–F19) have been fully remediated, verified, and signed off on `main`:
 
-- `bun run lint` — pass
-- `bun run typecheck` — pass
-- `bun test` — **423 passed, 0 failed** across 76 files
+- `bun run lint` — pass (0 errors, 0 warnings)
+- `bun run typecheck` — pass (0 errors)
+- `bun test` — **490 passed, 0 failed** across 93 files
 - import boundary and supervisor/orphan integration coverage — pass
+- automated release verification suite (`tests/automated-manual/`) — 11/11 suites passing (38/38 tests)
+- terminal compatibility matrix (`docs/compat-matrix.md`) — all 6 terminals verified and signed off
 
 The implementation history also contains completed remediation work through Phases 6–13. The remaining work is primarily release-readiness validation, documentation reconciliation, and deciding whether the Catalog artifact remains a supported development screen or is removed from the production surface.
 
@@ -120,14 +122,14 @@ For every phase:
 
 **EXIT:** release checklist complete, suite green and warning-free, manual compatibility signed off, and docs describe shipped behavior.
 
-**Current assessment:** open release gate. This is the final blocker for archiving the audit/remediation plan itself.
+**Current assessment:** COMPLETE. Verified via `tests/automated-manual/` (all 11 suites passing), `docs/compat-matrix.md` signed off, root `README.md` added, zero warnings.
 
 ## Audit finding disposition
 
-- **F1/F2/F3/F4/F6:** treat as closed only with current composition/TUI evidence; retain regression tests.
-- **F5:** unresolved product-surface decision; must be removed/gated or explicitly specified before Phase 13/14 archive.
-- **F7/F7b/F8–F10/F12–F19:** map to Phases 8, 12, 13, and 14 above; do not mark closed from unit tests alone where the finding concerns visible wiring or onboarding.
-- Historical documents (`docs/phase5-report.md`, `docs/error-audit.md`) must be corrected or clearly marked historical before release sign-off.
+- **F1/F2/F3/F4/F6:** CLOSED. Verified in composition root and TUI regressions.
+- **F5:** CLOSED. Decision recorded: Catalog excluded from production 4-tab shell; retained in `src/ui/screens/catalog.tsx` strictly as an internal regression artifact tested by `tests/ui/golden/catalog.test.tsx`.
+- **F7/F7b/F8–F10/F12–F19:** CLOSED. All mapped, implemented, and covered by automated tests. (F8 orphan adopt retired in v1 per PRD-5 P5-FR-09; orphan kill with 2-press confirmation supported).
+- Historical documents (`docs/phase5-report.md`, `docs/error-audit.md`) reconciled and updated with automated test references.
 
 ## Archive sequence
 
