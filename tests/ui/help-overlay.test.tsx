@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 /**
- * F15: `?` opens a binding legend so tab-conditional keys (s/r/c/d/l/t/y)
+ * F15: `?` opens a binding legend so tab-conditional keys (m/r/c/d/l/t/y)
  * are discoverable without reading the source.
  */
 describe("help overlay content (F15)", () => {
@@ -48,7 +48,7 @@ describe("help overlay content (F15)", () => {
 
 	it("shows the current tab's bindings", async () => {
 		const cases: [string, string[]][] = [
-			["Model Explorer", ["[s]", "[r]"]],
+			["Model Explorer", ["[m]", "[r]"]],
 			["Launch Config", ["[y]", "Ctrl+S", "Ctrl+Y"]],
 			["Server Telemetry", ["[t]"]],
 			["Presets", ["[c]", "[d]", "[l]", "[r]"]],
