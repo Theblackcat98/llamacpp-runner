@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { formatBytes } from "./core/estimate/vram";
-import { registryAvailability } from "./core/flags/help-parser";
-import { captureHelp, resolveBinaryPath } from "./core/flags/validate";
+import { probeBinaryAvailability } from "./core/flags/validate";
 import { scanModels } from "./core/models/scanner";
 import type { ModelEntry } from "./core/models/types";
 import { type ExportFormat, exportPreset } from "./core/preset-launch";
@@ -320,19 +319,16 @@ function configuredBinary(): string | undefined {
 }
 
 /**
- * Phase 12: resolve the binary, capture its `--help`, and compute the flag
- * availability map so unsupported flags never launch. Best effort — any
- * capture failure yields {} (builder keeps every flag).
+ * Phase 12 (Issue #19): probe the RESOLVED binary path for `--help` and
+ * compute the flag availability map so unsupported flags never launch.
+ * Best effort — any capture failure yields {} (builder keeps every flag),
+ * and the binary is left unverified rather than falsely validated.
  */
 async function runtimeAvailability(
 	binaryPath: string | undefined,
 ): Promise<Record<string, { supported: boolean; deprecated: boolean }>> {
-	const binary =
-		resolveBinaryPath({ configured: binaryPath }).status === "ok"
-			? binaryPath
-			: undefined;
-	const help = binary ? await captureHelp(binary) : "";
-	return help ? registryAvailability(help) : {};
+	const probed = await probeBinaryAvailability({ configured: binaryPath });
+	return probed.availability;
 }
 
 function formatRows(entries: ModelEntry[]): Record<string, string>[] {

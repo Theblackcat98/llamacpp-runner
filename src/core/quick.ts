@@ -10,12 +10,9 @@ import { DEFAULT_CONTEXT, LLAMA_SERVER_BIN } from "./constants";
 import { computeAutoFitNgl } from "./estimate/auto-fit";
 import { estimateVram, type VramEstimate } from "./estimate/vram";
 import { buildCommand } from "./flags/builder";
-import {
-	type FlagAvailability,
-	registryAvailability,
-} from "./flags/help-parser";
+import type { FlagAvailability } from "./flags/help-parser";
 import { REGISTRY } from "./flags/registry";
-import { captureHelp, resolveBinaryPath } from "./flags/validate";
+import { probeBinaryAvailability } from "./flags/validate";
 import { extractModelInfo, parseGgufFile } from "./gguf/parser";
 import type { ModelInfo } from "./gguf/types";
 import { getOrDetectHardware, type HardwareInfo } from "./hardware/detect";
@@ -42,12 +39,10 @@ export interface ResolveQuickOptions {
 export async function resolveBinaryAvailability(
 	binaryPath: string | undefined,
 ): Promise<Record<string, FlagAvailability>> {
-	const binary =
-		resolveBinaryPath({ configured: binaryPath }).status === "ok"
-			? binaryPath
-			: undefined;
-	const help = binary ? await captureHelp(binary) : "";
-	return help ? registryAvailability(help) : {};
+	// Issue #19: probe AT the resolved path so PATH-found binaries are
+	// actually validated; unverified binaries yield {} (fail-open launch).
+	const probed = await probeBinaryAvailability({ configured: binaryPath });
+	return probed.availability;
 }
 
 export async function resolveQuick(
