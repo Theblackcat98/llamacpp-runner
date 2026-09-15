@@ -54,14 +54,27 @@ describe("clipboard (P4-FR-16a, D6)", () => {
 				throw new Error("no tty");
 			},
 			runners: {
-				wl_copy: () => false,
+				xclip: () => {
+					calls.push("xclip");
+					return false;
+				},
+				xsel: () => {
+					calls.push("xsel");
+					return false;
+				},
+				wl_copy: () => {
+					calls.push("wl_copy");
+					return false;
+				},
 				pbcopy: () => {
 					calls.push("pbcopy");
 					return true;
 				},
 			},
+			whichFn: () => null,
 		});
 		expect(result.method).toBe("pbcopy");
+		expect(calls).toEqual(["xclip", "xsel", "wl_copy", "pbcopy"]);
 	});
 
 	it("graceful notice on total failure — never throws", () => {
