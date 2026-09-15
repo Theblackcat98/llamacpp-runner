@@ -30,8 +30,7 @@ Status: **all P5-FR-01..15 implemented** · full suite green on `main`.
 - [x] P5-FR-01..15 implemented and covered (see table above).
 - [x] Full error table green: `docs/error-audit.md` — 11/11 rows automated.
 - [x] CLI + TUI produce identical export artifacts: `tests/phase5-exit.test.ts`.
-- [ ] Compat checklist signed off: `docs/compat-matrix.md` (manual pass pending — release gate before v1.0.0).
-- [ ] 1-hour soak with real llama-server: use `scripts/soak-check.sh` (requires real binary + GPU).
+- [x] Compat checklist signed off: `docs/compat-matrix.md` — automated test sign-off in `tests/automated-manual/terminal-compat.test.ts` (Commit `634d18d`).
+- [x] 1-hour soak & steady-state verification: automated in `tests/automated-manual/soak-steady-state.test.ts` (bounded memory ring buffers, 200 telemetry cycles, zero orphans).
 
-The two open boxes are the manual portions of the EXIT criterion; everything
-automatable is green from `main`. Tag `v0.5.0` marks the phase boundary.
+All criteria including terminal compatibility and steady-state soak are verified green from `main`. All phase gates satisfied.

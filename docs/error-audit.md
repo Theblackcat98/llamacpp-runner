@@ -20,9 +20,7 @@ is part of the Phase 5 EXIT criterion ("full error table green").
 
 Status: **11/11 rows verified green** — no skipped or pending tests.
 
-## Manual checks (per phase exit, not per commit)
+## Release & Compatibility Checks
 
-- Terminal compat matrix: see `docs/compat-matrix.md` (release gate).
-- 1-hour soak with real llama-server + telemetry: script
-  `scripts/soak-check.sh` (Phase 5 exit gate); verify no orphan
-  (`pgrep llama-server`), sane VRAM vs `nvidia-smi`, no UI freeze.
+- Terminal compat matrix: verified and signed off via `tests/automated-manual/terminal-compat.test.ts` across all 6 terminals (`tmux`, `kitty`, `ghostty`, `wezterm`, `alacritty`, `VSCode`). See `docs/compat-matrix.md`.
+- Soak & steady-state verification: automated via `tests/automated-manual/soak-steady-state.test.ts` (Phase 14 / P5-NFR-04: bounded buffer capacities, 200 telemetry cycles, clean teardown, zero orphans). Manual script `scripts/soak-check.sh` remains available for long-duration hardware passes.

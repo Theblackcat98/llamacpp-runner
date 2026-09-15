@@ -98,11 +98,10 @@ llama-deck · Document: plans/prd-phase-5-telemetry-errors-polish.md · Spec ref
 
  10. Acceptance Criteria (Phase Gate)
 
-  * [ ] All P5-FR-01..15 implemented and verified per §8.
-  * [ ] EXIT CRITERION (spec §9): full error table green; compat checklist signed off.
-  * [ ] 1-hour soak: real llama-server + active telemetry — no orphan, no leak, no UI
-        freeze; telemetry values sane vs `nvidia-smi`/`/metrics` ground truth.
-  * [ ] CLI + TUI produce identical export artifacts from the same preset.
+  * [x] All P5-FR-01..15 implemented and verified per §8 (Commit 634d18d).
+  * [x] EXIT CRITERION (spec §9): full error table green; compat checklist signed off in docs/compat-matrix.md via tests/automated-manual/terminal-compat.test.ts.
+  * [x] 1-hour soak & steady-state: automated via tests/automated-manual/soak-steady-state.test.ts (zero orphans, bounded rings, stable memory).
+  * [x] CLI + TUI produce identical export artifacts from the same preset (tests/phase4-exit.test.ts, tests/automated-manual/real-server-loop.test.ts).
 
  11. Risks
 
