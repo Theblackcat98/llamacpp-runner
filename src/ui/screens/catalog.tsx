@@ -1,3 +1,10 @@
+/**
+ * Components Catalog (Phase 2 Widget Showcase)
+ *
+ * Retained as a developer / widget regression artifact tested by
+ * tests/ui/golden/catalog.test.tsx. Excluded from the production 4-tab
+ * application surface per audit finding F5.
+ */
 import { TuiBox } from "../components/box";
 import type { Theme } from "../themes";
 
