@@ -8,6 +8,7 @@ export interface PaletteHandlers {
 	toggleTelemetry: () => void;
 	goToTab: (tab: number) => void;
 	clearLog: () => void;
+	autoFitNgl?: () => void;
 }
 
 export interface PaletteAction {
@@ -28,6 +29,7 @@ export const PALETTE_ACTION_IDS = [
 	"export-command",
 	"rescan-models",
 	"toggle-telemetry",
+	"auto-fit-ngl",
 	"go-to-tab-1",
 	"go-to-tab-2",
 	"go-to-tab-3",
@@ -90,6 +92,12 @@ export function buildDefaultActions(h: PaletteHandlers): PaletteAction[] {
 			label: "Toggle Telemetry (--slots/--metrics)",
 			keywords: "telemetry slots metrics toggle",
 			run: () => h.toggleTelemetry(),
+		},
+		{
+			id: "auto-fit-ngl",
+			label: "Auto-fit GPU Offload (-ngl) to VRAM",
+			keywords: "autofit fit ngl gpu vram layers",
+			run: () => h.autoFitNgl?.(),
 		},
 	);
 	for (const [tab, name] of TABS) {

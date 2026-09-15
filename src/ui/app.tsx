@@ -88,6 +88,8 @@ export interface ExplorerControl {
 export interface ConfiguratorControl {
 	state: ConfiguratorState;
 	setState: (next: ConfiguratorState) => void;
+	hardware?: import("../core/hardware/detect").HardwareInfo | null;
+	onAutoFit?: () => void;
 }
 
 export interface PresetsControl {
@@ -207,6 +209,7 @@ export function App({
 			telemetryControl?.onEnableTelemetry?.(),
 		goToTab: (t) => setTab(t - 1),
 		clearLog: () => setDrawer(() => createDrawerState(DRAWER_HEIGHT)),
+		autoFitNgl: () => configuratorControl?.onAutoFit?.(),
 	});
 
 	useKeyboard((key: KeyRef) => {
@@ -425,6 +428,8 @@ export function App({
 					<Configurator
 						theme={theme}
 						state={configuratorControl.state}
+						hardware={configuratorControl.hardware}
+						onAutoFit={configuratorControl.onAutoFit}
 						onChange={configuratorControl.setState}
 						focused
 						captureKeys={focusPane !== 3 && !importOpen}

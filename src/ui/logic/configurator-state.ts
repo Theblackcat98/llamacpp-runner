@@ -9,9 +9,11 @@ import {
 	type EstimateInput,
 	estimateVram,
 	formatBytes,
+	GIB,
 } from "../../core/estimate/vram";
 import { buildCommand, commandLine } from "../../core/flags/builder";
 import { REGISTRY } from "../../core/flags/registry";
+import type { HardwareInfo } from "../../core/hardware/detect";
 
 export interface ConfiguratorModel {
 	path: string;
@@ -232,4 +234,157 @@ export type KvQuant = "f16" | "q8_0" | "q4_0";
 export function kvQuantValue(state: ConfiguratorState, id: string): KvQuant {
 	const v = state.values[id];
 	return v === "q8_0" ? "q8_0" : v === "q4_0" ? "q4_0" : "f16";
+}
+
+function formatGpuBytes(bytes: number): string {
+	const gib = bytes / GIB;
+	if (Number.isInteger(gib)) {
+		return `${gib} GiB`;
+	}
+	return formatBytes(bytes);
+}
+
+export type VerdictStatus = "fits" | "no-fit" | "no-data" | "none";
+
+export interface WillItFitVerdict {
+	text: string;
+	status: VerdictStatus;
+}
+
+/**
+ * Computes the "will it fit" verdict line comparing estimated VRAM to detected GPU VRAM (Issue #8).
+ */
+export function willItFitVerdict(
+	state: ConfiguratorState,
+	hardware?: HardwareInfo | null,
+): WillItFitVerdict {
+	if (!state.model) {
+		return { text: "", status: "none" };
+	}
+	if (
+		!hardware ||
+		hardware.vramBytes === null ||
+		hardware.vramBytes === undefined ||
+		hardware.vramBytes <= 0
+	) {
+		return {
+			text: "no hardware data — run reprobe",
+			status: "no-data",
+		};
+	}
+	const range = vramRangeBytes(state);
+	if (!range) {
+		return { text: "", status: "none" };
+	}
+	const totalVram = hardware.vramBytes;
+	const lowStr = formatBytes(range.low);
+	const highStr = formatBytes(range.high);
+	const gpuStr = formatGpuBytes(totalVram);
+
+	if (range.high <= totalVram) {
+		const headroom = formatGpuBytes(totalVram - range.high);
+		return {
+			text: `est ${lowStr}–${highStr} / ${gpuStr} GPU → fits, ~${headroom} headroom`,
+			status: "fits",
+		};
+	}
+
+	return {
+		text: `est ${lowStr}–${highStr} / ${gpuStr} GPU → will not fit as configured`,
+		status: "no-fit",
+	};
+}
+
+export interface AutoFitResult {
+	ngl: number;
+	fits: boolean;
+	message?: string;
+}
+
+/**
+ * Solves the maximum n_gpu_layers that fits within available VRAM (Issue #8).
+ *
+ * Monotonicity assumption:
+ * estimateVram is monotonically non-decreasing in gpuLayers, as offloading
+ * an additional layer moves tensor weights from system RAM to VRAM while
+ * other memory buffers (compute, context KV) stay constant or expand.
+ * We can thus use binary search across [0, nglMax] in O(log(nglMax)) steps.
+ */
+export function solveAutoFitNgl(
+	state: ConfiguratorState,
+	vramBytes: number | null | undefined,
+): AutoFitResult {
+	if (
+		!state.model ||
+		vramBytes === null ||
+		vramBytes === undefined ||
+		vramBytes <= 0
+	) {
+		return {
+			ngl: state.nglMax,
+			fits: false,
+			message: "no hardware data — run reprobe",
+		};
+	}
+	const m = state.model;
+	if (
+		!m.fileSize ||
+		m.fileSize <= 0 ||
+		m.blockCount === undefined ||
+		!m.headCount ||
+		m.headCountKv === undefined ||
+		!m.embeddingLength
+	) {
+		return {
+			ngl: state.nglMax,
+			fits: false,
+			message: "missing model metadata",
+		};
+	}
+
+	const maxNgl = state.nglMax;
+
+	const testNgl = (ngl: number): boolean => {
+		const input: EstimateInput = {
+			fileSize: m.fileSize,
+			blockCount: m.blockCount as number,
+			contextLength: ctxValueOf(state),
+			headCount: m.headCount as number,
+			headCountKv: m.headCountKv as number,
+			embeddingLength: m.embeddingLength as number,
+			keyLength: m.keyLength,
+			gpuLayers: ngl,
+			kvQuantK: kvQuantValue(state, "cache_type_k"),
+			kvQuantV: kvQuantValue(state, "cache_type_v"),
+		};
+		const est = estimateVram(input);
+		return est.range.high <= vramBytes;
+	};
+
+	if (!testNgl(0)) {
+		return {
+			ngl: 0,
+			fits: false,
+			message: "even ngl=0 exceeds VRAM — reduce context size",
+		};
+	}
+
+	let low = 0;
+	let high = maxNgl;
+	let best = 0;
+
+	while (low <= high) {
+		const mid = Math.floor((low + high) / 2);
+		if (testNgl(mid)) {
+			best = mid;
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+
+	return {
+		ngl: best,
+		fits: true,
+	};
 }
