@@ -73,7 +73,9 @@ const session = createSession({
 });
 
 await session.boot();
-const modelsService = createModelsService(bus, paths);
+const modelsService = createModelsService(bus, paths, {
+	defaultDir: process.cwd(),
+});
 modelsService.boot();
 
 let telemetryService: ReturnType<typeof createTelemetryService> | null = null;
@@ -428,6 +430,8 @@ function SessionApp({ onQuit }: { onQuit: () => void }) {
 				onSelectIndex: selectModel,
 				onRescan: () => bus.emitIntent("RESCAN", {}),
 				onUseDefaultDir: (dir: string) =>
+					bus.emitIntent("SET_MODELS_DIR", { dir }),
+				onSetModelsDir: (dir: string) =>
 					bus.emitIntent("SET_MODELS_DIR", { dir }),
 			}}
 			telemetryControl={{

@@ -54,7 +54,7 @@ import {
 	TAB_COUNT,
 } from "./logic/shell-state";
 import { buildTelemetryViewModel } from "./logic/telemetry-state";
-import { Configurator } from "./screens/configurator";
+import { Configurator, isConfiguratorTextField } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import { PresetsScreen } from "./screens/presets";
 import { Telemetry } from "./screens/telemetry";
@@ -77,6 +77,7 @@ export interface ExplorerControl {
 	onSelectIndex?: (index: number) => void;
 	onRescan: () => void;
 	onUseDefaultDir: (dir: string) => void;
+	onSetModelsDir?: (dir: string) => void;
 }
 
 export interface ConfiguratorControl {
@@ -187,6 +188,7 @@ export function App({
 	// yield global printable keys (digits, o/k/q/…) while a text field owns
 	// typing — one owner per key, never two.
 	const activeConfiguratorField = useRef(0);
+	const [explorerEditing, setExplorerEditing] = useState(false);
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
@@ -211,7 +213,10 @@ export function App({
 		// trigger shell actions (Phase 13 one-owner rule). Ctrl combos still
 		// pass: Ctrl+C/P/S/Y/L are non-printable shell bindings.
 		const textFieldActive =
-			tab === 1 && focusPane !== 3 && activeConfiguratorField.current >= 7;
+			(tab === 1 &&
+				focusPane !== 3 &&
+				isConfiguratorTextField(activeConfiguratorField.current)) ||
+			(tab === 0 && explorerEditing);
 		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
 			return;
 		}
@@ -395,6 +400,9 @@ export function App({
 						scanError={explorerControl.scanError}
 						selectedIndex={explorerControl.selectedIndex}
 						onSelectIndex={explorerControl.onSelectIndex}
+						onSetModelsDir={explorerControl.onSetModelsDir}
+						onUseDefaultDir={explorerControl.onUseDefaultDir}
+						onEditingChange={setExplorerEditing}
 					/>
 				) : tab === 1 && configuratorControl ? (
 					<Configurator

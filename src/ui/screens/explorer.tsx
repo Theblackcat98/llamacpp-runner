@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatBytes } from "../../core/estimate/vram";
 import { shellQuote } from "../../core/export/quote";
 import type { ModelEntry } from "../../core/models/types";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
+import { TextInput } from "../components/text-input";
+import { createTextInputState } from "../components/text-input-state";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
 	buildRows,
 	defaultVramRange,
@@ -22,6 +25,9 @@ export interface ExplorerProps {
 	/** Controlled selection (optional); internal state when omitted. */
 	selectedIndex?: number;
 	onSelectIndex?: (index: number) => void;
+	onSetModelsDir?: (dir: string) => void;
+	onUseDefaultDir?: (dir: string) => void;
+	onEditingChange?: (editing: boolean) => void;
 }
 
 /**
@@ -38,15 +44,54 @@ export function Explorer({
 	captureKeys = true,
 	selectedIndex,
 	onSelectIndex,
+	onSetModelsDir,
+	onUseDefaultDir,
+	onEditingChange,
 }: ExplorerProps) {
 	const rows = buildRows(entries);
 	const [internalSelected, setSelected] = useState(0);
-	const selected =
-		selectedIndex !== undefined ? selectedIndex : internalSelected;
+	const [editingDir, setEditingDir] = useState(false);
+	const [dirInput, setDirInput] = useState(() => createTextInputState());
+
+	useEffect(() => {
+		onEditingChange?.(editingDir);
+	}, [editingDir, onEditingChange]);
+
+	useScopedKeyboard(captureKeys && !editingDir, (key) => {
+		if (key.name === "m" && !key.ctrl && onSetModelsDir) {
+			setDirInput(createTextInputState());
+			setEditingDir(true);
+			return;
+		}
+		if (key.name === "s" && !key.ctrl && modelsDir === null) {
+			const fallback = "~/models/llm";
+			onSetModelsDir?.(fallback);
+			onUseDefaultDir?.(fallback);
+			return;
+		}
+	});
+
+	useScopedKeyboard(captureKeys && editingDir, (key) => {
+		if (key.name === "return") {
+			const trimmed = dirInput.buffer.trim();
+			if (trimmed.length > 0) {
+				onSetModelsDir?.(trimmed);
+			}
+			setEditingDir(false);
+			return;
+		}
+		if (key.name === "escape") {
+			setEditingDir(false);
+			return;
+		}
+	});
+
 	const select = (index: number) => {
 		if (onSelectIndex) onSelectIndex(index);
 		else setSelected(index);
 	};
+	const selected =
+		selectedIndex !== undefined ? selectedIndex : internalSelected;
 	const clamped = Math.min(selected, Math.max(rows.length - 1, 0));
 	const current = rows[clamped]?.entry;
 
@@ -61,7 +106,29 @@ export function Explorer({
 				height: "100%",
 			}}
 		>
-			{modelsDir === null && !scanning ? (
+			{editingDir ? (
+				<TuiBox
+					theme={theme}
+					title="SET MODELS DIRECTORY"
+					variant="double"
+					accent
+				>
+					<box style={{ flexDirection: "column" }}>
+						<text fg={theme.fgBright}>
+							Enter model directory path (press Enter to confirm, Esc to
+							cancel):
+						</text>
+						<TextInput
+							theme={theme}
+							captureKeys={captureKeys && editingDir}
+							initial=""
+							onChange={setDirInput}
+							width={60}
+							placeholder={modelsDir ?? "path/to/models"}
+						/>
+					</box>
+				</TuiBox>
+			) : modelsDir === null && !scanning ? (
 				<TuiBox theme={theme} title="WELCOME" variant="double" accent>
 					<box style={{ flexDirection: "column" }}>
 						<text fg={theme.fgBright}>No model directory configured yet.</text>

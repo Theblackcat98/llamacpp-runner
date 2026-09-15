@@ -190,7 +190,8 @@ export function vramRangeBytes(
 ): { low: number; high: number } | null {
 	const m = state.model;
 	if (
-		!m ||
+		!m?.fileSize ||
+		m.fileSize <= 0 ||
 		m.blockCount === undefined ||
 		!m.headCount ||
 		m.headCountKv === undefined ||
@@ -218,6 +219,9 @@ export function vramRangeBytes(
 
 /** VRAM estimate text wired to ngl/ctx/KV precision (P4-FR-07). */
 export function vramRangeText(state: ConfiguratorState): string | null {
+	if (state.model && (!state.model.fileSize || state.model.fileSize <= 0)) {
+		return "model missing — estimate unavailable";
+	}
 	const range = vramRangeBytes(state);
 	if (!range) return null;
 	return `${formatBytes(range.low)} – ${formatBytes(range.high)} (estimated range)`;
