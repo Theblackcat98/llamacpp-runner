@@ -62,4 +62,29 @@ describe("GGUF capture --check drift detection", () => {
 			},
 		]);
 	});
+
+	it("detects drift in extraKv shape metadata", () => {
+		const withKv: ExpectedModelJson = {
+			...committedExpected,
+			extraKv: {
+				"llama.rope_scaling": { itemType: "f32", values: [8, 1, 4, 8192] },
+			},
+		};
+		const noDrift = checkSourceDrift(withKv, {
+			...withKv,
+			extraKv: {
+				"llama.rope_scaling": { itemType: "f32", values: [8, 1, 4, 8192] },
+			},
+		});
+		expect(noDrift).toHaveLength(0);
+
+		const drifted = checkSourceDrift(withKv, {
+			...withKv,
+			extraKv: {
+				"llama.rope_scaling": { itemType: "f32", values: [16, 1, 4, 8192] },
+			},
+		});
+		expect(drifted).toHaveLength(1);
+		expect(drifted[0]?.field).toBe("extraKv");
+	});
 });

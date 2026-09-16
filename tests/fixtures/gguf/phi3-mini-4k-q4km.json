@@ -1,0 +1,17 @@
+{
+	"source": "https://huggingface.co/bartowski/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q4_K_M.gguf",
+	"headerBytes": 737767,
+	"architecture": "phi3",
+	"quantName": "Q4_K_M",
+	"contextLength": 4096,
+	"blockCount": 32,
+	"embeddingLength": 3072,
+	"headCount": 32,
+	"headCountKv": 32,
+	"keyLength": null,
+	"vocabSize": null,
+	"totalParams": 3821079552,
+	"extraKv": {
+		"phi3.context_length": 4096
+	}
+}

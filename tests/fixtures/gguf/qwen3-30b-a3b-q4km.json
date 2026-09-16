@@ -1,0 +1,18 @@
+{
+	"source": "https://huggingface.co/Qwen/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-Q4_K_M.gguf",
+	"headerBytes": 5969389,
+	"architecture": "qwen3moe",
+	"quantName": "Q4_K_M",
+	"contextLength": 40960,
+	"blockCount": 48,
+	"embeddingLength": 2048,
+	"headCount": 32,
+	"headCountKv": 4,
+	"keyLength": 128,
+	"vocabSize": null,
+	"totalParams": 30532122624,
+	"extraKv": {
+		"qwen3moe.expert_count": 128,
+		"qwen3moe.expert_used_count": 8
+	}
+}

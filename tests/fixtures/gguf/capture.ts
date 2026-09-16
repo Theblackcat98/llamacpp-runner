@@ -12,12 +12,23 @@ import {
 	headerEndOffset,
 	parseGgufBytes,
 } from "../../../src/core/gguf/parser";
+import type { GgufHeader } from "../../../src/core/gguf/types";
 
 export interface CaptureSource {
 	readonly name: string;
 	readonly url: string;
 	readonly expectParamsNear: number;
+	/** Raw KV keys recorded as extra metadata parity fixtures (new shapes). */
+	readonly expectKv?: readonly string[];
+	/** Range window size in bytes; defaults to 8 MiB. */
+	readonly fetchBytes?: number;
 }
+
+export type ExtraKvJson =
+	| number
+	| string
+	| boolean
+	| { itemType: string; values: (number | string | boolean)[] };
 
 export interface ExpectedModelJson {
 	source: string;
@@ -32,6 +43,7 @@ export interface ExpectedModelJson {
 	keyLength: number | null;
 	vocabSize: number | null;
 	totalParams: number;
+	extraKv?: Record<string, ExtraKvJson>;
 }
 
 export interface DriftDiff {
@@ -61,6 +73,42 @@ export const SOURCES: readonly CaptureSource[] = [
 		url: "https://huggingface.co/mradermacher/DeepSeek-V2-Lite-GGUF/resolve/main/DeepSeek-V2-Lite.Q4_K_M.gguf",
 		expectParamsNear: 15_706_484_224,
 	},
+	{
+		name: "llama3-8b-instruct-q4km",
+		url: "https://huggingface.co/bartowski/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+		expectParamsNear: 8_030_354_432,
+		expectKv: ["llama.rope.freq_base"],
+	},
+	{
+		name: "yarn-mistral-7b-64k-q4km",
+		url: "https://huggingface.co/TheBloke/Yarn-Mistral-7B-64k-GGUF/resolve/main/yarn-mistral-7b-64k.Q4_K_M.gguf",
+		expectParamsNear: 7_241_732_096,
+		expectKv: [
+			"llama.rope.scaling.type",
+			"llama.rope.scaling.factor",
+			"llama.rope.scaling.original_context_length",
+			"llama.rope.scaling.finetuned",
+		],
+	},
+	{
+		name: "phi3-mini-4k-q4km",
+		url: "https://huggingface.co/bartowski/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q4_K_M.gguf",
+		expectParamsNear: 3_821_436_416,
+		expectKv: ["phi3.context_length"],
+	},
+	{
+		name: "command-r-v01-q4km",
+		url: "https://huggingface.co/bartowski/c4ai-command-r-v01-GGUF/resolve/main/c4ai-command-r-v01-Q4_K_M.gguf",
+		expectParamsNear: 35_000_000_000,
+		expectKv: ["command-r.context_length"],
+		fetchBytes: 32 * 1024 * 1024,
+	},
+	{
+		name: "qwen3-30b-a3b-q4km",
+		url: "https://huggingface.co/Qwen/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-Q4_K_M.gguf",
+		expectParamsNear: 30_500_000_000,
+		expectKv: ["qwen3moe.expert_count", "qwen3moe.expert_used_count"],
+	},
 ] as const;
 
 export const OUT = import.meta.dir;
@@ -81,24 +129,56 @@ export function checkSourceDrift(
 		"keyLength",
 		"vocabSize",
 		"totalParams",
+		"extraKv",
 	];
 	const diffs: DriftDiff[] = [];
 	for (const f of fields) {
-		if (committed[f] !== upstream[f]) {
+		let differs = committed[f] !== upstream[f];
+		if (f === "extraKv") {
+			differs = JSON.stringify(committed[f]) !== JSON.stringify(upstream[f]);
+		}
+		if (differs) {
 			diffs.push({ field: f, committed: committed[f], upstream: upstream[f] });
 		}
 	}
 	return diffs;
 }
 
+function toExtraKv(
+	header: GgufHeader,
+	keys: readonly string[] | undefined,
+): Record<string, ExtraKvJson> | undefined {
+	if (!keys || keys.length === 0) return undefined;
+	const out: Record<string, ExtraKvJson> = {};
+	for (const key of keys) {
+		const v = header.kv.get(key);
+		if (v === undefined)
+			throw new Error(`capture: expected KV ${key} absent from header`);
+		if (typeof v === "bigint")
+			throw new Error(`capture: KV ${key} bigint is not JSON-safe`);
+		if (typeof v === "object") {
+			const values: (number | string | boolean)[] = v.values.map((x) => {
+				if (typeof x === "bigint")
+					throw new Error(`capture: KV ${key} bigint array is not JSON-safe`);
+				return x;
+			});
+			out[key] = { itemType: v.itemType, values };
+		} else {
+			out[key] = v;
+		}
+	}
+	return out;
+}
+
 export function buildExpectedModelJson(
-	url: string,
+	src: CaptureSource,
 	end: number,
 	chunk: Uint8Array,
 ): ExpectedModelJson {
-	const info = extractModelInfo(parseGgufBytes(chunk));
+	const header = parseGgufBytes(chunk);
+	const info = extractModelInfo(header);
 	return {
-		source: url,
+		source: src.url,
 		headerBytes: end,
 		architecture: info.architecture ?? null,
 		quantName: info.quantName ?? null,
@@ -110,6 +190,7 @@ export function buildExpectedModelJson(
 		keyLength: info.keyLength ?? null,
 		vocabSize: info.vocabSize ?? null,
 		totalParams: info.totalParams,
+		extraKv: toExtraKv(header, src.expectKv),
 	};
 }
 
@@ -134,13 +215,14 @@ async function main() {
 
 	for (const src of SOURCES) {
 		console.log(`Fetching header for ${src.name} (${src.url})...`);
-		let chunk = await fetchRange(src.url, 0, 8 * 1024 * 1024 - 1);
+		const windowBytes = src.fetchBytes ?? 8 * 1024 * 1024;
+		let chunk = await fetchRange(src.url, 0, windowBytes - 1);
 		const end = headerEndOffset(chunk);
 		if (end >= chunk.byteLength)
 			throw new Error(`${src.name}: header spans capture window`);
 		chunk = chunk.slice(0, end);
 
-		const expected = buildExpectedModelJson(src.url, end, chunk);
+		const expected = buildExpectedModelJson(src, end, chunk);
 
 		if (checkMode) {
 			const jsonPath = join(OUT, `${src.name}.json`);
