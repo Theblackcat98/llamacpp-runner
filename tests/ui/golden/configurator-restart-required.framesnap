@@ -1,6 +1,6 @@
 ╭─Launch config───────────────────────────────────────╮╭─Runtime───────────────────────────────────╮
 │ > GPU Offload [████████████████████████] 29/29      ││ Model: ~/models/llm/qwen25-7b-q4km.gguf   │
-│ Context Length                                      ││ ngl max: 29 (block_count+1)               │
+│ Context Length                                      ││ ngl max: all layers (29)                  │
 │  4096  8192  16384  32768  65536  131072            ││ 5.6 GiB – 6.6 GiB (estimated range)       │
 │ K Cache <f16>                                       ││                                           │
 │ V Cache <f16>                                       ││                                           │

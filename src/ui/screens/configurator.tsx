@@ -13,6 +13,7 @@ import {
 	CTX_CHIPS,
 	clampContext,
 	type KvQuant,
+	nglDefaultLabel,
 	previewLine,
 	resetConfigurator,
 	setFlag,
@@ -329,7 +330,7 @@ export function Configurator({
 				<TuiBox theme={theme} title="RUNTIME" width="45%">
 					<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 						{text(`Model: ${state.model?.path ?? "<none>"}`, theme.muted)}
-						{text(`ngl max: ${state.nglMax} (block_count+1)`, theme.muted)}
+						{text(`ngl max: ${nglDefaultLabel(state.nglMax)}`, theme.muted)}
 						{text(vram ?? "VRAM: n/a (missing model metadata)", theme.warn)}
 						{state.ctxWarning
 							? text(`ctx warning: ${state.ctxWarning}`, theme.error)

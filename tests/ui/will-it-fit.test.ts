@@ -3,6 +3,7 @@ import { GIB } from "../../src/core/estimate/vram";
 import type { HardwareInfo } from "../../src/core/hardware/detect";
 import {
 	createConfigurator,
+	setFlag,
 	solveAutoFitNgl,
 	willItFitVerdict,
 } from "../../src/ui/logic/configurator-state";
@@ -20,7 +21,9 @@ const MODEL = {
 describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 	describe("willItFitVerdict", () => {
 		it("returns 'fits' verdict with headroom when model fits in VRAM", () => {
-			const state = createConfigurator(MODEL);
+			// ctx pinned: scenario targets the verdict boundary, not the
+			// model-native default (#9).
+			const state = setFlag(createConfigurator(MODEL), "ctx_size", 4096);
 			const hw: HardwareInfo = {
 				kind: "nvidia",
 				vramBytes: 8 * GIB,
@@ -75,7 +78,8 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 		});
 
 		it("solves max ngl that fits when VRAM is constrained", () => {
-			const state = createConfigurator(MODEL);
+			// ctx pinned: scenario targets the ngl solve, not the default (#9).
+			const state = setFlag(createConfigurator(MODEL), "ctx_size", 4096);
 			// 5.5 GiB is enough for partial offload but not full 29 layers
 			const result = solveAutoFitNgl(state, Math.floor(5.5 * GIB));
 			expect(result.fits).toBe(true);

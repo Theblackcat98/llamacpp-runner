@@ -7,6 +7,7 @@ import {
 	ctxValue,
 	effectiveValues,
 	loadPresetInto,
+	nglDefaultLabel,
 	previewLine,
 	resetConfigurator,
 	setFlag,
@@ -31,7 +32,7 @@ describe("createConfigurator", () => {
 		expect(cfg.values.host).toBe("127.0.0.1");
 		expect(cfg.values.port).toBe(8080);
 		expect(cfg.nglMax).toBe(65);
-		expect(ctxValue(cfg)).toBe(4096);
+		expect(ctxValue(cfg)).toBe(32768);
 		expect(cfg.restartRequired).toBe(false);
 	});
 
@@ -74,12 +75,12 @@ describe("restart-required semantics (P4-FR-12)", () => {
 		expect(edited.restartRequired).toBe(false);
 	});
 
-	it("Esc reset returns to defaults and clears markers (P4-FR-17)", () => {
+	it("Esc reset returns to model-native defaults and clears markers (P4-FR-17)", () => {
 		let cfg = createConfigurator(MODEL);
 		cfg = setFlag(cfg, "ctx_size", 16384);
 		cfg = setFlag({ ...cfg, launched: true }, "n_gpu_layers", 32);
 		const resetted = resetConfigurator(cfg);
-		expect(ctxValue(resetted)).toBe(4096);
+		expect(ctxValue(resetted)).toBe(32768);
 		expect(resetted.restartRequired).toBe(false);
 	});
 });
@@ -99,7 +100,7 @@ describe("live preview (P4-FR-06)", () => {
 		const cfg = createConfigurator(MODEL);
 		const eff = effectiveValues(cfg);
 		expect(eff.n_gpu_layers).toBe(65);
-		expect(eff.ctx_size).toBe(4096);
+		expect(eff.ctx_size).toBe(32768);
 	});
 
 	it("default preview keeps registry defaults without empty quoted fragments", () => {
@@ -144,6 +145,35 @@ describe("VRAM wiring (P4-FR-07)", () => {
 
 	it("vramRangeBytes is null without model metadata (F12)", () => {
 		expect(vramRangeBytes(createConfigurator(null))).toBeNull();
+	});
+});
+
+describe("model-native defaults (#9)", () => {
+	it("initial ctx comes from the model's context_length metadata", () => {
+		const cfg = createConfigurator(MODEL);
+		expect(ctxValue(cfg)).toBe(32768);
+	});
+
+	it("falls back to 4096 only when context metadata is absent", () => {
+		const bare = { ...MODEL, contextLength: undefined };
+		const cfg = createConfigurator(bare);
+		expect(ctxValue(cfg)).toBe(4096);
+	});
+
+	it("preset load overrides the model-native ctx", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { ctx_size: 8192 });
+		expect(ctxValue(loaded)).toBe(8192);
+	});
+
+	it("reset restores the model-native ctx, not 4096", () => {
+		const cfg = createConfigurator(MODEL);
+		const edited = setFlag(cfg, "ctx_size", 16384);
+		expect(ctxValue(resetConfigurator(edited))).toBe(32768);
+	});
+
+	it("ngl default renders as 'all layers (N)' (visible -ngl default)", () => {
+		expect(nglDefaultLabel(65)).toBe("all layers (65)");
 	});
 });
 

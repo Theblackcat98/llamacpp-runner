@@ -1,6 +1,6 @@
 ╭─Launch config───────────────────────────────────────╮╭─Runtime───────────────────────────────────╮
 │ GPU Offload [░░░░░░░░░░░░░░░░░░░░░░░░] 0/1          ││ Model: <none>                             │
-│ Context Length                                      ││ ngl max: 0 (block_count+1)                │
+│ Context Length                                      ││ ngl max: all layers (0)                   │
 │  4096  8192  16384  32768  65536  131072            ││ VRAM: n/a (missing model metadata)        │
 │ K Cache <f16>                                       ││                                           │
 │ V Cache <f16>                                       ││                                           │
