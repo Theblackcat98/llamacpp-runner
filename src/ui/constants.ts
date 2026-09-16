@@ -2,6 +2,13 @@
  * Shared UI shell constants (F16): a single source of truth so the host
  * (`main.tsx`) and the shell (`app.tsx`) can never drift apart.
  */
+import pkg from "../../package.json";
+
+/**
+ * Product version, owned by package.json (#35): the shell header renders
+ * this so a version bump can never leave a stale literal behind.
+ */
+export const APP_VERSION: string = pkg.version;
 
 /** Console drawer viewport height (lines). */
 export const DRAWER_HEIGHT = 6;

@@ -16,7 +16,7 @@ import { HelpOverlay } from "./components/help-overlay";
 import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
-import { CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
+import { APP_VERSION, CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
 import {
 	buildDefaultActions,
 	type PaletteHandlers,
@@ -354,7 +354,7 @@ export function App({
 				}}
 			>
 				<text>
-					<span fg={theme.fgBright}>v0.1.0 — llama-deck</span>
+					<span fg={theme.fgBright}>{`v${APP_VERSION} — llama-deck`}</span>
 					<span fg={serverRunning ? theme.success : theme.muted}>
 						{`  [${procStateLabel(serverRunning)}]`}
 					</span>
