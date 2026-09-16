@@ -1,5 +1,5 @@
 llama-deck: Technical Specification & UI Architecture
-Version 2.0 (post architectural review) — A declarative Terminal User Interface built with OpenTUI to discover, inspect, configure, and orchestrate llama-server (llama.cpp) instances with persistent profile management.
+Version 2.2 (reconciled against the implementation 2026-09-16) — A declarative Terminal User Interface built with OpenTUI to discover, inspect, configure, and orchestrate llama-server (llama.cpp) instances with persistent profile management.
 
 v1 → v2 REVISION SUMMARY
  * Architecture: core engine split into a headless package (zero UI imports) + OpenTUI shell + CLI frontend.
@@ -14,6 +14,23 @@ v1 → v2 REVISION SUMMARY
  * Roadmap v2.1: work items resized to branch granularity; §7 error states ship with
    their owning component/phase instead of being deferred wholesale to Phase 5.
  * Consistency: all paths standardized to ~/.config/llama-deck/ and $XDG_STATE_HOME/llama-deck/.
+
+ v2.2 RECONCILIATION (2026-09-16) — spec aligned with recorded decisions and shipped behavior:
+  * D3 (PTY) UNDER REVISION: the implementation transports logs over pipes; the Phase-1
+    "D3 pivot" (prd-phase-1 §11) was never recorded. Ratify pipes (#68 delivers the live
+    \r in-place progress) or schedule PTY work — tracked in #63. Body text below describes
+    the current pipe transport.
+  * Orphan "adopt" retired in v1 (D11); kill with 2-press confirmation is the only recovery.
+  * Components Catalog excluded from the product shell; retained as an internal regression
+    artifact (D12).
+  * Theme set is 7 — Matrix dropped, Rose Pine / Nord / Everforest added (D13).
+  * GGUF reader caps: 256 KB → 2 MB → 32 MB retry ladder (§3.1).
+  * CLI surface grown (quick, presets, import, doctor, export --format json); keybinding
+    table (§4) matches shipped bindings.
+  * Storage: config.json + presets.json split documented (§5); ownership consolidation
+    tracked in #69.
+  * Open requirements reference their issue number so "requirement" vs "status" is
+    unambiguous.
 
 1. System Architecture
 
@@ -42,7 +59,7 @@ v1 → v2 REVISION SUMMARY
  │  └───────────────────┘ └───────────────────┘ └───────────────────┘     │
  │  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐     │
  │  │ VRAM Estimator    │ │ Process Supervisor│ │ Telemetry Poller  │     │
- │  │ - GQA-aware KV    │ │ - PTY/pipe spawn  │ │ - /health states  │     │
+  │  │ - GQA-aware KV    │ │ - pipe spawn      │ │ - /health states  │     │
  │  │ - Range output    │ │ - \r assembler    │ │ - /slots JSON     │     │
  │  │ - Compute buffer  │ │ - Ring buffer     │ │ - /metrics parse  │     │
  │  └───────────────────┘ └───────────────────┘ └───────────────────┘     │
@@ -52,12 +69,15 @@ v1 → v2 REVISION SUMMARY
  └───────────────────────────────┬────────────────────────────────────────┘
                                  │
                    ┌──────────────┴──────────────┐
-                   │  CLI FRONTEND (src/cli.ts) │
-                   │  llama-deck start <preset> │
-                   │  llama-deck export <p>     │
-                   │    --format sh|systemd|cmd │
-                   │  llama-deck scan|list|kill │
-                   └─────────────────────────────┘
+                    │  CLI FRONTEND (src/cli.ts) │
+                    │  llama-deck start <preset> │
+                    │  llama-deck export <p>     │
+                    │    --format sh|systemd|    │
+                    │    cmd|json · import       │
+                    │  llama-deck scan|list|kill │
+                    │  llama-deck quick|presets  │
+                    │  llama-deck doctor         │
+                    └─────────────────────────────┘
 
  Rationale
   * Testability: parser, estimator, registry, and supervisor are unit/integration-testable
@@ -75,8 +95,9 @@ v1 → v2 REVISION SUMMARY
     diffing). Tables, sliders, text inputs with cursor management, scrollable/virtualized
     regions, and cross-pane focus management are ALL custom — see Phase 2 (Widget Library).
 
-  * GGUF Metadata Parser: Streams the first <=256 KB of .gguf files (no mmap, no weight
-    reads). Validates magic + version, unpacks metadata KV pairs and tensor infos. See §3.1.
+   * GGUF Metadata Parser: Streams the first <=256 KB of .gguf files (no mmap, no weight
+     reads), retrying at 2 MB and 32 MB caps when the header spans them. Validates magic +
+     version, unpacks metadata KV pairs and tensor infos. See §3.1.
 
   * Model Scanner & Watcher: Recursive scan of configured directories; groups multi-part
     split files (`*-00001-of-0000N.gguf`); caches parsed metadata keyed by
@@ -88,25 +109,28 @@ v1 → v2 REVISION SUMMARY
     preview, and all exporters. Optionally validated against the user's actual binary by
     parsing `llama-server --help` at runtime. See §3.3.
 
-  * Process Supervisor: Spawns llama-server via node-pty (default; preserves ANSI color and
-    \r progress bars) with plain pipes as fallback. Assembles \r-overwritten lines before
-    buffering into an in-memory ring buffer. Enforces teardown guarantees (§6). Monitors
-    health via GET /health.
+   * Process Supervisor: Spawns llama-server over plain pipes (detached: false; shared
+     process group). Assembles \r-overwritten lines before buffering into an in-memory
+     ring buffer; ANSI SGR sequences in log lines are parsed and re-rendered thematically.
+     Enforces teardown guarantees (§6). Monitors health via GET /health. [D3 revision
+     pending — PTY was the v2 default but never shipped; see Decision Log and #63.]
 
   * Telemetry Poller: Polls /health (2 s) and /slots (5 s); scrapes /metrics (Prometheus
     text format) for tokens/sec and KV cache utilization. Requires --slots and --metrics
     to be baked into the launch command when telemetry is enabled (§3.5).
 
-  * Configuration & Preset Store: JSON at ~/.config/llama-deck/presets.json with atomic
-    writes (write temp + rename) and forward migrations keyed by schema version (§7).
+   * Configuration & Preset Store: JSON at ~/.config/llama-deck/ — presets.json (presets,
+     lastSession, binary_path, legacy theme / default_model_dir) plus config.json (models
+     dir, theme, cached hardware probe) — with atomic writes (write temp + rename) and
+     forward migrations keyed by schema version (§5). Ownership consolidation tracked
+     in #69.
 
  1.3 Runtime Requirements
 
   * Bun is the required runtime (OpenTUI's TypeScript bindings reach the Zig core via FFI;
     Node.js is not assumed). Pin a Bun version in package.json ("packageManager") and CI.
-  * Native deps (node-pty) must be verified under Bun; pipe fallback exists if PTY is
-    unavailable. Clipboard: OSC 52 primary (works over SSH), fallback to xclip/xsel/
-    wl-copy/pbcopy.
+   * No native dependencies on the spawn path (pipes only — see the D3 revision).
+     Clipboard: OSC 52 primary (works over SSH), fallback to xclip/xsel/wl-copy/pbcopy.
 
 2. UI Layout & Viewport Specifications
 
@@ -151,45 +175,53 @@ v1 → v2 REVISION SUMMARY
     visibility (not ratio) may change at >=140 columns (e.g., show metadata + params panes).
   * Spinners are braille / quadrant-block / ASCII only (⠋⠙⠹, ▛▜▟▙, | / - \). Emoji glyphs
     (e.g., clock faces) rely on wide-glyph support that varies by emulator — prohibited.
-  * Themes (5): Tokyo Night (default), Catppuccin, Gruvbox, Cyberpunk, Matrix — tokens
-    lifted verbatim from the CSS variables in opentui.html.
+   * Themes (7): Tokyo Night (default), Catppuccin, Gruvbox, Cyberpunk, Rose Pine, Nord,
+     Everforest. The first four lift tokens verbatim from the CSS variables in
+     opentui.html; Rose Pine / Nord / Everforest were added beyond the mockup, and the
+     mockup's Matrix theme was dropped (D13).
 
  2.2 Viewport 1: Model Explorer (Split View)
   * Left Pane: focusable virtualized data table (filename, size, quant tag, architecture).
     Virtualization is mandatory: model directories routinely hold 100+ files.
   * Right Pane: GGUF header details, exact parameter count, effective bpw, and estimated
     VRAM range (see §3.2).
-  * Bottom Pane: one-line syntax-highlighted preview of the generated shell command.
+   * Bottom Pane: one-line preview strip of the launch target. NOTE: the Explorer today
+     renders only `llama-server -m <path>` (not the full generated command); aligning it
+     with the Configurator preview or relabeling it is tracked in #67.
 
  2.3 Viewport 2: Launch Configurator (Form Controls) — mockup: opentui.html tab [5]
   * GPU Offload: slider (0 .. block_count+1 read from GGUF metadata).
-  * Context Length: number input with preset chips (4096 … 131072), clamped to the model's
-    {arch}.context_length with a warning when exceeding it.
-  * Network: text inputs --host (default 127.0.0.1; confirm dialog if set to 0.0.0.0),
-    --port (default 8080; pre-flight bind check before launch).
+   * Context Length: preset chips (4096 … 131072), clamped to the model's
+     {arch}.context_length with a warning when exceeding it.
+   * Network: text inputs --host (default 127.0.0.1; a 0.0.0.0/:: bind holds the launch
+     until a second Ctrl+Y confirms), --port (default 8080; pre-flight bind check before
+     launch).
   * Toggles: --flash-attn, --mlock, --no-mmap, --slots, --metrics (telemetry pair,
     default ON).
   * KV cache precision: K/V selectors (f16, q8_0, q4_0) with live KV-size impact shown.
-  * Actions: [Enter] Save & Launch · [Ctrl+S] Save Preset · [Esc] Reset Defaults.
+   * Actions: [Enter] Launch · [Ctrl+S] Save Preset · [Esc] Reset Defaults.
 
  2.4 Viewport 3: Server Telemetry — mockup: opentui.html tab [6]
   * Status header: state badge (STARTING / LOADING / READY / FAILED), model, uptime,
     endpoint URL.
   * Meters: VRAM estimate vs. actual (when /metrics reports), KV cache usage ratio,
     prompt/decode tokens-per-second with ASCII sparkline history (▁▂▃▅▇).
-  * Slots table: id, state, prompt tokens, generating flag, per-slot t/s (needs --slots).
+   * Slots table: id, state, prompt tokens, decoded tokens, generating flag (needs --slots).
 
  2.5 Persistent Console Drawer
   * Collapsible 6-line ANSI terminal. Color-coded tags: [SYS] [SRV] [HTTP] [ERR].
-  * Input path: PTY → \r line assembler → ANSI-preserved ring buffer (bounded, e.g. 10k
-    lines) → rendered viewport. Carriage-return progress lines update IN PLACE, they do
-    not append (llama.cpp model-loading progress otherwise becomes hundreds of lines).
+   * Input path: pipes → \r line assembler → ring buffer (bounded, e.g. 10k lines; ANSI
+     SGR preserved) → rendered viewport. Carriage-return progress lines must update IN
+     PLACE, they do not append (llama.cpp model-loading progress otherwise becomes
+     hundreds of lines). [The assembler collapses \r today; live in-place rendering of
+     the in-progress line is open work — #68. PTY transport: see the D3 revision.]
   * Live autoscroll; pauses on user scroll-up; resumes via [G]/[End]. Autoscroll behavior
     is tested together with focus changes (known subtle interaction).
 
  2.6 Command Palette Overlay (Ctrl+P)
-  * Modal fuzzy-search across all actions: switch theme, set port, kill server, export
-    command, rescan models, adopt orphaned server (§6.3), toggle telemetry.
+   * Modal fuzzy-search across the action registry: switch theme (×7), set port, kill
+     server, export/yank command, rescan models, toggle telemetry, auto-fit ngl, go to
+     tab 1–4, clear log. (Adopt-orphan retired — D11.)
 
 3. Feature Matrix
 
@@ -217,12 +249,15 @@ v1 → v2 REVISION SUMMARY
     part 1; size = sum of parts.
   * Corrupt/unknown files (bad magic, truncated header, unsupported version) are flagged
     in the table with a parse-error glyph, never crash the scanner.
-  * Reader caps streaming at 256 KB (retry once with 2 MB if kv/table spans the cap).
+   * Reader caps streaming at 256 KB, retrying at 2 MB and finally 32 MB if kv/table
+     spans the cap; hostile headers (count/length overflows) are rejected, never crash
+     the scanner.
 
  3.2 VRAM Estimator (GQA-aware, range output)
 
   CORRECTED FORMULA (v1 incorrectly used n_heads; GQA models would overestimate 8x):
-   kv_bytes = 2 x n_layers x n_ctx x n_kv_heads x head_dim x bytes_per_elem
+    kv_bytes = 2 x n_layers x n_ctx x n_kv_heads x head_dim x bytes_per_elem
+               (K and V are sized independently when cache_type_k ≠ cache_type_v)
    head_dim = ({arch}.attention.key_length) ?: embedding_length / head_count
    bytes_per_elem: f16 = 2.0 · q8_0 ≈ 1.0 · q4_0 ≈ 0.5625
 
@@ -245,13 +280,16 @@ v1 → v2 REVISION SUMMARY
   }
 
   * All flags flow through the registry (form widgets, command preview, exporters).
-  * Runtime validation: parse `llama-server --help` output; flags absent from the user's
-    binary are disabled in the UI with a tooltip; deprecated flags render warnings.
-  * Exporters: (a) clipboard via OSC 52 with xclip/wl-copy/pbcopy fallback; (b) .sh script
-    with env vars and exec; (c) systemd unit (Type=simple, Restart=on-failure, ExecStart).
+   * Runtime validation: parse `llama-server --help` output; flags absent from the user's
+     binary are dropped from the built argv and must surface as disabled/marked fields in
+     the UI, with deprecated flags rendering warnings (UI surfacing open: #65;
+     `llama-deck doctor` warns today).
+   * Exporters: (a) clipboard via OSC 52 with xclip/wl-copy/pbcopy fallback; (b) .sh script
+     with env vars and exec; (c) systemd unit (Type=simple, Restart=on-failure, ExecStart);
+     (d) portable single-preset JSON (`export --format json` / `import`).
 
  3.4 Server Runtime & Execution
-  * Start / stop / restart. NO PAUSE — llama-server has no pause semantics; SIGSTOP
+   * Start / stop (restart = stop + relaunch). NO PAUSE — llama-server has no pause semantics; SIGSTOP
     freezes the process while holding all VRAM. Removed as a footgun (v1 listed it).
   * v1 manages EXACTLY ONE instance (port-conflict pre-flight check before spawn).
     Preset schema leaves room for future multi-instance.
@@ -270,29 +308,50 @@ v1 → v2 REVISION SUMMARY
 
  | Keybinding      | Scope            | Action                                              |
  |-----------------|------------------|-----------------------------------------------------|
- | Tab / Shift+Tab | Global           | Cycle focus forward / backward                      |
+ | Tab / Shift+Tab | Global           | Cycle focus forward / backward (screen ↔ console)   |
  | 1 – 4           | Global (normal)  | Switch to tab [1]–[4]                               |
+ | ?               | Global           | Toggle keybinding legend overlay                    |
  | Ctrl+P          | Global           | Command palette modal                               |
- | j / k, ↑ / ↓    | Table / List     | Navigate rows                                       |
- | Enter           | Table / Form     | Activate item / submit configuration                |
- | Space           | Checkbox         | Toggle setting                                      |
- | x               | Global (normal)  | KILL running server (explicit, with confirmation)   |
- | Ctrl+C          | Global           | Quit app AND tear down child (confirm if running;   |
+ | Ctrl+L          | Global           | Clear log window                                    |
+ | q / Ctrl+C      | Global           | Quit app AND tear down child (confirm if running;   |
  |                 |                  | second press within 2 s force-quits)                |
- | q               | Global (normal)  | Quit (same path as Ctrl+C)                          |
- | Ctrl+L          | Console          | Clear log window                                    |
- | y               | Model View       | Yank generated bash command to clipboard            |
+ | x               | Global (normal)  | KILL running server (explicit, with confirmation)   |
+ | k               | Global (normal)  | Kill ORPHANED server (2-press arm; ownership vs     |
+ |                 |                  | table `k` under revision — #55)                     |
+ | o               | Global           | Collapse / expand console drawer                    |
+ | Enter           | Global (normal)  | Launch; on Presets: set default preset. Yields to   |
+ |                 |                  | the Explorer dir editor while it is open            |
+ | j / k, ↑ / ↓    | Table / List     | Navigate rows                                       |
+ | g / G, Home/End | Table / Console  | Jump top / bottom (console: also resumes autoscroll)|
+ | Space           | Checkbox         | Toggle setting                                      |
+ | m               | Explorer         | Set models directory                                |
+ | r               | Explorer         | Rescan models directory                             |
+ | a               | Configurator     | Auto-fit GPU offload (-ngl) to VRAM                 |
+ | Ctrl+S          | Configurator     | Save current configuration as a preset              |
+ | y               | Configurator     | Yank generated command to clipboard                 |
+ | Ctrl+Y          | Global           | Confirm host-exposing (0.0.0.0/::) launch           |
+ | Esc             | Modal / editor   | Close overlay; cancel dir editor; reset the         |
+ |                 |                  | Configurator to defaults                            |
+ | i               | Config/Presets   | Import shell command / preset document              |
+ | t               | Telemetry        | Toggle telemetry on / off                           |
+ | c / d / l / r   | Presets          | Clone / delete (2-press) / load+go / relink         |
 
-  Rationale: terminal muscle memory says Ctrl+C = quit. It must NEVER quit the app while
-  leaving an orphaned llama-server holding VRAM. Killing the server is a separate, explicit
-  action (x / palette). Text inputs capture printable keys; global bindings apply in
-  normal mode only.
+ Rationale: terminal muscle memory says Ctrl+C = quit. It must NEVER quit the app while
+ leaving an orphaned llama-server holding VRAM. Killing the server is a separate, explicit
+ action (x / palette). Text inputs capture printable keys; global bindings apply in
+ normal mode only (one owner per key — see #55 for the known `k` exception).
 
 5. Storage Schema & Configuration Layout
 
   Configuration: $XDG_CONFIG_HOME/llama-deck/ (default ~/.config/llama-deck/).
   Runtime state:  $XDG_STATE_HOME/llama-deck/  (default ~/.local/state/llama-deck/) —
-                  server.pid, telemetry cache. State never lives in the config dir.
+                  server.pid, models metadata cache, calibration history. State never
+                  lives in the config dir.
+
+  App-level settings live in config.json (modelsDir, theme, cached hardware probe);
+  presets.json carries the preset store plus lastSession and binary_path. Consolidating
+  ownership (single home for binary path / theme, dropping dead fields, standard
+  ~/.config precedence) is tracked in #69.
 
   presets.json (schema version 2):
   {
@@ -300,6 +359,7 @@ v1 → v2 REVISION SUMMARY
     "version": 2,
     "default_model_dir": "~/models/llm",
     "theme": "tokyonight",
+    "binary_path": "/usr/local/bin/llama-server",
     "lastSession": { "preset_id": "qwen-32b-coding", "tab": 1 },
     "presets": [
       {
@@ -323,13 +383,17 @@ v1 → v2 REVISION SUMMARY
   * Persistence rules: atomic writes (temp file + rename, same dir); forward-only
     migrations (version field); backups presets.json.bak on migration; unknown flags in a
     preset are preserved verbatim (round-trip safe) and flagged in the UI.
-  * JSON over SQLite (decision D1): hand-editable, diff-friendly, no native deps.
+   * JSON over SQLite (decision D1): hand-editable, diff-friendly, no native deps.
+   * presets.json `theme` / `default_model_dir` are legacy inputs: theme falls back to
+     config.json's persisted theme; default_model_dir only seeds a first-run models dir.
+     Effective ownership moves to config.json per #69.
 
 6. Process Lifecycle & Safety
 
  6.1 Spawn
-  * node-pty default (color + \r fidelity), pipe fallback. detached: false; child shares
-    the app's process group so group signals cannot orphan it.
+   * Pipes (D3 revision pending — PTY never shipped; see the Decision Log and #63).
+     detached: false; child shares the app's process group so group signals cannot
+     orphan it.
   * Launch command is built by the flag registry; env vars applied from preset.
 
  6.2 Teardown guarantees (implemented in Phase 1, not later)
@@ -342,9 +406,10 @@ v1 → v2 REVISION SUMMARY
  6.3 Orphan detection & recovery
   * Supervisor writes $XDG_STATE_HOME/llama-deck/server.pid: { pid, port, preset_id,
     started_at }.
-  * On startup, if a pidfile exists: verify /proc/<pid> is alive AND its cmdline contains
-    llama-server; probe the recorded port. Offer: adopt (attach telemetry + logs tail) or
-    kill. Stale pidfiles are cleaned silently.
+   * On startup, if a pidfile exists: verify /proc/<pid> is alive AND its cmdline contains
+     llama-server; probe the recorded port. Offer kill (2-press confirmation) — adopt was
+     retired in v1 (D11); kill is the only recovery path. Stale pidfiles are cleaned
+     silently. Platforms without /proc report "identity unavailable" rather than guessing.
 
  6.4 Failure handling
   * Non-zero exit → FAILED state with the last 50 log lines surfaced; known patterns
@@ -361,8 +426,8 @@ v1 → v2 REVISION SUMMARY
  | Corrupt GGUF (bad magic)     | Parser                       | Flagged row in table; never crashes    |
  | Multi-part GGUF              | Filename pattern             | Grouped; summed size; metadata part 1  |
  | First run, no models dir     | Startup                      | Onboarding prompt to set directory     |
- | llama-server not on PATH     | Startup `which`              | Prompt for binary path; registry idle  |
- | Binary too old for a flag    | --help parse vs registry     | Flag disabled in UI with tooltip       |
+  | llama-server not on PATH     | Startup `which`/probe | Boot warning + FAILED binary_not_found (no spawn); binary_path settable via `llama-deck config` (open: #69) |
+  | Binary too old for a flag    | --help parse vs registry | Flag dropped from argv + UI marker / doctor warning (open: #65) |
  | Terminal below 100x30        | Resize event                 | Degraded single-column + resize hint   |
  | TUI crash mid-session        | Exit hooks                   | Teardown runs; pidfile enables recovery|
  | Split-file sibling deleted   | Scanner                      | Group marked incomplete                |
@@ -370,9 +435,10 @@ v1 → v2 REVISION SUMMARY
 8. Testing Strategy
 
   * Unit (core, no TUI):
-    - GGUF parser: committed binary fixtures = first 64 KB of REAL .gguf headers
-      (one per major arch: llama, qwen2, gemma, deepseek2) + generated edge cases
-      (v1/v2 headers, string arrays, truncated stream, split files).
+     - GGUF parser: committed binary fixtures = first 64 KB of REAL .gguf headers
+       (llama3 incl. yarn rope-scaling, qwen2, qwen3moe, gemma, phi3, command-r,
+       deepseek2) + generated edge cases (v1/v2 headers, string arrays, truncated
+       stream, split files, property fuzz).
     - VRAM estimator: table-driven against known real-world configs; GQA vs MHA cases;
       property test — output is a valid range and monotonic in ctx and ngl.
     - Flag registry / command builder: golden command strings; deprecated/absent flag
@@ -380,23 +446,36 @@ v1 → v2 REVISION SUMMARY
     - Preset store: migrations v1→v2, atomic-write failure injection, round-trip of
       unknown flags.
   * Integration:
-    - Supervisor vs a fake-server.sh fixture: emits \r progress lines, ANSI colors,
-      delayed /health 503→200, configurable exit codes. Asserts: line assembly, state
-      machine transitions, teardown within timeout, pidfile lifecycle, orphan adoption.
+     - Supervisor vs a fake-server.sh fixture: emits \r progress lines, ANSI colors,
+       delayed /health 503→200, configurable exit codes. Asserts: line assembly, state
+       machine transitions, teardown within timeout, pidfile lifecycle, orphan kill.
     - Telemetry poller vs a mock HTTP server (canned /slots, /metrics payloads).
-  * UI:
-    - Golden frame snapshots per screen and theme; focus-order traversal tests; palette
-      filtering; autoscroll-pause interaction tests.
+   * UI:
+     - Golden frame + span snapshots per screen and theme; focus-order traversal tests;
+       palette filtering; autoscroll-pause interaction tests; table-driven pure
+       shell-key-router tests (contexts × keys).
+   * Composition-root E2E (real SessionApp wiring, keys pressed through the harness —
+     #31) and tmux black-box smoke flows (boot, mixed-case input, viewport matrix — #54).
+     Release-gate suites live in tests/automated-manual/.
   * Compat matrix (manual checklist per release, automated where feasible): tmux, kitty,
     ghostty, wezterm, alacritty, VSCode integrated terminal — braille width, box glyphs,
     OSC 52, truecolor.
 
 9. Implementation Milestones
 
- Every phase ends with an explicit EXIT CRITERION. The walking skeleton lands in Phase 1:
- end-to-end truth in week one beats four perfect phases meeting for the first time in
- month two. Each bullet below is a branch-sized WORK ITEM — one branch, one mergeable
- deliverable. The full branch/commit/merge/verify loop is specified in AGENTS.md.
+  Every phase ends with an explicit EXIT CRITERION. The walking skeleton lands in Phase 1:
+  end-to-end truth in week one beats four perfect phases meeting for the first time in
+  month two. Each bullet below is a branch-sized WORK ITEM — one branch, one mergeable
+  deliverable. The full branch/commit/merge/verify loop is specified in AGENTS.md.
+
+  STATUS (2026-09-16): Phases 1–5 are complete (boundary tag v0.5.0); the roadmap below is
+  historical record and new work is issue-driven. Post-audit remediation Phases 6–14 are
+  recorded in plans/audit-remediation-roadmap.md with the manual-evidence ledger in
+  plans/manual-verification-checklist.md. The 2026-09-16 audit follow-ups are issues
+  #55–#71 (plans/audit-2026-09-16-remediation-plan.md). Revisions discovered after the
+  phases closed: Phase 1's PTY spike resulted in the pipe transport (D3 revision pending);
+  Phase 2's Components Catalog was later excluded from the product shell (D12); the theme
+  set grew from 5 to 7 (D13).
 
  ┌──────────────────────────────────────────────────────────────────────────┐
  │ DEVELOPMENT ROADMAP v2.1                                                 │
@@ -459,15 +538,18 @@ v1 → v2 REVISION SUMMARY
 
 10. Decision Log
 
- | #  | Decision                                  | Rationale                                        |
- |----|-------------------------------------------|--------------------------------------------------|
- | D1 | JSON presets, not SQLite                  | Hand-editable, diff-friendly, no native deps     |
- | D2 | Bun runtime, pinned                       | OpenTUI TS bindings reach Zig via FFI            |
- | D3 | PTY default, pipe fallback                | Color + \r fidelity; degrade gracefully          |
- | D4 | Single managed instance (v1)              | Scope control; schema ready for multi later      |
- | D5 | Headless core + UI shell + CLI            | Testability, free CLI, framework risk insurance  |
- | D6 | OSC 52 clipboard primary                  | Works over SSH; local tool fallbacks             |
- | D7 | No "pause" feature                        | SIGSTOP holds VRAM hostage; footgun removed      |
- | D8 | Braille/ASCII spinners only               | Emoji width varies by terminal emulator          |
- | D9 | Flag registry + --help runtime validation | llama-server flags drift across releases         |
- | D10| mockup = style guide, not layout contract | CSS artifacts (radius, grids, hover) don't map   |
+  | #  | Decision                                  | Rationale                                        |
+  |----|-------------------------------------------|--------------------------------------------------|
+  | D1 | JSON presets, not SQLite                  | Hand-editable, diff-friendly, no native deps     |
+  | D2 | Bun runtime, pinned                       | OpenTUI TS bindings reach Zig via FFI            |
+  | D3 | ⚠ UNDER REVISION: pipes shipped; PTY never implemented. Ratify pipes (#63; live \r progress via #68) or schedule PTY work | Pipes: no native deps, \r via assembler; PTY: color fidelity |
+  | D4 | Single managed instance (v1)              | Scope control; schema ready for multi later      |
+  | D5 | Headless core + UI shell + CLI            | Testability, free CLI, framework risk insurance  |
+  | D6 | OSC 52 clipboard primary                  | Works over SSH; local tool fallbacks             |
+  | D7 | No "pause" feature                        | SIGSTOP holds VRAM hostage; footgun removed      |
+  | D8 | Braille/ASCII spinners only               | Emoji width varies by terminal emulator          |
+  | D9 | Flag registry + --help runtime validation | llama-server flags drift across releases         |
+  | D10| mockup = style guide, not layout contract | CSS artifacts (radius, grids, hover) don't map   |
+  | D11| Orphan adopt retired (v1); kill with 2-press confirm is the only recovery | Recorded 2026-09-14, commit 8dd2fb2 (audit F8) |
+  | D12| Components Catalog = internal regression artifact, not a product tab | Recorded 2026-09-14, commit 410cb93 (audit F5) |
+  | D13| Theme set = 7 (Matrix dropped; Rose Pine / Nord / Everforest added) | Pinned by README + docs-consistency test (#20/#21) |
