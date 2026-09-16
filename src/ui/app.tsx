@@ -197,7 +197,9 @@ export function App({
 	// yield global printable keys (digits, o/k/q/…) while a text field owns
 	// typing — one owner per key, never two.
 	const activeConfiguratorField = useRef(0);
-	const [explorerEditing, setExplorerEditing] = useState(false);
+	// #42: the Explorer notifies at event time; a ref (not state) keeps the
+	// yield guard correct within the same key batch that opened the editor.
+	const explorerEditingRef = useRef(false);
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
@@ -235,7 +237,7 @@ export function App({
 			(tab === 1 &&
 				focusPane === 0 &&
 				isConfiguratorTextField(activeConfiguratorField.current)) ||
-			(tab === 0 && explorerEditing);
+			(tab === 0 && explorerEditingRef.current);
 		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
 			return;
 		}
@@ -258,7 +260,15 @@ export function App({
 			if (result.action === "confirm") setConfirmNotice(result.message ?? null);
 			return;
 		}
-		if (key.name === "return" && onLaunch && tab !== PRESETS_TAB) {
+		// The Explorer's dir editor owns Enter while open (confirm path);
+		// on the Configurator, Enter=Launch is the advertised binding (#42).
+		const dirEditorOpen = tab === 0 && explorerEditingRef.current;
+		if (
+			key.name === "return" &&
+			onLaunch &&
+			tab !== PRESETS_TAB &&
+			!dirEditorOpen
+		) {
 			onLaunch();
 			return;
 		}
@@ -426,7 +436,9 @@ export function App({
 						selectedIndex={explorerControl.selectedIndex}
 						onSelectIndex={explorerControl.onSelectIndex}
 						onSetModelsDir={explorerControl.onSetModelsDir}
-						onEditingChange={setExplorerEditing}
+						onEditingChange={(editing) => {
+							explorerEditingRef.current = editing;
+						}}
 						focused={focusPane === 0}
 						captureKeys={focusPane === 0 && !importOpen}
 					/>

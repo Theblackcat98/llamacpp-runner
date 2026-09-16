@@ -1,5 +1,5 @@
 import { useTerminalDimensions } from "@opentui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatBytes } from "../../core/estimate/vram";
 import { shellQuote } from "../../core/export/quote";
 import type { ModelEntry } from "../../core/models/types";
@@ -57,14 +57,23 @@ export function Explorer({
 	const [editingDir, setEditingDir] = useState(false);
 	const [dirInput, setDirInput] = useState(() => createTextInputState());
 
+	// #42: notify at event time (not only from the effect) so the shell's
+	// yield guard sees an open editor within the same key batch. The effect
+	// still covers mount-consistency; both writes are idempotent.
+	const editingChangeRef = useRef(onEditingChange);
+	editingChangeRef.current = onEditingChange;
+	const setEditing = (editing: boolean) => {
+		setEditingDir(editing);
+		editingChangeRef.current?.(editing);
+	};
 	useEffect(() => {
-		onEditingChange?.(editingDir);
-	}, [editingDir, onEditingChange]);
+		editingChangeRef.current?.(editingDir);
+	}, [editingDir]);
 
 	useScopedKeyboard(captureKeys && !editingDir, (key) => {
 		if (key.name === "m" && !key.ctrl && onSetModelsDir) {
 			setDirInput(createTextInputState());
-			setEditingDir(true);
+			setEditing(true);
 			return;
 		}
 	});
@@ -75,11 +84,11 @@ export function Explorer({
 			if (trimmed.length > 0) {
 				onSetModelsDir?.(trimmed);
 			}
-			setEditingDir(false);
+			setEditing(false);
 			return;
 		}
 		if (key.name === "escape") {
-			setEditingDir(false);
+			setEditing(false);
 			return;
 		}
 	});
