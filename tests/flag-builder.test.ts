@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildCommand } from "../src/core/flags/builder";
+import { buildCommand, commandLine } from "../src/core/flags/builder";
 import {
 	FLAG_ORDER,
 	type FlagEntry,
@@ -193,6 +193,54 @@ describe("command builder (P4-FR-03)", () => {
 		}).args;
 		expect(explicitOff).not.toContain("--slots");
 		expect(explicitOff).not.toContain("--metrics");
+	});
+
+	it("omits empty and unset values for every registry text flag", () => {
+		const textFlags = Object.values(REGISTRY).filter(
+			(entry) => entry.type === "string",
+		);
+
+		for (const entry of textFlags) {
+			for (const values of [
+				{},
+				{ [entry.id]: undefined },
+				{ [entry.id]: null },
+				{ [entry.id]: "" },
+			]) {
+				const { args } = buildCommand({ modelPath: "m.gguf", values });
+				expect(args).not.toContain(entry.cli[0]);
+			}
+		}
+	});
+
+	it("emits every registry text flag when non-empty", () => {
+		const textFlags = Object.values(REGISTRY).filter(
+			(entry) => entry.type === "string",
+		);
+		const values = Object.fromEntries(
+			textFlags.map((entry) => [entry.id, `${entry.id}-value`]),
+		);
+		const { args } = buildCommand({ modelPath: "m.gguf", values });
+
+		for (const entry of textFlags) {
+			expect(args).toContain(entry.cli[0]);
+			expect(args).toContain(`${entry.id}-value`);
+		}
+	});
+
+	it("quotes non-empty text values in commandLine without empty fragments", () => {
+		const built = buildCommand({
+			modelPath: "m.gguf",
+			values: {
+				host: "127.0.0.1",
+				chat_template: "chat ml",
+				alias: "model's alias",
+			},
+		});
+
+		expect(commandLine(built)).toBe(
+			`llama-server -m m.gguf --host 127.0.0.1 --chat-template 'chat ml' -a 'model'\\''s alias' --slots --metrics`,
+		);
 	});
 
 	it("string values are passed verbatim in argv (quoting is exporter concern)", () => {
