@@ -21,6 +21,11 @@ export interface TextInputProps extends TextInputOptions {
 	value?: string;
 	onChange?: (state: TextInputState) => void;
 	width?: number;
+	/** Owning field index within a shared fieldRef scheme (#42): when the
+	 * parent moves field focus and a key arrives in the same tick, this
+	 * input's subscription is stale — the ref names the current owner. */
+	field?: number;
+	activeFieldRef?: { current: number };
 }
 
 export function keyEventToInputKey(key: {
@@ -76,6 +81,8 @@ export function TextInput({
 	maxLength,
 	numeric,
 	width = 24,
+	field,
+	activeFieldRef,
 }: TextInputProps) {
 	const [state, dispatch] = useReducer(
 		(s: TextInputState, k: TextInputKey) =>
@@ -124,6 +131,15 @@ export function TextInput({
 	}, [state]);
 
 	useScopedKeyboard(captureKeys, (key) => {
+		// A same-tick field move can leave this input's subscription stale
+		// (#42): ownership follows the ref, not the last committed render.
+		if (
+			activeFieldRef &&
+			field !== undefined &&
+			activeFieldRef.current !== field
+		) {
+			return;
+		}
 		const mapped = keyEventToInputKey(key);
 		if (mapped) dispatch(mapped);
 	});

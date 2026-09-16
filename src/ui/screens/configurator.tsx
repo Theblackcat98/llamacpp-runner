@@ -6,7 +6,7 @@ import { Checkbox } from "../components/checkbox";
 import { ChipGroup } from "../components/chip-group";
 import { CyclingSelect } from "../components/cycling-select";
 import { Slider } from "../components/slider";
-import { TextInput } from "../components/text-input";
+import { keyEventToInputKey, TextInput } from "../components/text-input";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
 	type ConfiguratorState,
@@ -52,13 +52,26 @@ export function Configurator({
 	onActiveFieldChange,
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
+	// #42: event-time mirror of `field`. A key batch (fast typing, paste,
+	// tmux bursts) can move focus and deliver the next key before React
+	// commits; handlers below consult this ref so ownership is correct
+	// within the same tick, not one commit late.
+	const fieldRef = useRef(0);
 
 	// Notify exactly on mount + field change. Holding the callback in a
 	// ref keeps parent callback-identity churn (inline arrows in App)
 	// from re-firing this effect on every render (#37).
 	const activeFieldCallback = useRef(onActiveFieldChange);
 	activeFieldCallback.current = onActiveFieldChange;
+	const moveField = (next: number) => {
+		fieldRef.current = next;
+		// Synchronous: the shell's yield guard must see the new owner before
+		// any later key in the same batch is routed (#42).
+		activeFieldCallback.current?.(next);
+		setField(next);
+	};
 	useEffect(() => {
+		fieldRef.current = field;
 		activeFieldCallback.current?.(field);
 	}, [field]);
 	// #37: updates read the latest state through a ref (written back
@@ -93,17 +106,34 @@ export function Configurator({
 			onChange?.(resetConfigurator(state));
 			return;
 		}
-		if (key.name === "a" && !isConfiguratorTextField(field)) {
+		if (key.name === "a" && !isConfiguratorTextField(fieldRef.current)) {
 			onAutoFit?.();
 			return;
 		}
 		if (key.name === "up") {
-			setField((f) => (f + FIELD_COUNT - 1) % FIELD_COUNT);
+			moveField((fieldRef.current + FIELD_COUNT - 1) % FIELD_COUNT);
 			return;
 		}
 		if (key.name === "down") {
-			setField((f) => (f + 1) % FIELD_COUNT);
+			moveField((fieldRef.current + 1) % FIELD_COUNT);
 			return;
+		}
+		// Same-tick boundary (#42): the move above hasn't committed, so the
+		// target TextInput isn't subscribed yet — deliver printables through
+		// state; the controlled-value sync shows them once it commits.
+		if (fieldRef.current !== field) {
+			const flag = TEXT_FIELD_FLAG[fieldRef.current];
+			const mapped = keyEventToInputKey(key);
+			if (flag && mapped?.kind === "printable") {
+				if (flag !== "port" || /^[0-9]$/.test(mapped.ch)) {
+					update((s) => {
+						const current =
+							typeof s.values[flag] === "string" ? s.values[flag] : "";
+						return setFlag(s, flag, current + mapped.ch);
+					});
+				}
+				return;
+			}
 		}
 		// Enter (launch) and Ctrl+S (save) are owned by the shell (App) so a
 		// single keypress causes exactly one action (Phase 13).
@@ -227,6 +257,8 @@ export function Configurator({
 							theme={theme}
 							captureKeys={captureKeys && field === 12}
 							focused={focused && field === 12}
+							field={12}
+							activeFieldRef={fieldRef}
 							label="host"
 							placeholder="127.0.0.1"
 							value={strValue(state.values.host)}
@@ -238,6 +270,8 @@ export function Configurator({
 							theme={theme}
 							captureKeys={captureKeys && field === 13}
 							focused={focused && field === 13}
+							field={13}
+							activeFieldRef={fieldRef}
 							label="port"
 							placeholder="8080"
 							numeric
@@ -253,6 +287,8 @@ export function Configurator({
 							theme={theme}
 							captureKeys={captureKeys && field === 14}
 							focused={focused && field === 14}
+							field={14}
+							activeFieldRef={fieldRef}
 							label="alias"
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
@@ -261,6 +297,8 @@ export function Configurator({
 							theme={theme}
 							captureKeys={captureKeys && field === 15}
 							focused={focused && field === 15}
+							field={15}
+							activeFieldRef={fieldRef}
 							label="chat-template"
 							value={strValue(state.values.chat_template)}
 							onChange={(st) =>
@@ -340,6 +378,14 @@ const FIELD: Record<string, number> = {
 
 export const TEXT_FIELD_START_INDEX = 12;
 export const TEXT_FIELD_END_INDEX = 15;
+
+/** Field index → flag id for the text inputs (for same-tick forwarding, #42). */
+const TEXT_FIELD_FLAG: Record<number, string> = {
+	12: "host",
+	13: "port",
+	14: "alias",
+	15: "chat_template",
+};
 
 /** Named contract: returns true if the focused field index is a text input (§2.3, Phase 13). */
 export function isConfiguratorTextField(fieldIndex: number): boolean {
