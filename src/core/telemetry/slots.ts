@@ -7,6 +7,18 @@ export interface SlotSample {
 	state: string;
 	promptTokens: number | null;
 	generating: boolean;
+	/** Upstream task id for the slot's current/last task; -1 when idle. */
+	idTask: number | null;
+	/** Upstream next_token.n_decoded — tokens generated in the current task. */
+	decodedTokens: number | null;
+}
+
+function asNumber(v: unknown): number | null {
+	return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function asBool(v: unknown): boolean | null {
+	return typeof v === "boolean" ? v : null;
 }
 
 export function parseSlots(body: string): SlotSample[] {
@@ -23,17 +35,47 @@ export function parseSlots(body: string): SlotSample[] {
 		const o = raw as Record<string, unknown>;
 		const id = Number(o.id);
 		if (!Number.isInteger(id)) continue;
-		const stateRaw = typeof o.state === "string" ? o.state : "";
-		const state = stateRaw.toUpperCase();
+		const idTask =
+			typeof o.id_task === "number" && Number.isFinite(o.id_task)
+				? o.id_task
+				: null;
+		const nextToken =
+			o.next_token !== null &&
+			typeof o.next_token === "object" &&
+			!Array.isArray(o.next_token)
+				? (o.next_token as Record<string, unknown>)
+				: null;
+		const decodedTokens =
+			nextToken &&
+			typeof nextToken.n_decoded === "number" &&
+			Number.isFinite(nextToken.n_decoded)
+				? nextToken.n_decoded
+				: null;
+		// Current upstream contract (llama.cpp #9291): slot[i].state was removed
+		// in favor of is_processing. Legacy `state`/`generating` fields are still
+		// honored for older servers.
+		const isProcessing = asBool(o.is_processing);
+		const legacyState =
+			typeof o.state === "string" ? o.state.toUpperCase() : "";
+		const legacyGenerating = asBool(o.generating);
+		const generating = isProcessing ?? legacyGenerating ?? false;
+		const state =
+			isProcessing !== null
+				? isProcessing
+					? "PROCESSING"
+					: "IDLE"
+				: legacyState.length > 0
+					? legacyState
+					: "UNKNOWN";
+		const legacyPromptTokens = asNumber(o.prompt_tokens);
+		const promptTokens = asNumber(o.n_prompt_tokens) ?? legacyPromptTokens;
 		out.push({
 			id,
-			state: state.length > 0 ? state : "UNKNOWN",
-			promptTokens:
-				typeof o.prompt_tokens === "number" ? o.prompt_tokens : null,
-			generating:
-				typeof o.generating === "boolean"
-					? o.generating
-					: state === "GENERATING" || state === "ACTIVE",
+			state,
+			promptTokens,
+			generating,
+			idTask,
+			decodedTokens,
 		});
 	}
 	return out;

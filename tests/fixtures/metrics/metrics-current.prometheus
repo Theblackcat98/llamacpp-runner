@@ -1,0 +1,36 @@
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed.
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 9782
+# HELP llamacpp:prompt_seconds_total Prompt process time in seconds.
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 12.04
+# HELP llamacpp:prompt_tokens_seconds Average prompt throughput in tokens/s.
+# TYPE llamacpp:prompt_tokens_seconds gauge
+llamacpp:prompt_tokens_seconds 812.5
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed.
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 305
+# HELP llamacpp:tokens_predicted_seconds_total Predict process time in seconds.
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 13.03
+# HELP llamacpp:predicted_tokens_seconds Average generation throughput in tokens/s.
+# TYPE llamacpp:predicted_tokens_seconds gauge
+llamacpp:predicted_tokens_seconds 23.4
+# HELP llamacpp:requests_processing Number of requests processing.
+# TYPE llamacpp:requests_processing gauge
+llamacpp:requests_processing 1
+# HELP llamacpp:requests_deferred Number of requests deferred.
+# TYPE llamacpp:requests_deferred gauge
+llamacpp:requests_deferred 0
+# HELP llamacpp:n_tokens_max High watermark of the context size observed.
+# TYPE llamacpp:n_tokens_max counter
+llamacpp:n_tokens_max 65536
+# HELP llamacpp:n_decode_total Total Number of llama_decode() calls.
+# TYPE llamacpp:n_decode_total counter
+llamacpp:n_decode_total 130
+# HELP llamacpp:n_busy_slots_per_decode Average number of busy slots per llama_decode() call.
+# TYPE llamacpp:n_busy_slots_per_decode gauge
+llamacpp:n_busy_slots_per_decode 0.5
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 42

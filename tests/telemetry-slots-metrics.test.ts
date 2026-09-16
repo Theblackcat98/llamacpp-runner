@@ -15,11 +15,13 @@ import { HistoryRing, sparkline } from "../src/core/telemetry/sparkline";
 const FIX = (name: string) => join(import.meta.dir, "fixtures/metrics", name);
 
 describe("parseMetrics — Prometheus text keyed on llamacpp: prefix (P5-FR-03)", () => {
-	it("sync parse of captured payload", async () => {
+	it("sync parse of captured payload (legacy b6000 shape: t/s as counters → null t/s, gauges still parsed)", async () => {
 		const text = await Bun.file(FIX("real-b6000.prometheus")).text();
 		const snap = parseMetrics(text);
-		expect(snap.promptTps).toBeCloseTo(812.5);
-		expect(snap.decodeTps).toBeCloseTo(23.4);
+		// The b6000 capture labels the t/s series as counters; instantaneous t/s
+		// must not be manufactured from cumulative counters (issue #14).
+		expect(snap.promptTps).toBeNull();
+		expect(snap.decodeTps).toBeNull();
 		expect(snap.kvUsageRatio).toBeCloseTo(0.42);
 		expect(snap.memUsedBytes).toBe(6871947673);
 	});
@@ -28,7 +30,7 @@ describe("parseMetrics — Prometheus text keyed on llamacpp: prefix (P5-FR-03)"
 		const snap = parseMetrics(
 			await Bun.file(FIX("real-b6000.prometheus")).text(),
 		);
-		expect(snap.promptTps).not.toBeNull(); // known series still parsed
+		expect(snap.kvUsageRatio).not.toBeNull(); // known series still parsed
 	});
 
 	it("labels are stripped: kv_cache_usage_ratio{layer=...} parses", async () => {
@@ -119,15 +121,36 @@ describe("parseSlots — /slots JSON (P5-FR-02)", () => {
 			'[{"id":0,"state":"ACTIVE","prompt_tokens":128,"generating":true},{"id":1,"state":"IDLE","prompt_tokens":0,"generating":false}]',
 		);
 		expect(slots).toEqual([
-			{ id: 0, state: "ACTIVE", promptTokens: 128, generating: true },
-			{ id: 1, state: "IDLE", promptTokens: 0, generating: false },
+			{
+				id: 0,
+				state: "ACTIVE",
+				promptTokens: 128,
+				generating: true,
+				idTask: null,
+				decodedTokens: null,
+			},
+			{
+				id: 1,
+				state: "IDLE",
+				promptTokens: 0,
+				generating: false,
+				idTask: null,
+				decodedTokens: null,
+			},
 		] satisfies SlotSample[]);
 	});
 
 	it("defensive: lowercase state normalized, missing fields defaulted", () => {
 		const slots = parseSlots('[{"id":"3","state":"generating"}]');
 		expect(slots).toEqual([
-			{ id: 3, state: "GENERATING", promptTokens: null, generating: true },
+			{
+				id: 3,
+				state: "GENERATING",
+				promptTokens: null,
+				generating: false,
+				idTask: null,
+				decodedTokens: null,
+			},
 		]);
 	});
 
@@ -160,6 +183,137 @@ describe("SlotsPoller vs mock HTTP", () => {
 		server.stop(true);
 		expect(seen.length).toBeGreaterThanOrEqual(2);
 		expect(seen[0]?.[0]?.state).toBe("ACTIVE");
+	});
+});
+
+describe("parseSlots — current upstream contract (issue #14)", () => {
+	it("maps is_processing to generating and reads current token fields", () => {
+		const slots = parseSlots(
+			JSON.stringify([
+				{
+					id: 0,
+					id_task: 135,
+					n_ctx: 65536,
+					speculative: false,
+					is_processing: true,
+					n_prompt_tokens: 128,
+					n_prompt_tokens_processed: 128,
+					n_prompt_tokens_cache: 0,
+					next_token: { has_next_token: true, n_remain: -1, n_decoded: 42 },
+				},
+				{
+					id: 1,
+					id_task: 0,
+					is_processing: false,
+					n_prompt_tokens: 0,
+					next_token: { has_next_token: true, n_decoded: 0 },
+				},
+			]),
+		);
+		expect(slots).toEqual([
+			{
+				id: 0,
+				state: "PROCESSING",
+				promptTokens: 128,
+				generating: true,
+				idTask: 135,
+				decodedTokens: 42,
+			},
+			{
+				id: 1,
+				state: "IDLE",
+				promptTokens: 0,
+				generating: false,
+				idTask: 0,
+				decodedTokens: 0,
+			},
+		] satisfies SlotSample[]);
+	});
+
+	it("is_processing=false with prior task is idle, not generating", () => {
+		const slots = parseSlots(
+			'[{"id":0,"id_task":135,"is_processing":false,"n_prompt_tokens":64,"next_token":{"n_decoded":7}}]',
+		);
+		expect(slots[0]?.generating).toBe(false);
+		expect(slots[0]?.state).toBe("IDLE");
+	});
+
+	it("legacy shape still parses (older servers)", () => {
+		const slots = parseSlots(
+			'[{"id":0,"state":"ACTIVE","prompt_tokens":128,"generating":true}]',
+		);
+		expect(slots[0]).toMatchObject({
+			id: 0,
+			state: "ACTIVE",
+			promptTokens: 128,
+			generating: true,
+		});
+	});
+
+	it("current shape with no task yet: is_processing=false, null tokens", () => {
+		const slots = parseSlots('[{"id":2,"id_task":-1,"is_processing":false}]');
+		expect(slots[0]).toMatchObject({
+			id: 2,
+			state: "IDLE",
+			promptTokens: null,
+			generating: false,
+			idTask: -1,
+			decodedTokens: null,
+		});
+	});
+
+	it("real current fixture parses with processing slot and counters", async () => {
+		const body = await Bun.file(FIX("slots-current.json")).text();
+		const slots = parseSlots(body);
+		expect(slots.length).toBe(2);
+		const busy = slots.find((s) => s.id === 0);
+		expect(busy?.generating).toBe(true);
+		expect(busy?.state).toBe("PROCESSING");
+		expect(busy?.promptTokens).toBe(128);
+		expect(busy?.decodedTokens).toBe(136);
+	});
+});
+
+describe("parseMetrics — current upstream metric names (issue #14)", () => {
+	it("parses current gauge names llamacpp:prompt_tokens_seconds / predicted_tokens_seconds", async () => {
+		const snap = parseMetrics(
+			await Bun.file(FIX("metrics-current.prometheus")).text(),
+		);
+		expect(snap.promptTps).toBeCloseTo(812.5);
+		expect(snap.decodeTps).toBeCloseTo(23.4);
+		// kv_cache_usage_ratio is not part of the current upstream /metrics
+		// contract — unavailable, not a manufactured zero.
+		expect(snap.kvUsageRatio).toBeNull();
+		// memory_used_bytes was removed upstream — must be unavailable, not 0
+		expect(snap.memUsedBytes).toBeNull();
+	});
+
+	it("distinguishes counters from gauges via # TYPE comments", () => {
+		const snap = parseMetrics(
+			[
+				"# TYPE llamacpp:prompt_tokens_seconds gauge",
+				"llamacpp:prompt_tokens_seconds 100",
+				"# TYPE llamacpp:prompt_tokens_total counter",
+				"llamacpp:prompt_tokens_total 999",
+				"# TYPE llamacpp:predicted_tokens_seconds gauge",
+				"llamacpp:predicted_tokens_seconds 55",
+			].join("\n"),
+		);
+		// gauge t/s series wins over same-family counters
+		expect(snap.promptTps).toBe(100);
+		expect(snap.decodeTps).toBe(55);
+
+		// counters (totals) are never mapped to instantaneous t/s
+		const countersOnly = parseMetrics(
+			[
+				"# TYPE llamacpp:prompt_tokens_seconds_total counter",
+				"llamacpp:prompt_tokens_seconds_total 812.5",
+				"# TYPE llamacpp:predicted_tokens_seconds_total counter",
+				"llamacpp:predicted_tokens_seconds_total 23.4",
+			].join("\n"),
+		);
+		expect(countersOnly.promptTps).toBeNull();
+		expect(countersOnly.decodeTps).toBeNull();
 	});
 });
 
