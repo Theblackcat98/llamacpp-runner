@@ -26,10 +26,12 @@ Usage:
   llama-deck list [dir ...] [--json]
                               List model names only
   llama-deck presets [--json] List saved presets
-  llama-deck export <preset> [--format cmd|sh|systemd]
-                              Export a preset's launch command
+  llama-deck export <preset> [--format cmd|sh|systemd|json]
+                              Export a preset's launch command, or the
+                              preset itself as portable JSON
   llama-deck import <file|-> [--name <name>] [--save]
-                              Import shell command into preset or preview
+                              Import shell command into preset or preview;
+                              a preset JSON document imports directly
   llama-deck start <preset>   Launch a preset (llama-server in foreground)
   llama-deck doctor <preset> [--json]
                               Diagnose launch readiness without starting a
@@ -133,13 +135,27 @@ async function main(): Promise<void> {
 		const presetId = args[0];
 		if (!presetId) usage();
 		const formatIdx = args.indexOf("--format");
-		const format = (
-			formatIdx >= 0 ? args[formatIdx + 1] : "cmd"
-		) as ExportFormat;
-		if (format !== "cmd" && format !== "sh" && format !== "systemd") usage();
+		const formatRaw = formatIdx >= 0 ? args[formatIdx + 1] : "cmd";
+		if (
+			formatRaw !== "cmd" &&
+			formatRaw !== "sh" &&
+			formatRaw !== "systemd" &&
+			formatRaw !== "json"
+		)
+			usage();
 		const preset = findPreset(presetId);
+		// #11: portable single-preset JSON — no binary probe needed.
+		if (formatRaw === "json") {
+			const { exportPresetDoc } = await import(
+				"./core/store/preset-portability"
+			);
+			console.log(JSON.stringify(exportPresetDoc(preset), null, "\t"));
+			return;
+		}
 		const availability = await runtimeAvailability(configuredBinary());
-		process.stdout.write(exportPreset(preset, format, { availability }));
+		process.stdout.write(
+			exportPreset(preset, formatRaw as ExportFormat, { availability }),
+		);
 		return;
 	}
 
@@ -189,6 +205,39 @@ async function main(): Promise<void> {
 			content = await Bun.stdin.text();
 		} else {
 			content = await Bun.file(target).text();
+		}
+
+		// #11 door 1: a preset-document JSON (exported preset) merges into
+		// the store directly; door 2 (below) is the shell-command tokenizer.
+		// Anything that LOOKS like JSON but is invalid is rejected instead of
+		// silently becoming a shell import.
+		if (content.trimStart().startsWith("{")) {
+			const { importPresetsInto, parsePresetDoc } = await import(
+				"./core/store/preset-portability"
+			);
+			const { savePresets } = await import("./core/store/presets");
+			const { emptyPresetFile } = await import("./core/store/presets");
+			const parsed = parsePresetDoc(content);
+			if (!parsed.ok) {
+				console.error(`Import failed: ${parsed.error}`);
+				process.exit(1);
+			}
+			const store = loadPresets(presetsFilePath(paths.configDir));
+			const current = store.data ?? emptyPresetFile();
+			const { doc: merged, imported } = importPresetsInto(current, parsed.doc);
+			savePresets(presetsFilePath(paths.configDir), merged);
+			for (const entry of imported) {
+				if (entry.renamedId) {
+					console.log(
+						`Imported preset "${entry.preset.name}" (${entry.originalId}) — id already in use, renamed to ${entry.preset.id}`,
+					);
+				} else {
+					console.log(
+						`Imported preset "${entry.preset.name}" (${entry.preset.id})`,
+					);
+				}
+			}
+			return;
 		}
 
 		const { parseShellCommand } = await import("./core/import/shell");
