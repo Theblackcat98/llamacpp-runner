@@ -11,7 +11,7 @@ import { THEMES } from "../../src/ui/themes";
  * 3. Sparkline fill glyphs (▁▂▃▅▇) occupy exactly one column width.
  * 4. Gauge fill bars (█░) occupy exactly one column width.
  * 5. OSC 52 sequences are properly structured with base64 payloads and BEL terminators.
- * 6. Truecolor tokens across all 4 themes map to valid 24-bit hex colors without downsampling.
+ * 6. Truecolor tokens across all 7 themes map to valid 24-bit hex colors without downsampling.
  * 7. Degraded mode detects sub-100x30 viewports and gates layout accordingly.
  * 8. All 6 target terminal profiles satisfy the release criteria.
  */
@@ -103,8 +103,8 @@ describe("Terminal Compatibility: automated matrix verification", () => {
 		expect(decoded).toBe(command);
 	});
 
-	it("verifies truecolor hex color definitions across all 4 themes", () => {
-		expect(THEMES.length).toBe(4);
+	it("verifies truecolor hex color definitions across all 7 themes", () => {
+		expect(THEMES.length).toBe(7);
 
 		for (const theme of THEMES) {
 			const colorKeys = [

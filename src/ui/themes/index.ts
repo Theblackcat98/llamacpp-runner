@@ -74,12 +74,75 @@ export const CYBERPUNK: Theme = {
 	focusBg: "#33001a",
 };
 
-export const THEMES: Theme[] = [TOKYO_NIGHT, CATPPUCCIN, GRUVBOX, CYBERPUNK];
+export const ROSE_PINE: Theme = {
+	name: "RosePine",
+	bg: "#191724",
+	surface: "#1f1d2e",
+	fg: "#e0def4",
+	fgBright: "#ffffff",
+	border: "#26233a",
+	accent: "#c4a7e7",
+	accentHover: "#ebbcba",
+	muted: "#908caa",
+	success: "#31748f",
+	warn: "#f6c177",
+	error: "#eb6f92",
+	purple: "#c4a7e7",
+	cyan: "#9ccfd8",
+	focusBg: "#26233a",
+};
+
+export const NORD: Theme = {
+	name: "Nord",
+	bg: "#2e3440",
+	surface: "#3b4252",
+	fg: "#d8dee9",
+	fgBright: "#eceff4",
+	border: "#434c5e",
+	accent: "#88c0d0",
+	accentHover: "#8fbcbb",
+	muted: "#93a3bd",
+	success: "#a3be8c",
+	warn: "#ebcb8b",
+	error: "#bf616a",
+	purple: "#b48ead",
+	cyan: "#8fbcbb",
+	focusBg: "#434c5e",
+};
+
+export const EVERFOREST: Theme = {
+	name: "Everforest",
+	bg: "#2b3339",
+	surface: "#323c41",
+	fg: "#d3c6aa",
+	fgBright: "#ffffff",
+	border: "#3a454a",
+	accent: "#83c092",
+	accentHover: "#7fbbb3",
+	muted: "#9da9a0",
+	success: "#a7c080",
+	warn: "#dbbc7f",
+	error: "#e67e80",
+	purple: "#d699b6",
+	cyan: "#83c092",
+	focusBg: "#3a454a",
+};
+
+export const THEMES: Theme[] = [
+	TOKYO_NIGHT,
+	CATPPUCCIN,
+	GRUVBOX,
+	CYBERPUNK,
+	ROSE_PINE,
+	NORD,
+	EVERFOREST,
+];
 
 export const THEME_NAMES: ThemeName[] = THEMES.map((t) => t.name as ThemeName);
 
 export const DEFAULT_THEME: Theme = TOKYO_NIGHT;
 
 export function themeByName(name: string): Theme {
-	return THEMES.find((t) => t.name === name) ?? DEFAULT_THEME;
+	const lower = name.toLowerCase();
+	return THEMES.find((t) => t.name.toLowerCase() === lower) ?? DEFAULT_THEME;
 }
