@@ -128,7 +128,6 @@ export function Configurator({
 					theme={theme}
 					title="LAUNCH CONFIG"
 					width="55%"
-					flexGrow={1}
 					focused={focused}
 				>
 					<box
@@ -149,16 +148,21 @@ export function Configurator({
 							width={24}
 							onChange={(v) => update((s) => setFlag(s, "n_gpu_layers", v))}
 						/>
-						<ChipGroup
-							theme={theme}
-							captureKeys={captureKeys && field === 1}
-							focused={field === 1}
-							chips={CTX_CHIPS.map(String)}
-							activeIndex={nearestChip(ctx)}
-							onSelect={(i) =>
-								update((s) => setFlag(s, "ctx_size", CTX_CHIPS[i]))
-							}
-						/>
+						<box style={{ flexDirection: "column" }}>
+							<text fg={field === 1 ? theme.fgBright : theme.muted}>
+								{field === 1 ? "> Context Length" : "Context Length"}
+							</text>
+							<ChipGroup
+								theme={theme}
+								captureKeys={captureKeys && field === 1}
+								focused={field === 1}
+								chips={CTX_CHIPS.map(String)}
+								activeIndex={nearestChip(ctx)}
+								onSelect={(i) =>
+									update((s) => setFlag(s, "ctx_size", CTX_CHIPS[i]))
+								}
+							/>
+						</box>
 						<CyclingSelect
 							theme={theme}
 							captureKeys={captureKeys && field === 2}
@@ -222,6 +226,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 12}
+							focused={field === 12}
 							label="host"
 							placeholder="127.0.0.1"
 							value={strValue(state.values.host)}
@@ -232,6 +237,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 13}
+							focused={field === 13}
 							label="port"
 							placeholder="8080"
 							numeric
@@ -246,6 +252,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 14}
+							focused={field === 14}
 							label="alias"
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
@@ -253,6 +260,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 15}
+							focused={field === 15}
 							label="chat-template"
 							value={strValue(state.values.chat_template)}
 							onChange={(st) =>
@@ -261,7 +269,7 @@ export function Configurator({
 						/>
 					</box>
 				</TuiBox>
-				<TuiBox theme={theme} title="RUNTIME" flexGrow={1}>
+				<TuiBox theme={theme} title="RUNTIME" width="45%">
 					<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 						{text(`Model: ${state.model?.path ?? "<none>"}`, theme.muted)}
 						{text(`ngl max: ${state.nglMax} (block_count+1)`, theme.muted)}

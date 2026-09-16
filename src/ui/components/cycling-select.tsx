@@ -34,6 +34,7 @@ export function CyclingSelect({
 
 	return (
 		<text fg={focused ? theme.fgBright : theme.fg}>
+			{focused ? <span fg={theme.accent}>{"> "}</span> : null}
 			{label ? <span fg={theme.muted}>{`${label} `}</span> : null}
 			<span fg={focused ? theme.accent : theme.border}>&lt;</span>
 			<span fg={theme.cyan}>{n === 0 ? "—" : options[current]}</span>
