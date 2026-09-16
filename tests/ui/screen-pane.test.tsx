@@ -44,8 +44,8 @@ describe("screen pane de-chroming (#44)", () => {
 		const sep = rows[2] ?? "";
 		expect(sep.trim()).toBe("");
 		expect(sep).not.toMatch(/[┌┐└┘─│╔╗╚╝═║╭╮╰╯]/);
-		// Telemetry's own widget follows the whitespace row (dormant state
-		// renders its SERVER TELEMETRY box — still no pane wrapper).
-		expect(rows[3]).toContain("SERVER TELEMETRY");
+		// Telemetry's dormant message renders borderless below the
+		// whitespace row (#45) — still no pane wrapper.
+		expect(rows.join("\n")).toContain("telemetry disabled");
 	});
 });
