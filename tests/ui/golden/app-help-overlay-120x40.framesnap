@@ -1,25 +1,5 @@
                                                                                                                         
                                                                                                                         
-        ┌─Keyboard shortcuts — Model Explorer──────────────────────────────────────┐                                    
-        │  Global                                                                  │                                    
-        │   [Tab]  cycle focus (screen / console drawer)                           │                                    
-        │   [1-4]  switch tabs                                                     │                                    
-        │   [Enter]  launch (set-default on the Presets tab)                       │                                    
-        │   [x]  kill server (confirms while running)                              │                                    
-        │   [k]  kill orphaned server (press twice)                                │                                    
-        │   [o]  collapse / expand console                                         │                                    
-        │   [Ctrl+L]  clear log                                                    │                                    
-        │   [Ctrl+P]  command palette                                              │                                    
-        │   [q]  quit (confirms while running)                                     │                                    
-        │   [?]  toggle this legend                                                │                                    
-        │  Model Explorer                                                          │                                    
-        │   [m]  set models directory                                              │                                    
-        │   [r]  rescan models directory                                           │                                    
-        │   [↑↓]  select model                                                     │                                    
-        │  press [?] to close                                                      │                                    
-        │                                                                          │                                    
-        │                                                                          │                                    
-        └──────────────────────────────────────────────────────────────────────────┘                                    
                                                                                                                         
                                                                                                                         
                                                                                                                         
@@ -28,6 +8,26 @@
                                                                                                                         
                                                                                                                         
                                                                                                                         
+                      ┌─Keyboard shortcuts — Model Explorer──────────────────────────────────────┐                      
+                      │  Global                                                                  │                      
+                      │   [Tab]  cycle focus (screen / console drawer)                           │                      
+                      │   [1-4]  switch tabs                                                     │                      
+                      │   [Enter]  launch (set-default on the Presets tab)                       │                      
+                      │   [x]  kill server (confirms while running)                              │                      
+                      │   [k]  kill orphaned server (press twice)                                │                      
+                      │   [o]  collapse / expand console                                         │                      
+                      │   [Ctrl+L]  clear log                                                    │                      
+                      │   [Ctrl+P]  command palette                                              │                      
+                      │   [q]  quit (confirms while running)                                     │                      
+                      │   [?]  toggle this legend                                                │                      
+                      │  Model Explorer                                                          │                      
+                      │   [m]  set models directory                                              │                      
+                      │   [r]  rescan models directory                                           │                      
+                      │   [↑↓]  select model                                                     │                      
+                      │  press [?] to close                                                      │                      
+                      │                                                                          │                      
+                      │                                                                          │                      
+                      └──────────────────────────────────────────────────────────────────────────┘                      
                                                                                                                         
                                                                                                                         
                                                                                                                         
