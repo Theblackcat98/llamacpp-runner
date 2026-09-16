@@ -247,7 +247,6 @@ export function Explorer({
 			<TuiBox
 				theme={theme}
 				title="QUICK LAUNCH COMMAND PREVIEW"
-				variant="single"
 			>
 				{current?.incomplete ? (
 					<text fg={theme.warn}>

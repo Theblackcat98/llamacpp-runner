@@ -26,10 +26,11 @@ const STYLE_MAP: Record<
 	heavy: "heavy",
 };
 
-/** Themed box container — P2-FR-08. All four design-system border variants. */
+/** Themed box container — P2-FR-08. Rounded is the default border variant;
+ * single/double/heavy stay opt-in for panels where they carry meaning. */
 export function TuiBox({
 	theme,
-	variant = "single",
+	variant = "rounded",
 	title,
 	accent = false,
 	focused = false,
