@@ -106,10 +106,17 @@ describe("CLI doctor (Issue #24)", () => {
 		expect(proc.stderr.toString()).toContain("Unknown preset");
 	});
 
-	it("exits 1 with usage when no preset is given", () => {
+	it("exits 2 with usage when no preset is given (#20)", () => {
 		const proc = runDoctor([]);
-		expect(proc.exitCode).toBe(1);
+		expect(proc.exitCode).toBe(2);
 		expect(proc.stderr.toString()).toContain("Usage: llama-deck doctor");
+	});
+
+	it("exits 2 with a JSON usage error for missing preset under --json (#20)", () => {
+		const proc = runDoctor(["--json"]);
+		expect(proc.exitCode).toBe(2);
+		const parsed = JSON.parse(proc.stderr.toString()) as { error: string };
+		expect(parsed.error).toContain("llama-deck doctor");
 	});
 
 	it("is registered in the top-level help listing", () => {
