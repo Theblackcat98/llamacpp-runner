@@ -1,6 +1,6 @@
+import type { IconSet } from "../glyphs";
 import type { Theme } from "../themes";
 import { type BadgeStatus, badgeGlyph, createBadgeState } from "./badge-state";
-import type { IconSet } from "../glyphs";
 import { useTick } from "./gauge";
 
 export interface BadgeProps {

@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import * as net from "node:net";
 import { resolve } from "node:path";
-import { Supervisor } from "../../src/core/process/supervisor";
 import { isPidAlive } from "../../src/core/process/identity";
+import { Supervisor } from "../../src/core/process/supervisor";
 
 const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
 const FAST = { sigintGraceMs: 400, sigkillGraceMs: 400 };

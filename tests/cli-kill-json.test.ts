@@ -66,7 +66,11 @@ describe("CLI kill (P5-FR-12)", () => {
 			pid = child.pid;
 		} else {
 			const spawner = Bun.spawnSync(
-				["bash", "-c", "exec -a llama-server sleep 30 >/dev/null 2>&1 & echo $!"],
+				[
+					"bash",
+					"-c",
+					"exec -a llama-server sleep 30 >/dev/null 2>&1 & echo $!",
+				],
 				{
 					stdout: "pipe",
 					stderr: "ignore",

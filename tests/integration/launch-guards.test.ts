@@ -1,11 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import * as net from "node:net";
+import { resolve } from "node:path";
 import { createBus } from "../../src/core/bus";
 import type { IntentMap, StateMap } from "../../src/core/bus-contract";
 import { createSession } from "../../src/core/session";
 import { resolvePaths } from "../../src/core/store/state-paths";
-
-import { resolve } from "node:path";
 
 const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
 

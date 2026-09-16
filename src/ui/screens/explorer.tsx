@@ -6,8 +6,8 @@ import type { ModelEntry } from "../../core/models/types";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
 import { TextInput } from "../components/text-input";
-import { iconFor, type IconSet } from "../glyphs";
 import { createTextInputState } from "../components/text-input-state";
+import { type IconSet, iconFor } from "../glyphs";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
 	buildRows,

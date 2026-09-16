@@ -3,8 +3,8 @@ import { mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { createBus } from "../../src/core/bus";
 import type { IntentMap, StateMap } from "../../src/core/bus-contract";
-import { presetToPlan } from "../../src/core/preset-launch";
 import { shellQuote } from "../../src/core/export/quote";
+import { presetToPlan } from "../../src/core/preset-launch";
 import { createSession } from "../../src/core/session";
 import {
 	loadPresets,
@@ -113,7 +113,9 @@ describe("Phase 8: automated config, presets, and binary walkthrough", () => {
 			...relinkedPreset,
 			flags: effectiveValues(config),
 		});
-		const spawnedPreview = [plan.command, ...plan.args.map(shellQuote)].join(" ");
+		const spawnedPreview = [plan.command, ...plan.args.map(shellQuote)].join(
+			" ",
+		);
 		expect(preview).toBe(spawnedPreview);
 
 		// Also verify with custom binary honored by session

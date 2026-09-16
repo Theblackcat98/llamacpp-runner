@@ -1,6 +1,6 @@
 import { estimateVram, formatBytes } from "../../core/estimate/vram";
 import type { ModelEntry } from "../../core/models/types";
-import { iconFor, type IconSet } from "../glyphs";
+import { type IconSet, iconFor } from "../glyphs";
 
 export interface ExplorerViewModel {
 	rows: ExplorerRow[];
