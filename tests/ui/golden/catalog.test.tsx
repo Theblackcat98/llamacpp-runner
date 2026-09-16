@@ -20,7 +20,7 @@ describe("components catalog (P2-FR-15, §9 EXIT)", () => {
 		}
 	});
 
-	it("matches golden frames in all five themes", async () => {
+	it("matches golden frames in all seven themes", async () => {
 		for (const theme of THEMES) {
 			await expectGoldenFrame(
 				`catalog-${theme.name.toLowerCase()}`,
