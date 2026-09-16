@@ -1,7 +1,7 @@
                                                                                                                                                                                                         
                                                                                                                                                                                                         
-        ┌─KEYBOARD SHORTCUTS — Model Explorer──────────────────────────────────────┐                                                                                                                    
-        │  GLOBAL                                                                  │                                                                                                                    
+        ┌─Keyboard shortcuts — Model Explorer──────────────────────────────────────┐                                                                                                                    
+        │  Global                                                                  │                                                                                                                    
         │   [Tab]  cycle focus (screen / console drawer)                           │                                                                                                                    
         │   [1-4]  switch tabs                                                     │                                                                                                                    
         │   [Enter]  launch (set-default on the Presets tab)                       │                                                                                                                    
@@ -12,7 +12,7 @@
         │   [Ctrl+P]  command palette                                              │                                                                                                                    
         │   [q]  quit (confirms while running)                                     │                                                                                                                    
         │   [?]  toggle this legend                                                │                                                                                                                    
-        │  MODEL EXPLORER                                                          │                                                                                                                    
+        │  Model Explorer                                                          │                                                                                                                    
         │   [m]  set models directory                                              │                                                                                                                    
         │   [r]  rescan models directory                                           │                                                                                                                    
         │   [↑↓]  select model                                                     │                                                                                                                    

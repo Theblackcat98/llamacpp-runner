@@ -28,7 +28,7 @@ describe("screen pane de-chroming (#44)", () => {
 		expect(sep).not.toMatch(/[┌┐└┘─│╔╗╚╝═║╭╮╰╯]/);
 		// Screen content starts immediately after: the Explorer's own
 		// WELCOME widget, not a pane wrapper.
-		expect(rows[3]).toContain("WELCOME");
+		expect(rows[3]).toContain("Welcome");
 	});
 
 	it("keeps tab switching and focus cycling working with the borderless pane", async () => {

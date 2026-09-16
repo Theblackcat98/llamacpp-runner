@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Theme } from "../themes";
+import { toTitleCase } from "../title-case";
 
 export type BorderVariant = "single" | "double" | "rounded" | "heavy";
 
@@ -47,7 +48,7 @@ export function TuiBox({
 			: theme.border;
 	return (
 		<box
-			title={title}
+			title={title === undefined ? undefined : toTitleCase(title)}
 			border={true}
 			borderStyle={STYLE_MAP[variant]}
 			borderColor={borderColor}

@@ -1,7 +1,7 @@
                                                                                                     
                                                                                                     
-        ┌─KEYBOARD SHORTCUTS — Launch Config───────────────────────────────────────┐                
-        │  GLOBAL                                                                  │                
+        ┌─Keyboard shortcuts — Launch Config───────────────────────────────────────┐                
+        │  Global                                                                  │                
         │   [Tab]  cycle focus (screen / console drawer)                           │                
         │   [1-4]  switch tabs                                                     │                
         │   [Enter]  launch (set-default on the Presets tab)                       │                
@@ -12,7 +12,7 @@
         │   [Ctrl+P]  command palette                                              │                
         │   [q]  quit (confirms while running)                                     │                
         │   [?]  toggle this legend                                                │                
-        │  LAUNCH CONFIG                                                           │                
+        │  Launch Config                                                           │                
         │   [↑↓]  move between fields                                              │                
         │   [Ctrl+S]  save preset                                                  │                
         │   [Esc]  reset configurator                                              │                

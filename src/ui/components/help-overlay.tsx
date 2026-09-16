@@ -71,7 +71,7 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 			}}
 		>
 			<box
-				title={`KEYBOARD SHORTCUTS — ${tabName}`}
+				title={`Keyboard shortcuts — ${tabName}`}
 				style={{
 					position: "absolute",
 					left: 8,
@@ -85,13 +85,13 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 					paddingLeft: 1,
 				}}
 			>
-				<text fg={theme.accent}>{" GLOBAL"}</text>
+				<text fg={theme.accent}>{" Global"}</text>
 				{GLOBAL_ROWS.map(([key, action]) => (
 					<text key={key} fg={theme.fg}>
 						{`  ${key}  ${action}`}
 					</text>
 				))}
-				<text fg={theme.accent}>{` ${tabName.toUpperCase()}`}</text>
+				<text fg={theme.accent}>{` ${tabName}`}</text>
 				{tabRows.map(([key, action]) => (
 					<text key={key} fg={theme.fg}>
 						{`  ${key}  ${action}`}

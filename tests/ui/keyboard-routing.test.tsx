@@ -185,7 +185,7 @@ async function renderApp(
 }
 
 function expectNoShellSideEffects(h: Harness) {
-	expect(h.frame()).toContain("LAUNCH CONFIG");
+	expect(h.frame()).toContain("Launch config");
 	const { spies } = h;
 	expect(spies.launch).toBe(0);
 	expect(spies.kill).toBe(0);
@@ -218,7 +218,7 @@ describe("text field × global shortcut matrix (Launch Config)", () => {
 		it(`yields every global printable to the ${field.label} field`, async () => {
 			const h = await renderApp();
 			await h.press("2");
-			expect(h.frame()).toContain("LAUNCH CONFIG");
+			expect(h.frame()).toContain("Launch config");
 			for (let i = 0; i < field.downs; i++) {
 				await h.press("\x1b[B"); // down
 			}
@@ -246,15 +246,15 @@ describe("text field × global shortcut matrix (Launch Config)", () => {
 describe("text field × global shortcut matrix (Explorer dir editor)", () => {
 	it("yields every global printable to the models-dir field", async () => {
 		const h = await renderApp();
-		expect(h.frame()).toContain("MODELS");
+		expect(h.frame()).toContain("Models");
 		await h.press("m");
-		expect(h.frame()).toContain("SET MODELS DIRECTORY");
+		expect(h.frame()).toContain("Set models directory");
 		let expected = "";
 		for (const key of YIELD_KEYS) {
 			await h.press(key);
 			// Editor stays open, tab never moves, nothing fires.
-			expect(h.frame()).toContain("SET MODELS DIRECTORY");
-			expect(h.frame()).not.toContain("LAUNCH CONFIG");
+			expect(h.frame()).toContain("Set models directory");
+			expect(h.frame()).not.toContain("Launch config");
 			expect(h.spies.quit).toBe(0);
 			expect(h.spies.launch).toBe(0);
 			expect(h.spies.rescan).toBe(0);
@@ -267,7 +267,7 @@ describe("text field × global shortcut matrix (Explorer dir editor)", () => {
 		await h.press("\r");
 		expect(h.spies.setModelsDir).toBe(1);
 		expect(h.spies.launch).toBe(0);
-		expect(h.frame()).not.toContain("SET MODELS DIRECTORY");
+		expect(h.frame()).not.toContain("Set models directory");
 	});
 });
 
@@ -306,8 +306,8 @@ describe("same-tick burst delivery", () => {
 	it("m + digit in one tick opens the dir editor without switching tabs", async () => {
 		const h = await renderApp();
 		await h.burst("m", "2");
-		expect(h.frame()).toContain("SET MODELS DIRECTORY");
-		expect(h.frame()).not.toContain("LAUNCH CONFIG");
+		expect(h.frame()).toContain("Set models directory");
+		expect(h.frame()).not.toContain("Launch config");
 		expect(h.spies.launch).toBe(0);
 	});
 });
@@ -316,34 +316,34 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 	it("digits switch tabs, o toggles the drawer, r rescans, help and import toggle", async () => {
 		const h = await renderApp();
 		await h.press("2");
-		expect(h.frame()).toContain("LAUNCH CONFIG");
+		expect(h.frame()).toContain("Launch config");
 		await h.press("3");
 		// #45: the dormant telemetry screen is a borderless message now.
 		expect(h.frame()).toContain("telemetry disabled");
 		await h.press("4");
 		expect(h.frame()).toContain("Presets arrives");
 		await h.press("1");
-		expect(h.frame()).toContain("MODELS");
-		expect(h.frame()).not.toContain("LAUNCH CONFIG");
+		expect(h.frame()).toContain("Models");
+		expect(h.frame()).not.toContain("Launch config");
 
 		await h.press("o");
-		expect(h.frame()).toContain("CONSOLE (o to expand)");
+		expect(h.frame()).toContain("Console (o to expand)");
 		await h.press("o");
-		expect(h.frame()).not.toContain("CONSOLE (o to expand)");
+		expect(h.frame()).not.toContain("Console (o to expand)");
 
 		await h.press("r");
 		expect(h.spies.rescan).toBe(1);
 
 		await h.press("?");
-		expect(h.frame()).toContain("KEYBOARD SHORTCUTS");
+		expect(h.frame()).toContain("Keyboard shortcuts");
 		await h.press("?");
-		expect(h.frame()).not.toContain("KEYBOARD SHORTCUTS");
+		expect(h.frame()).not.toContain("Keyboard shortcuts");
 
 		await h.press("2");
 		await h.press("i");
-		expect(h.frame()).toContain("IMPORT SHELL COMMAND");
+		expect(h.frame()).toContain("Import shell command");
 		await h.press("\x1b"); // escape closes the import modal
-		expect(h.frame()).not.toContain("IMPORT SHELL COMMAND");
+		expect(h.frame()).not.toContain("Import shell command");
 
 		await h.press("y");
 		expect(h.spies.yank).toBe(1);

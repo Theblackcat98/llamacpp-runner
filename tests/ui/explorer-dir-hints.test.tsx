@@ -20,7 +20,7 @@ describe("models directory onboarding hints (phase3/models-dir-onboarding)", () 
 			await setup.flush();
 		});
 		const frame = setup.captureCharFrame();
-		expect(frame).toContain("WELCOME");
+		expect(frame).toContain("Welcome");
 		expect(frame).toContain("[m]");
 		await act(async () => {
 			setup.renderer.destroy();

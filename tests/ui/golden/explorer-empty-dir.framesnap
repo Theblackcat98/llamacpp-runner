@@ -1,5 +1,5 @@
-╭─MODELS (/models/llm)─────────────────────────────────────╮╭─METADATA INSPECTOR───────────────────╮
-│NAME                           SIZE     QUANT   ARCH      ││no model selected                     │
+╭─Models (/models/llm)─────────────────────────────────────╮╭─Metadata inspector───────────────────╮
+│Name                           Size     Quant   Arch      ││no model selected                     │
 │                                                          ││                                      │
 │ no .gguf files found — add models, [r] rescan · [m]      ││                                      │
 │change dir                                                ││                                      │
@@ -17,6 +17,6 @@
 │                                                          ││                                      │
 │                                                          ││                                      │
 ╰──────────────────────────────────────────────────────────╯╰──────────────────────────────────────╯
-╭─QUICK LAUNCH COMMAND PREVIEW─────────────────────────────────────────────────────────────────────╮
+╭─Quick launch command preview─────────────────────────────────────────────────────────────────────╮
 │select a model to preview its command                                                             │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

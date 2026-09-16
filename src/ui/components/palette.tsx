@@ -31,7 +31,7 @@ export function Palette({ theme, state, actions, viewport = 8 }: PaletteProps) {
 
 	return (
 		<box
-			title="COMMAND PALETTE"
+			title="Command palette"
 			style={{
 				position: "absolute",
 				left: 8,
