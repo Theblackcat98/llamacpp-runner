@@ -1,3 +1,4 @@
+import { useTerminalDimensions } from "@opentui/react";
 import type { Theme } from "../themes";
 
 export interface HelpOverlayProps {
@@ -50,14 +51,58 @@ const TAB_ROWS: Record<string, Row[]> = {
 };
 
 /**
+ * Center a content box in the terminal, clamping it to the terminal
+ * dimensions. Origins never go negative, so on tiny terminals the panel
+ * pins to the top-left and stays fully visible instead of overflowing (#53).
+ */
+export function overlayGeometry(
+	termWidth: number,
+	termHeight: number,
+	contentWidth: number,
+	contentHeight: number,
+): { left: number; top: number; width: number; height: number } {
+	const width = Math.max(1, Math.min(contentWidth, termWidth));
+	const height = Math.max(1, Math.min(contentHeight, termHeight));
+	return {
+		left: Math.max(0, Math.floor((termWidth - width) / 2)),
+		top: Math.max(0, Math.floor((termHeight - height) / 2)),
+		width,
+		height,
+	};
+}
+
+/**
+ * Darken a #rrggbb color by `factor` (0..1) for the modal backdrop.
+ * Terminals have no alpha, so "dimming" the background behind the panel
+ * means painting the backdrop darker than the app surface (#53).
+ */
+export function dimHex(hex: string, factor: number): string {
+	const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+	if (!m?.[1]) return hex;
+	const scale = (v: number) =>
+		Math.max(0, Math.min(255, Math.round(v * factor)));
+	const r = scale(parseInt(m[1].slice(0, 2), 16));
+	const g = scale(parseInt(m[1].slice(2, 4), 16));
+	const b = scale(parseInt(m[1].slice(4, 6), 16));
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+/**
  * Help overlay (F15): `?` legend over the tab-conditional bindings the
  * footer cannot fit. Static render like the palette; open state and `?`
  * toggling are owned by the shell. `?` (not Esc) closes it so typing Esc
- * in the Configurator (reset) never double-fires.
+ * in the Configurator (reset) never double-fires. Centered and clamped to
+ * the terminal with a dimmed backdrop so it reads as modal (#53).
  */
 export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
+	const { width: termWidth, height: termHeight } = useTerminalDimensions();
 	if (!open) return null;
 	const tabRows = TAB_ROWS[tabName] ?? [];
+	const geometry = overlayGeometry(
+		termWidth,
+		termHeight,
+		76,
+		GLOBAL_ROWS.length + tabRows.length + 7,
+	);
 	return (
 		<box
 			style={{
@@ -66,7 +111,7 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 				top: 0,
 				width: "100%",
 				height: "100%",
-				backgroundColor: theme.bg,
+				backgroundColor: dimHex(theme.bg, 0.55),
 				flexDirection: "column",
 			}}
 		>
@@ -74,10 +119,10 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 				title={`Keyboard shortcuts — ${tabName}`}
 				style={{
 					position: "absolute",
-					left: 8,
-					top: 2,
-					width: 76,
-					height: GLOBAL_ROWS.length + tabRows.length + 7,
+					left: geometry.left,
+					top: geometry.top,
+					width: geometry.width,
+					height: geometry.height,
 					border: true,
 					borderColor: theme.accent,
 					backgroundColor: theme.bg,

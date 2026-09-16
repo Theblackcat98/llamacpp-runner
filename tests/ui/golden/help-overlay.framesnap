@@ -1,24 +1,24 @@
-                                                                                                    
-                                                                                                    
-        ┌─Keyboard shortcuts — Launch Config───────────────────────────────────────┐                
-        │  Global                                                                  │                
-        │   [Tab]  cycle focus (screen / console drawer)                           │                
-        │   [1-4]  switch tabs                                                     │                
-        │   [Enter]  launch (set-default on the Presets tab)                       │                
-        │   [x]  kill server (confirms while running)                              │                
-        │   [k]  kill orphaned server (press twice)                                │                
-        │   [o]  collapse / expand console                                         │                
-        │   [Ctrl+L]  clear log                                                    │                
-        │   [Ctrl+P]  command palette                                              │                
-        │   [q]  quit (confirms while running)                                     │                
-        │   [?]  toggle this legend                                                │                
-        │  Launch Config                                                           │                
-        │   [↑↓]  move between fields                                              │                
-        │   [Ctrl+S]  save preset                                                  │                
-        │   [Esc]  reset configurator                                              │                
-        │   [a]  auto-fit GPU layers to VRAM                                       │                
-        │   [y]  yank launch command                                               │                
-        │   [Ctrl+Y]  confirm host-exposing launch                                 │                
-        │   [i]  import shell command                                              │                
-        │  press [?] to close                                                      │                
-        │                                                                          │                
+            ┌─Keyboard shortcuts — Launch Config───────────────────────────────────────┐            
+            │  Global                                                                  │            
+            │   [Tab]  cycle focus (screen / console drawer)                           │            
+            │   [1-4]  switch tabs                                                     │            
+            │   [Enter]  launch (set-default on the Presets tab)                       │            
+            │   [x]  kill server (confirms while running)                              │            
+            │   [k]  kill orphaned server (press twice)                                │            
+            │   [o]  collapse / expand console                                         │            
+            │   [Ctrl+L]  clear log                                                    │            
+            │   [Ctrl+P]  command palette                                              │            
+            │   [q]  quit (confirms while running)                                     │            
+            │   [?]  toggle this legend                                                │            
+            │  Launch Config                                                           │            
+            │   [↑↓]  move between fields                                              │            
+            │   [Ctrl+S]  save preset                                                  │            
+            │   [Esc]  reset configurator                                              │            
+            │   [a]  auto-fit GPU layers to VRAM                                       │            
+            │   [y]  yank launch command                                               │            
+            │   [Ctrl+Y]  confirm host-exposing launch                                 │            
+            │   [i]  import shell command                                              │            
+            │  press [?] to close                                                      │            
+            │                                                                          │            
+            │                                                                          │            
+            └──────────────────────────────────────────────────────────────────────────┘            
