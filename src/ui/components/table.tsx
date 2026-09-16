@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import { toTitleCase } from "../title-case";
@@ -48,19 +48,27 @@ export function VirtualizedTable<T>({
 		const name = key.name ?? "";
 		const mapped = name === "up" ? "k" : name === "down" ? "j" : name;
 		if (["k", "j", "g", "G"].includes(mapped)) {
-			setState((prev) => {
-				const next = applyTableKey(prev, data, mapped);
-				if (next.selected !== prev.selected) {
-					onSelectionChange?.(next.selected, data[next.selected]);
-				}
-				return next;
-			});
+			// The updater stays pure: the parent notification moves to the
+			// effect below. Calling onSelectionChange inside the updater
+			// setState'd the parent mid-render ("Cannot update a component
+			// while rendering a different component").
+			setState((prev) => applyTableKey(prev, data, mapped));
 			return;
 		}
 		if ((mapped === "enter" || mapped === "return") && onSelect) {
 			const sel = clampSelection(state, data).selected;
 			const row = data[sel];
 			if (row !== undefined) onSelect(sel, row);
+		}
+	});
+
+	// Notify the parent after commit, never during this component's update.
+	const prevNotified = useRef(clampSelection(state, data).selected);
+	useEffect(() => {
+		const sel = clampSelection(state, data).selected;
+		if (sel !== prevNotified.current) {
+			prevNotified.current = sel;
+			onSelectionChange?.(sel, data[sel]);
 		}
 	});
 

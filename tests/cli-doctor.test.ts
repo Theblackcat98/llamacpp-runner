@@ -112,6 +112,14 @@ describe("CLI doctor (Issue #24)", () => {
 		expect(proc.stderr.toString()).toContain("Usage: llama-deck doctor");
 	});
 
+	it("is registered in the top-level help listing", () => {
+		const proc = Bun.spawnSync([process.execPath, "src/cli.ts", "help"], {
+			env: cliEnv(),
+		});
+		expect(proc.exitCode).toBe(0);
+		expect(proc.stdout.toString()).toContain("doctor <preset>");
+	});
+
 	it("verifies --help against the configured binary when present", () => {
 		const doc: PresetFile = {
 			version: 2,
