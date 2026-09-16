@@ -1,0 +1,17 @@
+{
+	"source": "https://huggingface.co/bartowski/c4ai-command-r-v01-GGUF/resolve/main/c4ai-command-r-v01-Q4_K_M.gguf",
+	"headerBytes": 10884911,
+	"architecture": "command-r",
+	"quantName": "Q4_K_M",
+	"contextLength": 131072,
+	"blockCount": 40,
+	"embeddingLength": 8192,
+	"headCount": 64,
+	"headCountKv": 64,
+	"keyLength": null,
+	"vocabSize": null,
+	"totalParams": 34980831232,
+	"extraKv": {
+		"command-r.context_length": 131072
+	}
+}

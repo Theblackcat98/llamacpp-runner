@@ -1,0 +1,17 @@
+{
+	"source": "https://huggingface.co/bartowski/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+	"headerBytes": 7836195,
+	"architecture": "llama",
+	"quantName": "Q4_K_M",
+	"contextLength": 8192,
+	"blockCount": 32,
+	"embeddingLength": 4096,
+	"headCount": 32,
+	"headCountKv": 8,
+	"keyLength": null,
+	"vocabSize": 128256,
+	"totalParams": 8030261248,
+	"extraKv": {
+		"llama.rope.freq_base": 500000
+	}
+}

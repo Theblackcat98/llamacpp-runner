@@ -1,0 +1,20 @@
+{
+	"source": "https://huggingface.co/TheBloke/Yarn-Mistral-7B-64k-GGUF/resolve/main/yarn-mistral-7b-64k.Q4_K_M.gguf",
+	"headerBytes": 735037,
+	"architecture": "llama",
+	"quantName": "Q4_K_M",
+	"contextLength": 32768,
+	"blockCount": 32,
+	"embeddingLength": 4096,
+	"headCount": 32,
+	"headCountKv": 8,
+	"keyLength": null,
+	"vocabSize": null,
+	"totalParams": 7241732096,
+	"extraKv": {
+		"llama.rope.scaling.type": "yarn",
+		"llama.rope.scaling.factor": 8,
+		"llama.rope.scaling.original_context_length": 8192,
+		"llama.rope.scaling.finetuned": true
+	}
+}
