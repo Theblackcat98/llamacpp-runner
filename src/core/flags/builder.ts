@@ -52,7 +52,12 @@ export function buildCommand(input: BuildCommandInput): BuiltCommand {
 	const args: string[] = ["-m", input.modelPath];
 	const has = (id: string) => {
 		const v = values[id];
-		return v !== undefined && v !== null && v !== false;
+		return (
+			v !== undefined &&
+			v !== null &&
+			v !== false &&
+			(typeof v !== "string" || v.length > 0)
+		);
 	};
 	// An explicitly-present value (even false) overrides telemetry injection.
 	const explicit = (id: string) =>

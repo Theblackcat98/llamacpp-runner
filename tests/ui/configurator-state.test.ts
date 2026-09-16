@@ -101,6 +101,26 @@ describe("live preview (P4-FR-06)", () => {
 		expect(eff.n_gpu_layers).toBe(65);
 		expect(eff.ctx_size).toBe(4096);
 	});
+
+	it("default preview keeps registry defaults without empty quoted fragments", () => {
+		const preview = previewLine(createConfigurator(MODEL));
+		expect(preview).toContain("-ctk f16");
+		expect(preview).toContain("-ctv f16");
+		expect(preview).not.toContain("''");
+	});
+
+	it("empty text overrides are omitted from the preview", () => {
+		let cfg = createConfigurator(MODEL);
+		for (const id of ["host", "chat_template", "alias"]) {
+			cfg = setFlag(cfg, id, "");
+		}
+
+		const preview = previewLine(cfg);
+		expect(preview).not.toContain("--host ''");
+		expect(preview).not.toContain("--chat-template ''");
+		expect(preview).not.toContain("-a ''");
+		expect(preview).not.toContain("''");
+	});
 });
 
 describe("VRAM wiring (P4-FR-07)", () => {
