@@ -15,8 +15,7 @@ import {
 } from "./core/store/presets";
 import { resolvePaths } from "./core/store/state-paths";
 
-function usage(): never {
-	console.log(`llama-deck — llama.cpp manager
+const HELP = `llama-deck — llama.cpp manager
 
 Usage:
   llama-deck quick <model.gguf> [--run] [--json] [--binary <path>]
@@ -37,8 +36,22 @@ Usage:
                               Diagnose launch readiness without starting a
                               server (exit 0 when launchable, 1 otherwise)
   llama-deck kill [--json]    Stop a running instance via pidfile (§6.2)
-`);
+
+Exit codes:
+  0  success
+  1  runtime failure (missing file, unknown preset, launch blocked)
+  2  usage error (unknown command, missing argument, invalid flag value)
+`;
+
+function usage(): never {
+	console.log(HELP);
 	process.exit(0);
+}
+
+/** #20: malformed invocations are failures for scripts — exit 2, not 0. */
+function usageError(message: string, json = false): never {
+	console.error(json ? JSON.stringify({ error: message }) : message);
+	process.exit(2);
 }
 
 /** P5-FR-13: --json output modes for scripting. */
@@ -47,10 +60,14 @@ function jsonFlag(args: string[]): { rest: string[]; json: boolean } {
 	return { rest: args.filter((a) => a !== "--json"), json };
 }
 
-function findPreset(id: string): import("./core/store/presets").Preset {
+function findPreset(
+	id: string,
+	json = false,
+): import("./core/store/presets").Preset {
 	const found = findPresetById(id);
 	if (!found) {
-		console.error(`Unknown preset: ${id} (see: llama-deck presets)`);
+		const message = `Unknown preset: ${id} (see: llama-deck presets)`;
+		console.error(json ? JSON.stringify({ error: message }) : message);
 		process.exit(1);
 	}
 	return found;
@@ -133,7 +150,10 @@ async function main(): Promise<void> {
 
 	if (command === "export") {
 		const presetId = args[0];
-		if (!presetId) usage();
+		if (!presetId)
+			usageError(
+				"Missing preset. Usage: llama-deck export <preset> [--format cmd|sh|systemd|json]",
+			);
 		const formatIdx = args.indexOf("--format");
 		const formatRaw = formatIdx >= 0 ? args[formatIdx + 1] : "cmd";
 		if (
@@ -142,7 +162,9 @@ async function main(): Promise<void> {
 			formatRaw !== "systemd" &&
 			formatRaw !== "json"
 		)
-			usage();
+			usageError(
+				`Invalid --format: ${formatRaw} (expected cmd, sh, systemd, json)`,
+			);
 		const preset = findPreset(presetId);
 		// #11: portable single-preset JSON — no binary probe needed.
 		if (formatRaw === "json") {
@@ -163,12 +185,12 @@ async function main(): Promise<void> {
 		const { rest, json } = jsonFlag(args);
 		const presetId = rest[0];
 		if (!presetId) {
-			console.error(
+			usageError(
 				"Missing preset. Usage: llama-deck doctor <preset> [--json]",
+				json,
 			);
-			process.exit(1);
 		}
-		const preset = findPreset(presetId);
+		const preset = findPreset(presetId, json);
 		const { buildDoctorReport, formatDoctorReport } = await import(
 			"./core/doctor"
 		);
@@ -199,7 +221,10 @@ async function main(): Promise<void> {
 
 	if (command === "import") {
 		const target = args[0];
-		if (!target) usage();
+		if (!target)
+			usageError(
+				"Missing file. Usage: llama-deck import <file|-> [--name <name>] [--save]",
+			);
 		let content = "";
 		if (target === "-") {
 			content = await Bun.stdin.text();
@@ -280,7 +305,8 @@ async function main(): Promise<void> {
 
 	if (command === "start") {
 		const presetId = args[0];
-		if (!presetId) usage();
+		if (!presetId)
+			usageError("Missing preset. Usage: llama-deck start <preset>");
 		const { presetToPlan } = await import("./core/preset-launch");
 		// Exactly one managed instance (D4): refuse a second start while the
 		// pidfile points at a live server — same guard as the TUI path.
@@ -326,10 +352,10 @@ async function main(): Promise<void> {
 		}
 		const rawModelPath = modelArgs[0];
 		if (!rawModelPath) {
-			console.error(
+			usageError(
 				"Missing model file. Usage: llama-deck quick <model.gguf> [--run] [--json]",
+				json,
 			);
-			process.exit(1);
 		}
 
 		const modelPath = expandPath(rawModelPath);
@@ -380,8 +406,10 @@ async function main(): Promise<void> {
 	}
 
 	if (command !== "scan" && command !== "list") {
-		console.log(`Unknown command: ${command}`);
-		usage();
+		usageError(
+			`Unknown command: ${command} (see: llama-deck help)`,
+			jsonFlag(args).json,
+		);
 	}
 
 	const { rest, json } = jsonFlag(args);
