@@ -112,7 +112,7 @@ describe("composition root E2E (Issue #25)", () => {
 		});
 		modelsService.boot();
 
-		let currentPlanSource: { current?: () => LaunchPlan | null } = {};
+		const currentPlanSource: { current?: () => LaunchPlan | null } = {};
 		const setup = await renderWithAct(
 			<SessionApp
 				bus={bus}
@@ -152,4 +152,3 @@ describe("composition root E2E (Issue #25)", () => {
 		await teardownWithAct(setup);
 	});
 });
-

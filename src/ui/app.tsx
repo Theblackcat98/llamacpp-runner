@@ -18,6 +18,7 @@ import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
 import { APP_VERSION, CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
+import { detectIconSet, type IconKind, type IconSet, iconFor } from "./glyphs";
 import {
 	buildDefaultActions,
 	type PaletteHandlers,
@@ -50,7 +51,6 @@ import { createQuitState, type QuitState } from "./logic/quit-state";
 import { routeShellKey } from "./logic/shell-key-routing";
 import { cycleFocus, type KeyRef, TAB_COUNT } from "./logic/shell-state";
 import { buildTelemetryViewModel } from "./logic/telemetry-state";
-import { detectIconSet, iconFor, type IconKind, type IconSet } from "./glyphs";
 import { Configurator, isConfiguratorTextField } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import { PresetsScreen } from "./screens/presets";

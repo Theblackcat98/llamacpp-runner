@@ -63,7 +63,7 @@ export class WindowsProcessInspector implements ProcessInspector {
 				return "dead";
 			}
 			const match = out.match(/^"([^"]+)"/);
-			if (match && match[1]) {
+			if (match?.[1]) {
 				return { pid, command: [match[1]] };
 			}
 			return "unknown";

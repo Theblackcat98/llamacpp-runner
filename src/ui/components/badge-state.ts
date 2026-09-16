@@ -1,4 +1,4 @@
-import { iconFor, type IconKind, type IconSet } from "../glyphs";
+import { type IconKind, type IconSet, iconFor } from "../glyphs";
 
 export type BadgeStatus = "ok" | "warn" | "error";
 

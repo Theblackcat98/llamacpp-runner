@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
-	type IconKind,
 	detectIconSet,
-	iconFor,
 	ICON_KINDS,
+	type IconKind,
+	iconFor,
 } from "../../src/ui/glyphs";
 
 describe("glyph detection (#51)", () => {

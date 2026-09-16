@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { join } from "node:path";
 import {
 	MetricsPoller,
 	metricsSnapshot,
@@ -11,10 +12,7 @@ import {
 } from "../src/core/telemetry/slots";
 import { HistoryRing, sparkline } from "../src/core/telemetry/sparkline";
 
-import { join } from "node:path";
-
-const FIX = (name: string) =>
-	join(import.meta.dir, "fixtures/metrics", name);
+const FIX = (name: string) => join(import.meta.dir, "fixtures/metrics", name);
 
 describe("parseMetrics — Prometheus text keyed on llamacpp: prefix (P5-FR-03)", () => {
 	it("sync parse of captured payload", async () => {

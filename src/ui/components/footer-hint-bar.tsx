@@ -1,5 +1,5 @@
-import type { Theme } from "../themes";
 import { footerHintLine } from "../footer-hints";
+import type { Theme } from "../themes";
 
 export interface FooterHintBarProps {
 	theme: Theme;
