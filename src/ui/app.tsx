@@ -57,7 +57,8 @@ import { PresetsScreen } from "./screens/presets";
 import { Telemetry } from "./screens/telemetry";
 import type { Theme } from "./themes";
 
-const TAB_LABELS = [
+/** Shell tab labels in 1-4 key order. Exported for the docs-consistency test (#22). */
+export const TAB_LABELS = [
 	"Model Explorer",
 	"Launch Config",
 	"Server Telemetry",
