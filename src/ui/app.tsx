@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { PresetFile } from "../core/store/presets";
 import { DegradedLayout } from "./components/degraded-layout";
+import { FooterHintBar } from "./components/footer-hint-bar";
 import { HelpOverlay } from "./components/help-overlay";
 import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
@@ -483,20 +484,14 @@ export function App({
 					setImportOpen(false);
 				}}
 			/>
-			<box
-				style={{
-					borderStyle: "single",
-					height: 3,
-					flexDirection: "row",
-					backgroundColor: theme.surface,
-				}}
-			>
-				<text fg={confirmNotice ? theme.warn : theme.muted}>
-					{" "}
-					{confirmNotice ??
-						"[Tab] Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [Ctrl+L] Clear | [q] Quit | [?] Help"}
-				</text>
-			</box>
+			{/* #48: borderless one-line dimmed footer legend — the old boxed
+			    footer cost 3 rows; hints are contextual per tab and never wrap. */}
+			<FooterHintBar
+				theme={theme}
+				tab={tab}
+				width={dims.width}
+				notice={confirmNotice}
+			/>
 			<HelpOverlay
 				theme={theme}
 				open={helpOpen}
