@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { formatBytes } from "./core/estimate/vram";
 import { probeBinaryAvailability } from "./core/flags/validate";
+import { splitIncompleteReason } from "./core/models/launch-guard";
 import { scanModels } from "./core/models/scanner";
 import type { ModelEntry } from "./core/models/types";
 import { type ExportFormat, exportPreset } from "./core/preset-launch";
@@ -201,6 +202,12 @@ async function main(): Promise<void> {
 			process.exit(1);
 		}
 		const preset = findPreset(presetId);
+		// #18: an incomplete split group is not a runnable artifact.
+		const splitBlocker = splitIncompleteReason(preset.model_path);
+		if (splitBlocker) {
+			console.error(`Refusing to launch: ${splitBlocker}`);
+			process.exit(1);
+		}
 		const availability = await runtimeAvailability(configuredBinary());
 		const plan = presetToPlan(preset, { availability });
 		// Shared Supervisor lifecycle (§6.2, Issue #13): pidfile ownership,
@@ -249,6 +256,12 @@ async function main(): Promise<void> {
 		});
 
 		if (run) {
+			// #18: never spawn from an incomplete split group.
+			const splitBlocker = splitIncompleteReason(modelPath);
+			if (splitBlocker) {
+				console.error(`Refusing to launch: ${splitBlocker}`);
+				process.exit(1);
+			}
 			const code = await runQuickSupervisor(result.plan, {
 				pidFile: paths.pidFile,
 				onLog: (line) => console.log(line),

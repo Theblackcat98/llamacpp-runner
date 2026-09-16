@@ -7,6 +7,7 @@ import { DEFAULT_HOST, DEFAULT_PORT, LLAMA_SERVER_BIN } from "./core/constants";
 import { copyToClipboard } from "./core/export/clipboard";
 import { buildCommand } from "./core/flags/builder";
 import { getOrDetectHardware, type HardwareInfo } from "./core/hardware/detect";
+import { entryLaunchBlocker } from "./core/models/launch-guard";
 import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
 import type { Supervisor } from "./core/process/supervisor";
@@ -248,7 +249,8 @@ export function SessionApp({
 						const matched = event.entries[idx];
 						if (matched) {
 							setConfig((prev) => {
-								if (!prev.model || prev.model.path !== matched.path) return prev;
+								if (!prev.model || prev.model.path !== matched.path)
+									return prev;
 								return {
 									...prev,
 									model: {
@@ -260,18 +262,23 @@ export function SessionApp({
 										headCountKv: matched.headCountKv,
 										embeddingLength: matched.embeddingLength,
 										keyLength: matched.keyLength,
+										incomplete: matched.incomplete,
 									},
 								};
 							});
 						}
 					} else {
-						const firstValid = event.entries.findIndex((e) => !e.error);
+						const firstValid = event.entries.findIndex(
+							(e) => !e.error && !e.incomplete,
+						);
 						if (firstValid !== -1) {
 							selectModelFromEntries(event.entries, firstValid);
 						}
 					}
 				} else {
-					const firstValid = event.entries.findIndex((e) => !e.error);
+					const firstValid = event.entries.findIndex(
+						(e) => !e.error && !e.incomplete,
+					);
 					if (firstValid !== -1) {
 						selectModelFromEntries(event.entries, firstValid);
 					}
@@ -368,7 +375,9 @@ export function SessionApp({
 	function selectModelFromEntries(list: ModelEntry[], index: number): void {
 		setSelectedIndex(index);
 		const entry = list[index];
-		if (!entry || entry.error) return;
+		// #18: parse errors and incomplete split groups surface as inspector
+		// diagnostics only — they never construct a launch-ready Configurator.
+		if (!entry || entryLaunchBlocker(entry)) return;
 		setConfig(
 			clampContext(
 				createConfigurator({
@@ -391,7 +400,8 @@ export function SessionApp({
 
 	function buildPlan(): LaunchPlan | null {
 		const cfg = config;
-		if (!cfg.model) return null;
+		// #18: an incomplete split group never resolves to a launch plan.
+		if (!cfg.model || cfg.model.incomplete) return null;
 		const built = buildCommand({
 			modelPath: cfg.model.path,
 			meta: { blockCount: cfg.model.blockCount },
@@ -419,7 +429,17 @@ export function SessionApp({
 		planSource = buildPlan;
 	}
 
+	function launchSplitDiagnostic(): boolean {
+		if (!config.model?.incomplete) return false;
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: "[SYS] incomplete split group — add the missing parts and rescan [r]",
+		});
+		return true;
+	}
+
 	function handleLaunch(): void {
+		if (launchSplitDiagnostic()) return;
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
 	}
 
@@ -436,6 +456,7 @@ export function SessionApp({
 	}
 
 	function handleConfirmHost(): void {
+		if (launchSplitDiagnostic()) return;
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc", confirmedHost: true });
 	}
 
@@ -443,9 +464,20 @@ export function SessionApp({
 		model_path: string;
 		flags: Record<string, unknown>;
 	}): void {
-		setConfig(
-			clampContext(loadPresetInto(config, preset.flags, preset.model_path)),
+		const next = clampContext(
+			loadPresetInto(config, preset.flags, preset.model_path),
 		);
+		// #18: a preset pointing at an incomplete split group carries the
+		// validation state into the Configurator — launch stays blocked.
+		if (
+			next.model &&
+			entries.some(
+				(e) => e.incomplete && e.paths.includes(next.model?.path ?? ""),
+			)
+		) {
+			next.model = { ...next.model, incomplete: true };
+		}
+		setConfig(next);
 		bus.emitState("LOG_LINE", {
 			stream: "out",
 			text: "[SYS] preset loaded into configurator",
