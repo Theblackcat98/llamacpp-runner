@@ -58,6 +58,26 @@ describe("model scanner (P3-FR-08)", () => {
 		]);
 	});
 
+	it("maps parser embedding metadata onto the scanned model entry", async () => {
+		const dir = scratch("embedding");
+		writeGguf(dir, "model.gguf", sampleLlamaQ4Km().buffer);
+
+		const result = await scanModels([dir]);
+		const entry = result.entries[0];
+
+		expect(entry).toMatchObject({
+			architecture: "llama",
+			quantName: "Q4_K_M",
+			contextLength: 2048,
+			blockCount: 22,
+			embeddingLength: 2048,
+			headCount: 32,
+			headCountKv: 4,
+			keyLength: undefined,
+			totalParams: 2048 * 32000 + 2048 * 2048,
+		});
+	});
+
 	it("groups split files into ONE row with summed size + part-1 metadata", async () => {
 		const dir = scratch("splits");
 		const { buffer } = sampleLlamaQ4Km();
@@ -102,6 +122,31 @@ describe("model scanner (P3-FR-08)", () => {
 });
 
 describe("metadata cache integration (P3-FR-10)", () => {
+	it("re-parses a cached entry missing required embedding metadata", async () => {
+		const dir = scratch("stale-cache");
+		const stateDir = scratch("stale-cache-state");
+		writeGguf(dir, "model.gguf", sampleLlamaQ4Km().buffer);
+
+		const cold = await scanModels([dir], { stateDir });
+		expect(cold.stats.parsed).toBe(1);
+
+		const cachePath = join(stateDir, "models-cache.json");
+		const persisted = JSON.parse(readFileSync(cachePath, "utf8")) as {
+			version: number;
+			entries: Record<string, { entry: Record<string, unknown> }>;
+		};
+		const cachedPath = Object.keys(persisted.entries)[0];
+		if (!cachedPath) throw new Error("expected cached model entry");
+		persisted.version = 1;
+		delete persisted.entries[cachedPath]?.entry.embeddingLength;
+		writeFileSync(cachePath, JSON.stringify(persisted));
+
+		const stale = await scanModels([dir], { stateDir });
+		expect(stale.stats.parsed).toBe(1);
+		expect(stale.stats.cachedHits).toBe(0);
+		expect(stale.entries[0]?.embeddingLength).toBe(2048);
+	});
+
 	it("warm scan re-parses ONLY changed files", async () => {
 		const dir = scratch("cache");
 		const stateDir = scratch("cache-state");
@@ -122,7 +167,7 @@ describe("metadata cache integration (P3-FR-10)", () => {
 		const persisted = JSON.parse(
 			readFileSync(join(stateDir, "models-cache.json"), "utf8"),
 		);
-		expect(persisted.version).toBe(1);
+		expect(persisted.version).toBe(2);
 	});
 });
 
