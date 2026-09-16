@@ -31,6 +31,9 @@ Usage:
   llama-deck import <file|-> [--name <name>] [--save]
                               Import shell command into preset or preview
   llama-deck start <preset>   Launch a preset (llama-server in foreground)
+  llama-deck doctor <preset> [--json]
+                              Diagnose launch readiness without starting a
+                              server (exit 0 when launchable, 1 otherwise)
   llama-deck kill [--json]    Stop a running instance via pidfile (§6.2)
 `);
 	process.exit(0);
@@ -138,6 +141,44 @@ async function main(): Promise<void> {
 		const availability = await runtimeAvailability(configuredBinary());
 		process.stdout.write(exportPreset(preset, format, { availability }));
 		return;
+	}
+
+	if (command === "doctor") {
+		const { rest, json } = jsonFlag(args);
+		const presetId = rest[0];
+		if (!presetId) {
+			console.error(
+				"Missing preset. Usage: llama-deck doctor <preset> [--json]",
+			);
+			process.exit(1);
+		}
+		const preset = findPreset(presetId);
+		const { buildDoctorReport, formatDoctorReport } = await import(
+			"./core/doctor"
+		);
+		const { probeBinaryAvailability } = await import("./core/flags/validate");
+		// Same resolution `start` uses: per-preset binary_path, else the
+		// file-level configured binary, else PATH.
+		const configured =
+			(preset as { binary_path?: string }).binary_path ?? configuredBinary();
+		const report = await buildDoctorReport(
+			{ preset },
+			{
+				configDir: paths.configDir,
+				stateDir: paths.stateDir,
+				pidFile: paths.pidFile,
+			},
+			{
+				probeBinary: () => probeBinaryAvailability({ configured }),
+			},
+		);
+		if (json) {
+			console.log(JSON.stringify(report));
+		} else {
+			console.log(formatDoctorReport(report));
+		}
+		// Machine-readable verdict for scripting: 0 = launchable.
+		process.exit(report.launchable ? 0 : 1);
 	}
 
 	if (command === "import") {
