@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REGISTRY } from "../../core/flags/registry";
 import type { HardwareInfo } from "../../core/hardware/detect";
 import { TuiBox } from "../components/box";
@@ -53,11 +53,25 @@ export function Configurator({
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
 
+	// Notify exactly on mount + field change. Holding the callback in a
+	// ref keeps parent callback-identity churn (inline arrows in App)
+	// from re-firing this effect on every render (#37).
+	const activeFieldCallback = useRef(onActiveFieldChange);
+	activeFieldCallback.current = onActiveFieldChange;
 	useEffect(() => {
-		onActiveFieldChange?.(field);
-	}, [field, onActiveFieldChange]);
-	const update = (mutate: (s: ConfiguratorState) => ConfiguratorState) =>
-		onChange?.(clampContext(mutate(state)));
+		activeFieldCallback.current?.(field);
+	}, [field]);
+	// #37: updates read the latest state through a ref (written back
+	// optimistically) so several onChange calls processed in one batch —
+	// fast typing, pasted keys — chain instead of last-write-wins on the
+	// stale render-scope `state` closure.
+	const stateRef = useRef(state);
+	stateRef.current = state;
+	const update = (mutate: (s: ConfiguratorState) => ConfiguratorState) => {
+		const next = clampContext(mutate(stateRef.current));
+		stateRef.current = next;
+		onChange?.(next);
+	};
 
 	const boolRow = (id: string) => {
 		const label = REGISTRY[id as keyof typeof REGISTRY]?.ui.label ?? id;
