@@ -1,0 +1,39 @@
+name: Feature Request
+description: Propose new behavior or scope — filed as an enhancement, not a "[task]".
+title: "[feature]: "
+labels: ["ready", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the proposed behavior below. The agent will read this description and acceptance criteria when instructed to "work on the next issue".
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Architectural Layer
+      description: "Which layer does this feature target? (Note: core and UI changes never share a branch)"
+      options:
+        - "core (src/core)"
+        - "ui (src/ui)"
+        - "cli (src/cli.ts)"
+        - "docs / tests / meta"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Proposal & Context
+      description: What should exist that doesn't, and why? Include spec reference (e.g. plans/llamamanager.md §ref) if it extends the spec.
+      placeholder: "e.g. Spec §7: surface preset diff preview before loading into the Configurator."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will the agent and tests verify this is done?
+      placeholder: |
+        - Unit/integration test covers the new behavior
+        - bun run lint && bun test passes
+    validations:
+      required: true
