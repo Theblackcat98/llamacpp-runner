@@ -1,5 +1,5 @@
-name: Task / Feature / Bug
-description: Add a task, feature request, or bug report to the work queue.
+name: Task
+description: Add a scoped work task to the queue. For defects use Bug Report; for new behavior use Feature Request.
 title: "[task]: "
 labels: ["ready"]
 body:
@@ -11,7 +11,7 @@ body:
     id: layer
     attributes:
       label: Architectural Layer
-      description: Which layer does this task target? (Note: core and UI changes never share a branch)
+      description: "Which layer does this task target? (Note: core and UI changes never share a branch)"
       options:
         - "core (src/core)"
         - "ui (src/ui)"

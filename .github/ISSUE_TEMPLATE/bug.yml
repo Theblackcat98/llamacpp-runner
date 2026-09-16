@@ -1,0 +1,49 @@
+name: Bug Report
+description: Report something broken — filed as a bug, not a "[task]".
+title: "[bug]: "
+labels: ["ready", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the defect below. The agent will read this description and acceptance criteria when instructed to "work on the next issue".
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Architectural Layer
+      description: "Which layer does this bug live in? (Note: core and UI changes never share a branch)"
+      options:
+        - "core (src/core)"
+        - "ui (src/ui)"
+        - "cli (src/cli.ts)"
+        - "docs / tests / meta"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug & Context
+      description: What is broken, where, and since when? Include spec reference (e.g. plans/llamamanager.md §ref) and the regression source (#issue or commit) if known.
+      placeholder: "e.g. #37: alias input on the Configurator swallows digits 1-4 because the global shortcut handler fires first."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps to reproduce, or the red test that should exist.
+      placeholder: |
+        1. Open Configurator, focus the alias field
+        2. Type "1234" — digits switch tabs instead of typing
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: How will the agent and tests verify this is fixed?
+      placeholder: |
+        - Regression test reproduces the bug (red) before the fix
+        - bun run lint && bun test passes
+    validations:
+      required: true
