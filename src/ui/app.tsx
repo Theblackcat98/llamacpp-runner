@@ -92,6 +92,8 @@ export interface ExplorerControl {
 export interface ConfiguratorControl {
 	state: ConfiguratorState;
 	setState: (next: ConfiguratorState) => void;
+	/** Exact command line produced by the SessionApp launch plan. */
+	previewCommand?: string;
 	hardware?: import("../core/hardware/detect").HardwareInfo | null;
 	onAutoFit?: () => void;
 }
@@ -413,6 +415,7 @@ export function App({
 						hardware={configuratorControl.hardware}
 						onAutoFit={configuratorControl.onAutoFit}
 						onChange={configuratorControl.setState}
+						previewCommand={configuratorControl.previewCommand}
 						focused={focusPane === 0}
 						captureKeys={focusPane === 0 && !importOpen}
 						onActiveFieldChange={(f) => {

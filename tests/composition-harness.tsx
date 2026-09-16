@@ -20,6 +20,7 @@ import type { IntentMap, StateMap } from "../src/core/bus-contract";
 import { createModelsService } from "../src/core/models/service";
 import { createSession, type LaunchPlan } from "../src/core/session";
 import { saveConfig } from "../src/core/store/config";
+import { presetsFilePath, savePresets } from "../src/core/store/presets";
 import { resolvePaths } from "../src/core/store/state-paths";
 import { SessionApp } from "../src/main";
 import { sampleLlamaQ4Km, writeFixture } from "./fixtures/gguf/build";
@@ -51,6 +52,7 @@ export interface BootOptions {
 	configureDir?: boolean;
 	width?: number;
 	height?: number;
+	configuredBinary?: string;
 }
 
 export async function bootCompositionApp(
@@ -73,6 +75,13 @@ export async function bootCompositionApp(
 		writeFixture(modelsDir, name, sampleLlamaQ4Km().buffer);
 	}
 	saveConfig(configDir, configureDir ? { modelsDir } : {});
+	if (opts.configuredBinary !== undefined) {
+		savePresets(presetsFilePath(configDir), {
+			version: 2,
+			presets: [],
+			binary_path: opts.configuredBinary,
+		});
+	}
 
 	const bus = createBus<IntentMap, StateMap>();
 	const paths = resolvePaths({
@@ -80,13 +89,17 @@ export async function bootCompositionApp(
 		XDG_STATE_HOME: join(scratch, "state"),
 	});
 
-	const session = createSession({ paths, bus });
+	const planSource: CompositionApp["planSource"] = {};
+	const session = createSession({
+		paths,
+		bus,
+		resolveLaunch: () => planSource.current?.() ?? null,
+	});
 	await session.boot();
 
 	const modelsService = createModelsService(bus, paths);
 	modelsService.boot();
 
-	const planSource: CompositionApp["planSource"] = {};
 	const setup = await renderWithAct(
 		<SessionApp
 			bus={bus}
@@ -119,6 +132,9 @@ export async function bootCompositionApp(
 		},
 		dispose: async () => {
 			modelsService.dispose();
+			await act(async () => {
+				await session.shutdown();
+			});
 			await teardownWithAct(setup);
 			rmSync(scratch, { recursive: true, force: true });
 		},

@@ -175,20 +175,46 @@ export function effectiveValues(
 /** Deterministic argv for the live preview strip (P4-FR-06, NFR-01). */
 export function previewArgs(state: ConfiguratorState): string[] {
 	if (!state.model) return [];
-	return buildCommand({
-		modelPath: state.model.path,
-		meta: { blockCount: state.model.blockCount },
-		values: effectiveValues(state),
-	}).args;
+	return previewCommand(state).args;
 }
 
-export function previewLine(state: ConfiguratorState): string {
-	if (!state.model) return "";
+export interface PreviewOptions {
+	/**
+	 * Issue #15: runtime capability map from the RESOLVED binary; unsupported
+	 * registry flags are dropped so preview matches the launched argv.
+	 */
+	availability?: Record<
+		string,
+		import("../../core/flags/help-parser").FlagAvailability
+	>;
+	/** Resolved binary path; defaults to the shared LLAMA_SERVER_BIN. */
+	command?: string;
+}
+
+/** Full preview command: resolved binary + capability-filtered argv. */
+export function previewCommand(
+	state: ConfiguratorState,
+	opts: PreviewOptions = {},
+): { command: string; args: string[] } {
+	if (!state.model) return { command: "", args: [] };
 	const built = buildCommand({
 		modelPath: state.model.path,
 		meta: { blockCount: state.model.blockCount },
 		values: effectiveValues(state),
+		availability: opts.availability,
 	});
+	return {
+		command: opts.command ?? built.command,
+		args: built.args,
+	};
+}
+
+export function previewLine(
+	state: ConfiguratorState,
+	opts: PreviewOptions = {},
+): string {
+	const built = previewCommand(state, opts);
+	if (!built.command) return "";
 	return commandLine(built);
 }
 

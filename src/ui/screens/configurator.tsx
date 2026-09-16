@@ -34,6 +34,15 @@ export interface ConfiguratorProps {
 	/** Phase 13: reports the focused field index so the shell can yield global
 	 * printable keys (digits, o/k/q/…) while a text field owns typing. */
 	onActiveFieldChange?: (field: number) => void;
+	/** Issue #15: availability map from the resolved binary's --help. */
+	availability?: Record<
+		string,
+		import("../../core/flags/help-parser").FlagAvailability
+	>;
+	/** Issue #15: exact command line from the SessionApp launch plan. */
+	previewCommand?: string;
+	/** Issue #15 fallback inputs for standalone Configurator renders. */
+	resolvedBinary?: string;
 }
 
 /**
@@ -50,6 +59,9 @@ export function Configurator({
 	captureKeys = true,
 	onAutoFit,
 	onActiveFieldChange,
+	availability,
+	previewCommand,
+	resolvedBinary,
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
 	// #42: event-time mirror of `field`. A key batch (fast typing, paste,
@@ -142,7 +154,14 @@ export function Configurator({
 	const ngl = numValue(state.values.n_gpu_layers, state.nglMax);
 	const ctx = numValue(state.values.ctx_size, CTX_CHIPS[0] ?? 4096);
 	const vram = vramRangeText(state);
-	const preview = previewLine(state);
+	// Issue #15: production receives the exact launch-plan command line;
+	// standalone renders retain the pure-state preview fallback.
+	const preview =
+		previewCommand ??
+		previewLine(state, {
+			availability,
+			command: resolvedBinary,
+		});
 	const verdict = willItFitVerdict(state, hardware);
 	const verdictColor =
 		verdict.status === "fits"
