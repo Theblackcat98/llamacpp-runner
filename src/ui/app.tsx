@@ -380,9 +380,11 @@ export function App({
 					backgroundColor: theme.surface,
 				}}
 			>
-				<text fg={theme.fgBright}>v0.1.0 — llama-deck</text>
-				<text fg={serverRunning ? theme.success : theme.muted}>
-					{`  [${procStateLabel(serverRunning)}]`}
+				<text>
+					<span fg={theme.fgBright}>v0.1.0 — llama-deck</span>
+					<span fg={serverRunning ? theme.success : theme.muted}>
+						{`  [${procStateLabel(serverRunning)}]`}
+					</span>
 				</text>
 			</box>
 			<box style={{ flexDirection: "row", height: 1 }}>
@@ -490,11 +492,6 @@ export function App({
 				theme={theme}
 			/>
 			<Palette theme={theme} state={palette} actions={paletteActions} />
-			<HelpOverlay
-				theme={theme}
-				open={helpOpen}
-				tabName={TAB_LABELS[tab] ?? ""}
-			/>
 			<ImportModal
 				theme={theme}
 				open={importOpen}
@@ -529,6 +526,11 @@ export function App({
 						"[Tab] Focus | [1-4] Tabs | [Enter] Launch | [x] Kill | [Ctrl+L] Clear | [q] Quit | [?] Help"}
 				</text>
 			</box>
+			<HelpOverlay
+				theme={theme}
+				open={helpOpen}
+				tabName={TAB_LABELS[tab] ?? ""}
+			/>
 		</box>
 	);
 }

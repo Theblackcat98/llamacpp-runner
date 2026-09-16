@@ -25,7 +25,7 @@ const GLOBAL_ROWS: Row[] = [
 /** Tab-conditional bindings, keyed by the shell tab label. */
 const TAB_ROWS: Record<string, Row[]> = {
 	"Model Explorer": [
-		["[m]", "set / change models directory"],
+		["[m]", "set models directory"],
 		["[r]", "rescan models directory"],
 		["[↑↓]", "select model"],
 	],
@@ -60,33 +60,45 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 	const tabRows = TAB_ROWS[tabName] ?? [];
 	return (
 		<box
-			title={`KEYBOARD SHORTCUTS — ${tabName}`}
 			style={{
 				position: "absolute",
-				left: 8,
-				top: 2,
-				width: 76,
-				height: GLOBAL_ROWS.length + tabRows.length + 7,
-				border: true,
-				borderColor: theme.accent,
+				left: 0,
+				top: 0,
+				width: "100%",
+				height: "100%",
 				backgroundColor: theme.bg,
 				flexDirection: "column",
-				paddingLeft: 1,
 			}}
 		>
-			<text fg={theme.accent}>{" GLOBAL"}</text>
-			{GLOBAL_ROWS.map(([key, action]) => (
-				<text key={key} fg={theme.fg}>
-					{`  ${key}  ${action}`}
-				</text>
-			))}
-			<text fg={theme.accent}>{` ${tabName.toUpperCase()}`}</text>
-			{tabRows.map(([key, action]) => (
-				<text key={key} fg={theme.fg}>
-					{`  ${key}  ${action}`}
-				</text>
-			))}
-			<text fg={theme.muted}>{" press [?] to close"}</text>
+			<box
+				title={`KEYBOARD SHORTCUTS — ${tabName}`}
+				style={{
+					position: "absolute",
+					left: 8,
+					top: 2,
+					width: 76,
+					height: GLOBAL_ROWS.length + tabRows.length + 7,
+					border: true,
+					borderColor: theme.accent,
+					backgroundColor: theme.bg,
+					flexDirection: "column",
+					paddingLeft: 1,
+				}}
+			>
+				<text fg={theme.accent}>{" GLOBAL"}</text>
+				{GLOBAL_ROWS.map(([key, action]) => (
+					<text key={key} fg={theme.fg}>
+						{`  ${key}  ${action}`}
+					</text>
+				))}
+				<text fg={theme.accent}>{` ${tabName.toUpperCase()}`}</text>
+				{tabRows.map(([key, action]) => (
+					<text key={key} fg={theme.fg}>
+						{`  ${key}  ${action}`}
+					</text>
+				))}
+				<text fg={theme.muted}>{" press [?] to close"}</text>
+			</box>
 		</box>
 	);
 }

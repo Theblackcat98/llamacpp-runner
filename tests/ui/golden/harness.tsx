@@ -11,6 +11,9 @@ const UPDATE = process.env.UPDATE_GOLDEN === "1";
 export interface GoldenOptions {
 	width?: number;
 	height?: number;
+	beforeCapture?: (
+		setup: Awaited<ReturnType<typeof testRender>>,
+	) => void | Promise<void>;
 }
 
 /**
@@ -47,9 +50,17 @@ export async function expectGoldenFrame(
 	element: ReactNode,
 	options: GoldenOptions = {},
 ): Promise<void> {
-	const { width = 40, height = 6 } = options;
+	const { width = 40, height = 6, beforeCapture } = options;
 	const setup = await testRender(element, { width, height });
 	let frame = "";
+	await act(async () => {
+		await setup.flush();
+	});
+	if (beforeCapture) {
+		await act(async () => {
+			await beforeCapture(setup);
+		});
+	}
 	await act(async () => {
 		await setup.flush();
 		frame = setup.captureCharFrame();
