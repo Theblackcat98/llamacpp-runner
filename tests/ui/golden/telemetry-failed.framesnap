@@ -1,13 +1,13 @@
  ✖ FAILED  qwen2.5-coder-32b-q4_k_m.gguf  up 1m 0s  http://127.0.0.1:8080                           
                                                                                                     
- VRAM [██████████████████░░░░░░░░░░░░░░░░░░] 50%   KV [███████████████░░░░░░░░░░░░░░░░░░░░░] 42%    
+ VRAM [██████████████████░░░░░░░░░░░░░░░░░░] 50%   KV [███████████████▏░░░░░░░░░░░░░░░░░░░░] 42%    
     11.2 GiB actual / 22.4 GiB est                    42% of KV cache                               
                                                                                                     
  prompt ▁▃▇▅ 125.0                                                                                  
  decode ▁▃▇▅ 25.0                                                                                   
                                                                                                     
  Slots                                                                                              
- Id     State          Prompt tokens    Gen                                                         
+ Id     State             Prompt tokens Gen                                                         
  0      ACTIVE                      128 *                                                           
  1      IDLE                          0                                                             
                                                                                                     

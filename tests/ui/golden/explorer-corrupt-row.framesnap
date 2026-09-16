@@ -1,5 +1,5 @@
 ╭─Models (/models/llm)─────────────────────────────────────╮╭─Metadata inspector───────────────────╮
-│Name                           Size     Quant   Arch      ││File: qwen25-7b-q4km.gguf             │
+│Name                               Size Quant   Arch      ││File: qwen25-7b-q4km.gguf             │
 │* qwen25-7b-q4km.gguf           4.4 GiB Q4_K_M  qwen2     ││Arch: qwen2                           │
 │* tinyllama-1.1b-q8_0.gguf      1.1 GiB Q8_0    llama     ││Context Max: 131,072                  │
 │! corrupt.gguf                        - UNKNOWN -         ││Params (exact): 6.52B                 │
