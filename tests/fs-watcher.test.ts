@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -87,5 +87,53 @@ describe("fs watcher (P3-FR-11)", () => {
 		writeFileSync(join(dir, "x.gguf"), new Uint8Array(16));
 		await new Promise((r) => setTimeout(r, 800));
 		expect(events).toBe(0);
+	}, 10_000);
+});
+
+describe("recursive + lossless watcher (#17)", () => {
+	it("detects a .gguf added to a nested model directory", async () => {
+		const dir = scratch("nested");
+		mkdirSync(join(dir, "family-a"), { recursive: true });
+		let events = 0;
+		HANDLES.push(createModelWatcher([dir], () => events++));
+
+		writeFileSync(join(dir, "family-a", "deep.gguf"), sampleLlamaQ4Km().buffer);
+		await waitFor(() => (events > 0 ? events : null));
+	}, 10_000);
+
+	it("detects .gguf added to a subdirectory created after watch start", async () => {
+		const dir = scratch("nested-late");
+		let events = 0;
+		HANDLES.push(createModelWatcher([dir], () => events++));
+
+		await new Promise((r) => setTimeout(r, 100));
+		mkdirSync(join(dir, "late-family"), { recursive: true });
+		writeFileSync(
+			join(dir, "late-family", "late.gguf"),
+			sampleLlamaQ4Km().buffer,
+		);
+		await waitFor(() => (events > 0 ? events : null));
+	}, 10_000);
+
+	it("fires on delete even though the filename may not be a .gguf", async () => {
+		const dir = scratch("delete");
+		const target = join(dir, "gone.gguf");
+		writeFileSync(target, sampleLlamaQ4Km().buffer);
+		let events = 0;
+		HANDLES.push(createModelWatcher([dir], () => events++));
+
+		rmSync(target);
+		await waitFor(() => (events > 0 ? events : null));
+	}, 10_000);
+
+	it("fires on rename whose post-rename name is not .gguf", async () => {
+		const dir = scratch("rename");
+		const before = join(dir, "model.gguf");
+		writeFileSync(before, sampleLlamaQ4Km().buffer);
+		let events = 0;
+		HANDLES.push(createModelWatcher([dir], () => events++));
+
+		renameSync(before, join(dir, "model.moved"));
+		await waitFor(() => (events > 0 ? events : null));
 	}, 10_000);
 });
