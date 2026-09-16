@@ -1,5 +1,5 @@
-import { useKeyboard } from "@opentui/react";
 import { useState } from "react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import {
 	applyScrollKey,
@@ -30,8 +30,7 @@ export function ScrollPane({
 		createScrollPaneState({ contentLines: contentLines.length, viewport }),
 	);
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys && focused, (key) => {
 		const name = key.name ?? "";
 		let mapped = "";
 		if (

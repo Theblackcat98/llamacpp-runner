@@ -416,6 +416,8 @@ export function App({
 						onSelectIndex={explorerControl.onSelectIndex}
 						onSetModelsDir={explorerControl.onSetModelsDir}
 						onEditingChange={setExplorerEditing}
+						focused={focusPane === 2}
+						captureKeys={focusPane !== 3 && !importOpen}
 					/>
 				) : tab === 1 && configuratorControl ? (
 					<Configurator
@@ -471,7 +473,7 @@ export function App({
 						}}
 						onRelink={presetsControl.onRelink}
 						relinkTarget={relinkTarget}
-						focused
+						focused={focusPane === 2}
 						captureKeys={focusPane !== 3 && !importOpen}
 					/>
 				) : (

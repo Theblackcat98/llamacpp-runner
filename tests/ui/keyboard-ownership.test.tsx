@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { testRender } from "@opentui/react/test-utils";
-import { act } from "react";
+import { act, useState } from "react";
 import { App } from "../../src/ui/app";
+import { ScrollPane } from "../../src/ui/components/scroll-pane";
+import { VirtualizedTable } from "../../src/ui/components/table";
+import type { TableColumn } from "../../src/ui/components/table-state";
 import { createConfigurator } from "../../src/ui/logic/configurator-state";
 import { Configurator } from "../../src/ui/screens/configurator";
 import { DEFAULT_THEME, TOKYO_NIGHT } from "../../src/ui/themes";
@@ -36,6 +39,16 @@ function keypressListeners(setup: {
 /** Listeners attributable to the app itself (the renderer always has 1). */
 const RENDERER_BASELINE = 1;
 
+type TableRow = { id: number; label: string };
+const TABLE_COLUMNS: TableColumn<TableRow>[] = [
+	{ key: "id", title: "ID", width: 4, align: "right" },
+	{ key: "label", title: "LABEL", width: 12, align: "left" },
+];
+const TABLE_ROWS: TableRow[] = [
+	{ id: 0, label: "first" },
+	{ id: 1, label: "second" },
+];
+
 function appListeners(setup: {
 	renderer: { keyInput?: { listenerCount?: (e: string) => number } };
 }): number {
@@ -48,6 +61,150 @@ function appListeners(setup: {
  * one handler, and remount cycles never accumulate listeners.
  */
 describe("keyboard ownership (Phase 13)", () => {
+	it("registers only while focused and cleans up across unmount/remount cycles", async () => {
+		let setFocused: (focused: boolean) => void = () => {};
+		let setMounted: (mounted: boolean) => void = () => {};
+		function TableHarness() {
+			const [focused, updateFocused] = useState(false);
+			const [mounted, updateMounted] = useState(true);
+			setFocused = updateFocused;
+			setMounted = updateMounted;
+			return mounted ? (
+				<VirtualizedTable
+					theme={TOKYO_NIGHT}
+					columns={TABLE_COLUMNS}
+					data={TABLE_ROWS}
+					captureKeys
+					focused={focused}
+					viewport={2}
+				/>
+			) : null;
+		}
+
+		const setup = await testRender(<TableHarness />, { width: 40, height: 5 });
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(0);
+
+		await act(async () => setFocused(true));
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(1);
+
+		await act(async () => setFocused(false));
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(0);
+
+		for (let i = 0; i < 3; i++) {
+			await act(async () => setMounted(false));
+			await act(async () => {
+				await setup.flush();
+			});
+			expect(appListeners(setup)).toBe(0);
+
+			await act(async () => setMounted(true));
+			await act(async () => setFocused(true));
+			await act(async () => {
+				await setup.flush();
+			});
+			expect(appListeners(setup)).toBe(1);
+		}
+	});
+
+	it("preserves focused table navigation and Enter selection", async () => {
+		const selections: number[] = [];
+		const selectedRows: TableRow[] = [];
+		const setup = await testRender(
+			<VirtualizedTable
+				theme={TOKYO_NIGHT}
+				columns={TABLE_COLUMNS}
+				data={TABLE_ROWS}
+				captureKeys
+				focused
+				viewport={2}
+				onSelectionChange={(index) => selections.push(index)}
+				onSelect={(index, row) => {
+					selections.push(index);
+					selectedRows.push(row);
+				}}
+			/>,
+			{ width: 40, height: 5 },
+		);
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+
+		await act(async () => {
+			await setup.mockInput.pressKeys(["\x1b[B"]);
+		});
+		await act(async () => {
+			await setup.flush();
+		});
+		await act(async () => {
+			await setup.mockInput.pressKeys(["\r"]);
+		});
+		await act(async () => {
+			await setup.flush();
+		});
+
+		expect(selections).toEqual([1, 1]);
+		expect(selectedRows).toEqual(TABLE_ROWS.slice(1));
+	});
+
+	it("scopes ScrollPane listeners to focus and cleans up on unmount", async () => {
+		let setFocused: (focused: boolean) => void = () => {};
+		let setMounted: (mounted: boolean) => void = () => {};
+		function ScrollPaneHarness() {
+			const [focused, updateFocused] = useState(false);
+			const [mounted, updateMounted] = useState(true);
+			setFocused = updateFocused;
+			setMounted = updateMounted;
+			return mounted ? (
+				<ScrollPane
+					theme={TOKYO_NIGHT}
+					captureKeys
+					focused={focused}
+					contentLines={["line 1", "line 2", "line 3"]}
+					viewport={2}
+				/>
+			) : null;
+		}
+
+		const setup = await testRender(<ScrollPaneHarness />, {
+			width: 40,
+			height: 5,
+		});
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(0);
+
+		await act(async () => setFocused(true));
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(1);
+
+		await act(async () => setFocused(false));
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(0);
+
+		await act(async () => setMounted(false));
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(appListeners(setup)).toBe(0);
+	});
+
 	it("mounts exactly one keypress listener for the focused screen", async () => {
 		const setup = await testRender(
 			<Configurator

@@ -1,5 +1,5 @@
-import { useKeyboard } from "@opentui/react";
 import { useState } from "react";
+import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import {
 	applyTableKey,
@@ -43,8 +43,7 @@ export function VirtualizedTable<T>({
 		createTableState({ columns, viewport }),
 	);
 
-	useKeyboard((key) => {
-		if (!captureKeys) return;
+	useScopedKeyboard(captureKeys && focused, (key) => {
 		const name = key.name ?? "";
 		const mapped = name === "up" ? "k" : name === "down" ? "j" : name;
 		if (["k", "j", "g", "G"].includes(mapped)) {
@@ -57,7 +56,7 @@ export function VirtualizedTable<T>({
 			});
 			return;
 		}
-		if (mapped === "enter" && onSelect) {
+		if ((mapped === "enter" || mapped === "return") && onSelect) {
 			const sel = clampSelection(state, data).selected;
 			const row = data[sel];
 			if (row !== undefined) onSelect(sel, row);
