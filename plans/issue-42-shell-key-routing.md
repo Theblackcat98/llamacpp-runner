@@ -22,30 +22,26 @@ response to the user-reported alias-digits bug class (#26, #37, #41, #42).
   - App yields Enter to the dir editor while it is open (confirm path);
     Enter=Launch stays advertised on the Configurator.
 
-## Remaining work item 1 — extract pure `routeShellKey` (refactor)
+## Remaining work item 1 — extract pure `routeShellKey` (refactor) — DONE
 
 Behavior-identical extraction of the App key handler (`src/ui/app.tsx`,
 the `useKeyboard` body) into `src/ui/logic/shell-key-routing.ts`, in the
 house style of `logic/quit-state.ts` / `logic/palette-state.ts`:
 
 - `routeShellKey(ctx: ShellKeyContext, key: KeyRef): ShellAction[]`
-- `ShellKeyContext` (all inputs the handler reads today): `tab`,
-  `focusPane`, `textFieldActive` (configurator text field owns printables,
-  per `activeConfiguratorField.current`), `dirEditorOpen` (tab 0 +
-  `explorerEditingRef.current`), `paletteOpen`, `importOpen`,
-  `serverRunning`, `confirm: QuitState`, `killArmedAt`, `nowMs`, and
-  presence flags (`hasExplorer`, `hasSavePreset`, `hasYank`, `hasConfirmHost`,
-  `hasTelemetry`).
-- `ShellAction` — discriminated union: `yieldToField`, `paletteKey`,
-  `toggleHelp`, quit/kill/host results (reuse `handleQuitKey` /
-  `handleKillKey` / `handleHostKey` verbatim — they already return
-  `{action, state}`), `launch`, `rescan`, `savePreset`, `yank`, `openImport`,
-  `enableTelemetry`, `cycleFocusPane`, `switchTab(n)`, `clearLog`,
-  `toggleDrawer`, `armKillOrphan` / `executeKillOrphan`,
-  `setConfirm(state, notice?)`, `drawerScroll(delta | pinTail)`.
-- App's `useKeyboard` becomes: build ctx → `routeShellKey` → apply actions.
-  No rendering or listener changes; `keyboard-ownership.test.tsx` listener
-  counts must stay identical.
+- `ShellKeyContext`: as planned, with one deviation — no `hasTelemetry`
+  flag. The original handler swallows `t` on tab 2 unconditionally
+  (no-op without a telemetry control), so the router emits
+  `enableTelemetry` unconditionally and the App applies it optionally;
+  a presence flag would change fall-through behavior or be dead.
+  `hasLaunch` was added (Enter is gated on `onLaunch`).
+- `ShellAction` — discriminated union as planned; quit/kill/host reuse
+  `handleQuitKey` / `handleKillKey` / `handleHostKey` verbatim and are
+  resolved into granular `setConfirm` / `setNotice` / `quit` / `kill` /
+  `confirmHost` actions.
+- App's `useKeyboard` is now build-ctx → route → apply. No rendering or
+  listener changes; `keyboard-ownership.test.tsx` listener counts
+  unchanged; golden frames untouched.
 
 ### Table-driven unit test
 

@@ -16,7 +16,7 @@ import { HelpOverlay } from "./components/help-overlay";
 import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
 import { ConsoleDrawer } from "./console-drawer";
-import { CONFIGURATOR_TAB, DRAWER_HEIGHT, PRESETS_TAB } from "./constants";
+import { CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
 import {
 	buildDefaultActions,
 	type PaletteHandlers,
@@ -45,19 +45,9 @@ import {
 	type PaletteState as CmdPaletteState,
 	createPaletteState,
 } from "./logic/palette-state";
-import {
-	createQuitState,
-	handleHostKey,
-	handleKillKey,
-	handleQuitKey,
-	type QuitState,
-} from "./logic/quit-state";
-import {
-	cycleFocus,
-	isQuitKey,
-	type KeyRef,
-	TAB_COUNT,
-} from "./logic/shell-state";
+import { createQuitState, type QuitState } from "./logic/quit-state";
+import { routeShellKey } from "./logic/shell-key-routing";
+import { cycleFocus, type KeyRef, TAB_COUNT } from "./logic/shell-state";
 import { buildTelemetryViewModel } from "./logic/telemetry-state";
 import { Configurator, isConfiguratorTextField } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
@@ -222,143 +212,104 @@ export function App({
 	});
 
 	useKeyboard((key: KeyRef) => {
-		if (importOpen) {
-			return;
-		}
-		if ((key.ctrl && key.name === "p") || palette.open) {
-			setPalette((prev) => applyPaletteKey(prev, paletteActions, key));
-			return;
-		}
-		// While a Configurator text field is focused, plain printable keys go
-		// to the input alone — digits must not switch tabs, o/x/k/q must not
-		// trigger shell actions (Phase 13 one-owner rule). Ctrl combos still
-		// pass: Ctrl+C/P/S/Y/L are non-printable shell bindings.
-		const textFieldActive =
-			(tab === 1 &&
-				focusPane === 0 &&
-				isConfiguratorTextField(activeConfiguratorField.current)) ||
-			(tab === 0 && explorerEditingRef.current);
-		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
-			return;
-		}
-		if (key.name === "?" && !key.ctrl) {
-			setHelpOpen((open) => !open);
-			return;
-		}
-		if (isQuitKey(key)) {
-			const result = handleQuitKey(confirm, Date.now(), serverRunning);
-			setConfirm(result.state);
-			if (result.action === "quit") {
-				setConfirmNotice(null);
-				if (onQuit) {
-					onQuit();
-					return;
-				}
-				renderer.destroy();
-				return;
+		const actions = routeShellKey(
+			{
+				tab,
+				focusPane,
+				textFieldActive:
+					(tab === 1 &&
+						focusPane === 0 &&
+						isConfiguratorTextField(activeConfiguratorField.current)) ||
+					(tab === 0 && explorerEditingRef.current),
+				dirEditorOpen: tab === 0 && explorerEditingRef.current,
+				paletteOpen: palette.open,
+				importOpen,
+				serverRunning,
+				confirm,
+				killArmedAt,
+				nowMs: Date.now(),
+				hasLaunch: onLaunch !== undefined,
+				hasExplorer: explorerControl !== undefined,
+				hasSavePreset: onSavePreset !== undefined,
+				hasYank: onYankCommand !== undefined,
+				hasConfirmHost: onConfirmHost !== undefined,
+			},
+			key,
+		);
+		for (const action of actions) {
+			switch (action.type) {
+				case "yieldToField":
+					// The focused field consumes the key via its own listener.
+					break;
+				case "paletteKey":
+					setPalette((prev) =>
+						applyPaletteKey(prev, paletteActions, action.key),
+					);
+					break;
+				case "toggleHelp":
+					setHelpOpen((open) => !open);
+					break;
+				case "setConfirm":
+					setConfirm(action.state);
+					break;
+				case "setNotice":
+					setConfirmNotice(action.notice);
+					break;
+				case "quit":
+					if (onQuit) onQuit();
+					else renderer.destroy();
+					break;
+				case "launch":
+					if (onLaunch) onLaunch();
+					break;
+				case "kill":
+					if (onKill) onKill();
+					break;
+				case "armKillOrphan":
+					setKillArmedAt(action.nowMs);
+					break;
+				case "executeKillOrphan":
+					setKillArmedAt(null);
+					if (onKillOrphan) onKillOrphan();
+					break;
+				case "clearLog":
+					setDrawer(() => createDrawerState(DRAWER_HEIGHT));
+					break;
+				case "toggleDrawer":
+					setCollapsed((c) => !c);
+					break;
+				case "rescan":
+					if (explorerControl) explorerControl.onRescan();
+					break;
+				case "savePreset":
+					if (onSavePreset) onSavePreset();
+					break;
+				case "yank":
+					if (onYankCommand) onYankCommand();
+					break;
+				case "openImport":
+					setImportOpen(true);
+					break;
+				case "confirmHost":
+					if (onConfirmHost) onConfirmHost();
+					break;
+				case "enableTelemetry":
+					telemetryControl?.onEnableTelemetry?.();
+					break;
+				case "cycleFocusPane":
+					setFocusPane((p) => cycleFocus(PANE_COUNT, p, action.forward));
+					break;
+				case "switchTab":
+					setTab(action.tab);
+					setFocusPane(0);
+					break;
+				case "drawerScroll":
+					setDrawer((s) => scrollBy(s, action.by));
+					break;
+				case "drawerPinTail":
+					setDrawer(pinToTail);
+					break;
 			}
-			if (result.action === "confirm") setConfirmNotice(result.message ?? null);
-			return;
-		}
-		// The Explorer's dir editor owns Enter while open (confirm path);
-		// on the Configurator, Enter=Launch is the advertised binding (#42).
-		const dirEditorOpen = tab === 0 && explorerEditingRef.current;
-		if (
-			key.name === "return" &&
-			onLaunch &&
-			tab !== PRESETS_TAB &&
-			!dirEditorOpen
-		) {
-			onLaunch();
-			return;
-		}
-		if (key.name === "x" && !key.ctrl) {
-			const result = handleKillKey(confirm, Date.now(), serverRunning);
-			setConfirm(result.state);
-			if (result.action === "execute") {
-				setConfirmNotice(null);
-				if (onKill) onKill();
-			} else if (result.action === "confirm") {
-				setConfirmNotice(result.message ?? null);
-			}
-			return;
-		}
-		if (key.name === "k" && !key.ctrl) {
-			const now = Date.now();
-			if (killArmedAt !== null && now - killArmedAt <= 2000) {
-				setKillArmedAt(null);
-				setConfirmNotice(null);
-				if (onKillOrphan) onKillOrphan();
-			} else {
-				setKillArmedAt(now);
-				setConfirmNotice("press k again within 2s to kill the orphaned server");
-			}
-			return;
-		}
-		if (key.ctrl && key.name === "l") {
-			setDrawer(() => createDrawerState(DRAWER_HEIGHT));
-			return;
-		}
-		if (key.name === "o") {
-			setCollapsed((c) => !c);
-			return;
-		}
-		if (key.name === "r" && explorerControl && tab === 0) {
-			explorerControl.onRescan();
-			return;
-		}
-		// OpenTUI normally reports Ctrl+S as { name: "s", ctrl: true }, but
-		// terminals using a raw control sequence can omit `name`. Accept both
-		// forms so saving does not depend on the terminal/parser combination.
-		const isCtrlS =
-			key.ctrl && (key.name?.toLowerCase() === "s" || key.sequence === "\x13");
-		if (isCtrlS && tab === 1 && onSavePreset) {
-			onSavePreset();
-			return;
-		}
-		if (key.name === "y" && !key.ctrl && tab === 1 && onYankCommand) {
-			onYankCommand();
-			return;
-		}
-		if (
-			key.name === "i" &&
-			!key.ctrl &&
-			(tab === CONFIGURATOR_TAB || tab === PRESETS_TAB)
-		) {
-			setImportOpen(true);
-			return;
-		}
-		if (key.ctrl && key.name === "y" && onConfirmHost) {
-			// Phase 13: host exposure needs an explicit second confirmation.
-			const result = handleHostKey(confirm, Date.now());
-			setConfirm(result.state);
-			if (result.action === "execute") {
-				setConfirmNotice(null);
-				onConfirmHost();
-			} else if (result.action === "confirm") {
-				setConfirmNotice(result.message ?? null);
-			}
-			return;
-		}
-		if (key.name === "t" && !key.ctrl && tab === 2) {
-			telemetryControl?.onEnableTelemetry?.();
-			return;
-		}
-		if (key.name === "tab") {
-			setFocusPane((p) => cycleFocus(PANE_COUNT, p, !key.shift));
-			return;
-		}
-		const digit = Number.parseInt(key.name ?? "", 10);
-		if (digit >= 1 && digit <= TAB_COUNT) {
-			setTab(digit - 1);
-			// Switching screens always returns focus to the visible content pane.
-			setFocusPane(0);
-			return;
-		}
-		if (focusPane === 1) {
-			if (key.name === "up") setDrawer((s) => scrollBy(s, -1));
-			else if (key.name === "down") setDrawer((s) => scrollBy(s, 1));
-			else if (key.name === "g" || key.name === "end") setDrawer(pinToTail);
 		}
 	});
 
