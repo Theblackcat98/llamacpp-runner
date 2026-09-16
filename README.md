@@ -37,6 +37,11 @@ cd llamacpp-runner
 bun install
 ```
 
+> **Repo name note**: the GitHub repository slug is `llamacpp-runner` (historical);
+> the product, package, CLI, and TUI are all **llama-deck**. The clone directory
+> will be named `llamacpp-runner` — that is expected. `package.json` ("name":
+> "llama-deck") is the canonical product identity.
+
 ---
 
 ## Usage
