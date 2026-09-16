@@ -25,7 +25,7 @@ const GOOD: ModelEntry = {
 describe("explorer rows (P3-FR-15/16)", () => {
 	it("formats populated rows", () => {
 		const rows = buildRows([GOOD]);
-		expect(rows[0]?.displayName).toBe("qwen25-7b-q4km");
+		expect(rows[0]?.displayName).toBe("* qwen25-7b-q4km");
 		expect(rows[0]?.sizeLabel).toMatch(/^4\.4 GiB$/);
 		expect(rows[0]?.quantLabel).toBe("Q4_K_M");
 		expect(rows[0]?.archLabel).toBe("qwen2");
@@ -44,6 +44,23 @@ describe("explorer rows (P3-FR-15/16)", () => {
 		expect(rows[0]?.displayName).toBe("! badmagic.gguf");
 		expect(rows[0]?.corrupt).toBe(true);
 		expect(rows[0]?.sizeLabel).toBe("-");
+	});
+
+	it("prefixes nerd font file icons when iconSet is nerd (#51)", () => {
+		const rows = buildRows([GOOD], "nerd");
+		expect(rows[0]?.displayName).toBe("\u{F1C0} qwen25-7b-q4km");
+		const corrupt: ModelEntry = { ...GOOD, name: "bad.gguf", error: "x" };
+		expect(buildRows([corrupt], "nerd")[0]?.displayName).toBe(
+			"\u{F071} bad.gguf",
+		);
+		const partial: ModelEntry = {
+			...GOOD,
+			name: "half.gguf",
+			incomplete: true,
+		};
+		expect(buildRows([partial], "nerd")[0]?.displayName).toBe(
+			"\u{F059} half.gguf",
+		);
 	});
 });
 

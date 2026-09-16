@@ -1,7 +1,7 @@
 ╭─Models (/models/llm)─────────────────────────────────────╮╭─Metadata inspector───────────────────╮
 │Name                           Size     Quant   Arch      ││no model selected                     │
 │                                                          ││                                      │
-│ no .gguf files found — add models, [r] rescan · [m]      ││                                      │
+│no .gguf files found — add models, [r] rescan · [m]       ││                                      │
 │change dir                                                ││                                      │
 │                                                          ││                                      │
 │                                                          ││                                      │

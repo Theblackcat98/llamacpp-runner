@@ -1,5 +1,6 @@
 import { estimateVram, formatBytes } from "../../core/estimate/vram";
 import type { ModelEntry } from "../../core/models/types";
+import { iconFor, type IconSet } from "../glyphs";
 
 export interface ExplorerViewModel {
 	rows: ExplorerRow[];
@@ -19,17 +20,21 @@ export interface ExplorerRow {
 	entry: ModelEntry;
 }
 
-export function buildRows(entries: ModelEntry[]): ExplorerRow[] {
+export function buildRows(
+	entries: ModelEntry[],
+	iconSet: IconSet = "ascii",
+): ExplorerRow[] {
 	return entries.map((entry) => {
 		const corrupt = Boolean(entry.error);
 		const incomplete = Boolean(entry.incomplete);
 		const name = entry.name;
+		const icon = corrupt
+			? iconFor("file-corrupt", iconSet)
+			: incomplete
+				? iconFor("file-incomplete", iconSet)
+				: iconFor("file-model", iconSet);
 		return {
-			displayName: corrupt
-				? `${CORRUPT_GLYPH} ${name}`
-				: incomplete
-					? `~ ${name}`
-					: name,
+			displayName: icon ? `${icon} ${name}` : name,
 			name,
 			sizeLabel: corrupt ? "-" : formatBytes(entry.totalBytes),
 			quantLabel: entry.quantName ?? "-",

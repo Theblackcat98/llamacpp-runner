@@ -2,6 +2,7 @@ import { Badge } from "../components/badge";
 import { TuiBox } from "../components/box";
 import { Gauge } from "../components/gauge";
 import { VirtualizedTable } from "../components/table";
+import type { IconSet } from "../glyphs";
 import type { TelemetryViewModel } from "../logic/telemetry-state";
 import type { Theme } from "../themes";
 
@@ -12,6 +13,8 @@ export interface TelemetryScreenProps {
 	focused?: boolean;
 	/** Terminal width in columns; gauges scale to half the width. */
 	width?: number;
+	/** Nerd Font icons when "nerd", geometric ASCII glyphs otherwise. */
+	iconSet?: IconSet;
 }
 
 /**
@@ -31,6 +34,7 @@ export function Telemetry({
 	onEnableTelemetry,
 	focused = false,
 	width = 100,
+	iconSet = "ascii",
 }: TelemetryScreenProps) {
 	// Gauges sit side by side, so each gets half the terminal minus the
 	// label/bracket/percent chrome (~14 cols) and padding.
@@ -63,7 +67,12 @@ export function Telemetry({
 		<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
 			{/* Status strip: 1 borderless line replacing the old STATUS box. */}
 			<box style={{ flexDirection: "row", height: 1, paddingLeft: 1 }}>
-				<Badge theme={theme} status={vm.badge} label={vm.statusLabel} />
+				<Badge
+					theme={theme}
+					status={vm.badge}
+					label={vm.statusLabel}
+					iconSet={iconSet}
+				/>
 				<text fg={theme.fgBright}>{`  ${vm.modelLabel}`}</text>
 				<text fg={theme.muted}>{`  up ${vm.uptime}`}</text>
 				<text fg={theme.accent}>{`  ${vm.endpointLabel}`}</text>
@@ -71,9 +80,7 @@ export function Telemetry({
 
 			{/* Meters: VRAM and KV gauges side by side, no METERS box. */}
 			<box style={{ flexDirection: "row", marginTop: 1 }}>
-				<box
-					style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}
-				>
+				<box style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}>
 					<Gauge
 						theme={theme}
 						value={vm.vramFraction}
@@ -82,16 +89,16 @@ export function Telemetry({
 					/>
 					<text fg={theme.muted}>{`   ${vm.vramLabel}`}</text>
 				</box>
-				<box
-					style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}
-				>
+				<box style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}>
 					<Gauge
 						theme={theme}
 						value={vm.kvFraction}
 						width={gaugeWidth}
 						label="KV"
 					/>
-					<text fg={theme.muted}>{`   ${Math.round(vm.kvFraction * 100)}% of KV cache`}</text>
+					<text
+						fg={theme.muted}
+					>{`   ${Math.round(vm.kvFraction * 100)}% of KV cache`}</text>
 				</box>
 			</box>
 

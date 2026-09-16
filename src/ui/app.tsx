@@ -50,6 +50,7 @@ import { createQuitState, type QuitState } from "./logic/quit-state";
 import { routeShellKey } from "./logic/shell-key-routing";
 import { cycleFocus, type KeyRef, TAB_COUNT } from "./logic/shell-state";
 import { buildTelemetryViewModel } from "./logic/telemetry-state";
+import { detectIconSet, iconFor, type IconKind, type IconSet } from "./glyphs";
 import { Configurator, isConfiguratorTextField } from "./screens/configurator";
 import { Explorer } from "./screens/explorer";
 import { PresetsScreen } from "./screens/presets";
@@ -62,6 +63,16 @@ const TAB_LABELS = [
 	"Server Telemetry",
 	"Presets",
 ];
+
+const TAB_ICON_KINDS: IconKind[] = [
+	"tab-explorer",
+	"tab-config",
+	"tab-telemetry",
+	"tab-presets",
+];
+
+/** Icon set resolved once at startup from the environment (#51). */
+const ICON_SET: IconSet = detectIconSet(process.env);
 // Only these two shell regions participate in global focus traversal. Screen
 // widgets own their internal fields/rows after the screen receives focus.
 const PANE_COUNT = 2;
@@ -357,13 +368,17 @@ export function App({
 				</text>
 			</box>
 			<box style={{ flexDirection: "row", height: 1 }}>
-				{TAB_LABELS.map((label, i) => (
-					<text
-						key={label}
-						fg={i === tab ? theme.bg : theme.muted}
-						bg={i === tab ? theme.accent : undefined}
-					>{` [${i + 1}] ${label} `}</text>
-				))}
+				{TAB_LABELS.map((label, i) => {
+					const icon = iconFor(TAB_ICON_KINDS[i] ?? "tab-explorer", ICON_SET);
+					const prefix = icon ? `${icon} ` : "";
+					return (
+						<text
+							key={label}
+							fg={i === tab ? theme.bg : theme.muted}
+							bg={i === tab ? theme.accent : undefined}
+						>{` ${prefix}[${i + 1}] ${label} `}</text>
+					);
+				})}
 			</box>
 			<box
 				key="screen-pane"
@@ -388,6 +403,7 @@ export function App({
 						}}
 						focused={focusPane === 0}
 						captureKeys={focusPane === 0 && !importOpen}
+						iconSet={ICON_SET}
 					/>
 				) : tab === 1 && configuratorControl ? (
 					<Configurator
@@ -428,6 +444,7 @@ export function App({
 						onEnableTelemetry={telemetryControl?.onEnableTelemetry}
 						focused={focusPane === 0}
 						width={dims.width}
+						iconSet={ICON_SET}
 					/>
 				) : tab === 3 && presetsControl ? (
 					<PresetsScreen
