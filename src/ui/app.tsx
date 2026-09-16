@@ -343,20 +343,15 @@ export function App({
 				backgroundColor: theme.bg,
 			}}
 		>
-			<box
-				title="llama-deck"
-				style={{
-					border: true,
-					borderColor: theme.accent,
-					height: 3,
-					paddingLeft: 1,
-					backgroundColor: theme.surface,
-				}}
-			>
+			{/* #43: slim 1-line borderless header — the old bordered box cost 3
+			    rows for two facts (version + server state). */}
+			<box style={{ height: 1, flexDirection: "row", paddingLeft: 1 }}>
 				<text>
-					<span fg={theme.fgBright}>{`v${APP_VERSION} — llama-deck`}</span>
+					<span fg={theme.accent}>{"◆ "}</span>
+					<span fg={theme.fgBright}>{"llama-deck "}</span>
+					<span fg={theme.muted}>{`v${APP_VERSION}   `}</span>
 					<span fg={serverRunning ? theme.success : theme.muted}>
-						{`  [${procStateLabel(serverRunning)}]`}
+						{`● ${procStateLabel(serverRunning)}`}
 					</span>
 				</text>
 			</box>

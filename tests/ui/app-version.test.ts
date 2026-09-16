@@ -9,7 +9,7 @@ describe("shell header version single-sourcing (#35)", () => {
 	});
 
 	it("golden header frames render the packaged version, not a stale literal", () => {
-		const header = `v${APP_VERSION} — llama-deck`;
+		const header = `llama-deck v${APP_VERSION}`;
 		for (const frame of [
 			"tests/ui/golden/app-header-120x40.framesnap",
 			"tests/ui/golden/app-header-200x60.framesnap",
