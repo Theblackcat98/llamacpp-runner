@@ -180,7 +180,7 @@ src/
 The project maintains an exhaustive test suite covering headless domain logic, process lifecycle, UI state machines, golden-frame visual regressions, and automated release gates:
 
 ```bash
-# Run full unit and integration test suite (780+ tests across 130 files)
+# Run full unit and integration test suite (900+ tests across 140 files)
 bun test
 
 # Run code style & linting checks (Biome)
@@ -189,6 +189,8 @@ bun run lint
 # Run TypeScript typecheck
 bun run typecheck
 ```
+
+**Real-terminal smoke tests (#54)**: `tests/integration/tmux-smoke.test.ts` drives the actual TUI binary inside isolated tmux sessions (boot, mixed-case input, viewport matrix) and asserts on captured panes. `tmux` is a dev requirement — when absent, these scenarios skip with a named reason. Failure evidence (captured frames, key scripts, stderr) is written to `.tmp/tui-evidence/`.
 
 ---
 
