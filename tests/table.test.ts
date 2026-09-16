@@ -3,6 +3,7 @@ import {
 	applyTableKey,
 	clampSelection,
 	createTableState,
+	formatHeader,
 	formatRow,
 	visibleRows,
 } from "../src/ui/components/table-state";
@@ -65,5 +66,10 @@ describe("virtualized table state (P2-FR-06)", () => {
 		expect(formatRow(COLS, { id: 1, name: "model-1", size: "1GB" })).toBe(
 			"   1 model-1  1GB   ",
 		);
+	});
+
+	it("right-aligns headers of right-aligned columns (#52)", () => {
+		// ID column is right-aligned: title hugs the right like its values.
+		expect(formatHeader(COLS)).toBe("  ID NAME     SIZE  ");
 	});
 });

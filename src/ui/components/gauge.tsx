@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Theme } from "../themes";
-import { gaugeBar, sparkline } from "./gauge-state";
+import { gaugeBar, gaugeFillColor, sparkline } from "./gauge-state";
 
 export interface GaugeProps {
 	theme: Theme;
@@ -14,7 +14,7 @@ export function Gauge({ theme, value, width = 20, label }: GaugeProps) {
 		<text>
 			{label ? <span fg={theme.muted}>{`${label} [`}</span> : null}
 			{!label ? <span fg={theme.muted}>[</span> : null}
-			<span fg={theme.success}>{gaugeBar(value, width)}</span>
+			<span fg={gaugeFillColor(value, theme)}>{gaugeBar(value, width)}</span>
 			<span fg={theme.muted}>]</span>
 			<span fg={theme.fgBright}>{` ${Math.round(value * 100)}%`}</span>
 		</text>

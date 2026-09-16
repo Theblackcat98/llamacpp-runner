@@ -88,7 +88,10 @@ export function formatRow<T>(columns: TableColumn<T>[], row: T): string {
 export function formatHeader<T>(columns: TableColumn<T>[]): string {
 	const cells = columns.map((c) => {
 		const pad = Math.max(0, c.width - c.title.length);
-		return c.title + " ".repeat(pad);
+		const spaces = " ".repeat(pad);
+		// Headers follow the column alignment so numeric columns don't go
+		// ragged against their right-aligned values (#52).
+		return c.align === "right" ? spaces + c.title : c.title + spaces;
 	});
 	return cells.join(" ");
 }
