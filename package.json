@@ -1,7 +1,13 @@
 {
 	"name": "llama-deck",
 	"version": "0.1.0",
+	"description": "llama-deck: keyboard-first TUI and CLI to discover, configure, launch, and monitor a single managed llama.cpp llama-server instance, with presets and live telemetry.",
+	"license": "MIT",
 	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Theblackcat98/llamacpp-runner.git"
+	},
 	"packageManager": "bun@1.3.2",
 	"type": "module",
 	"scripts": {

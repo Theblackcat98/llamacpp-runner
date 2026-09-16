@@ -1,5 +1,7 @@
 # llama-deck
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 > A modern, keyboard-first terminal control deck and manager for [`llama.cpp`](https://github.com/ggerganov/llama.cpp) (`llama-server`).
 
 `llama-deck` combines headless model inspection, live configuration, telemetry monitoring, and process supervision into an elegant TUI and CLI.
@@ -166,4 +168,4 @@ bun run typecheck
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
