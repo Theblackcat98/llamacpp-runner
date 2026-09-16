@@ -11,18 +11,18 @@
 ## Features
 
 - **GGUF Model Explorer**: Deep inspection of GGUF metadata, architecture, tensor info, quantization types, and split files with dynamic directory watching.
-- **Availability-Aware Configurator**: Live command construction with interactive form controls, dynamic `--help` availability validation against your active `llama-server` binary, and VRAM estimation.
+- **Availability-Aware Configurator**: Live command construction with interactive form controls and VRAM estimation. The flag registry already supports `--help` availability gating (the headless CLI `export`/`start` paths use it); enforcing it in the TUI launch path is still pending (see issue #15).
 - **Zero-Orphan Process Supervisor**: Reliable lifecycle management running under strict process group teardown (SIGINT → 5s grace → SIGKILL escalation) with PID reuse protection.
 - **Live Telemetry & Diagnostics**: Real-time Prometheus metrics scraping (`tokens/sec`, prompt/decode speeds, KV cache utilization, memory usage) and slot activity sparklines.
 - **Fail-Safe Persistence**: Atomic JSON storage (same-directory temporary file + fsync + rename) for presets and session state with forward-only schema migrations.
 - **Terminal Portability & Truecolor**: Full OSC 52 clipboard yanking, 1-column braille spinners, box borders, responsive degraded layouts for compact terminals (<100x30), and 7 themes (TokyoNight, Catppuccin, Gruvbox, Cyberpunk, RosePine, Nord, Everforest).
-- **Dual Interface**: Full interactive TUI alongside a fast headless CLI (`scan`, `list`, `presets`, `export`, `start`, `kill`) with optional `--json` output.
+- **Dual Interface**: Full interactive TUI alongside a fast headless CLI (`scan`, `list`, `quick`, `presets`, `export`, `import`, `start`, `kill`) with optional `--json` output.
 
 ---
 
 ## Prerequisites
 
-- **Runtime**: [Bun](https://bun.sh) (v1.3+ or v1.4+)
+- **Runtime**: [Bun](https://bun.sh) 1.3.2 or newer (pinned via the `packageManager` field in `package.json`)
 - **Server**: `llama-server` binary on `$PATH` or specified via `binary_path` configuration
 - **Operating System**: Linux (full `/proc` process inspection and signal tracking), macOS / POSIX supported
 
@@ -58,25 +58,40 @@ bun run dev
 
 #### Keybindings
 
+Press `?` anywhere in the TUI for the full contextual shortcut legend. The table below mirrors the shell key handler (`src/ui/logic/shell-key-routing.ts`) and the help overlay (`src/ui/components/help-overlay.tsx`):
+
 | Key | Scope | Action |
 |---|---|---|
-| `1` | Global | Switch to **Models** tab |
-| `2` | Global | Switch to **Configure** tab |
-| `3` | Global | Switch to **Presets** tab |
-| `4` | Global | Switch to **Telemetry** tab |
+| `1` | Global | Switch to **Model Explorer** tab |
+| `2` | Global | Switch to **Launch Config** tab |
+| `3` | Global | Switch to **Server Telemetry** tab |
+| `4` | Global | Switch to **Presets** tab |
+| `Tab` | Global | Cycle focus (screen / console drawer) |
 | `?` | Global | Toggle **Help Overlay** |
 | `Ctrl+P` | Global | Open **Command Palette** |
-| `Ctrl+C` | Global | Clean quit (confirms if server running; double-press force quits) |
+| `q` / `Ctrl+C` | Global | Quit (confirms if server running) |
 | `x` | Global | Kill running server instance (with confirmation prompt) |
+| `k` | Global | Kill orphaned server (press twice within 2s) |
+| `o` | Global | Collapse / expand console drawer |
+| `Ctrl+L` | Global | Clear log |
+| `Enter` | Global | Launch configured `llama-server` instance (on Presets: set default preset) |
 | `j` / `k` or `↓` / `↑` | Lists | Navigate rows / options |
-| `Enter` | Models | Select model for configuration |
-| `Enter` | Configure | Launch configured `llama-server` instance |
-| `Ctrl+S` | Configure | Save current configuration as a Preset |
-| `y` | Configure | Yank command line to system clipboard (via OSC 52 / xclip / xsel) |
-| `t` | Configure | Toggle telemetry scrape flags (`--slots`, `--metrics`) |
-| `r` | Models | Trigger manual rescan of models directory |
+| `m` | Model Explorer | Set models directory |
+| `r` | Model Explorer | Trigger manual rescan of models directory |
+| `↑` / `↓` | Model Explorer | Select model |
+| `↑` / `↓` | Launch Config | Move between fields |
+| `Esc` | Launch Config | Reset configurator |
+| `a` | Launch Config | Auto-fit GPU layers to VRAM |
+| `Ctrl+S` | Launch Config | Save current configuration as a Preset |
+| `y` | Launch Config | Yank command line to system clipboard (via OSC 52 / xclip / xsel) |
+| `Ctrl+Y` | Launch Config | Confirm host-exposing launch |
+| `i` | Launch Config / Presets | Import shell command |
+| `t` | Server Telemetry | Toggle telemetry on / off |
+| `c` | Presets | Clone selected preset |
+| `d` | Presets | Delete selected preset (press twice) |
+| `Enter` | Presets | Set default preset |
 | `l` | Presets | Load selected preset into Configurator |
-| `d` | Presets | Delete selected preset |
+| `r` | Presets | Relink broken preset to Explorer pick |
 
 ---
 
@@ -107,6 +122,9 @@ bun run cli presets [--json]
 bun run cli export <preset-id> --format sh
 bun run cli export <preset-id> --format systemd
 
+# Import a shell command into a preset (reads file or stdin with `-`)
+bun run cli import ./launch.sh --name "my preset" --save
+
 # Launch a preset in foreground
 bun run cli start <preset-id>
 
@@ -133,7 +151,7 @@ src/
 ├── ui/           # React terminal UI layer (@opentui/react)
 │   ├── components/       # Forms, tables, sparklines, gauges, dialogs
 │   ├── logic/            # Pure state machines for views & key handling
-│   ├── screens/          # Models, Configure, Presets, Telemetry viewports
+│   ├── screens/          # explorer, configurator, presets, telemetry, catalog viewports
 │   └── themes/           # TokyoNight, Catppuccin, Gruvbox, Cyberpunk, RosePine, Nord, Everforest
 ├── cli.ts        # Fast standalone CLI entrypoint (<20ms startup)
 └── main.tsx      # TUI composition root & bus wiring
@@ -154,7 +172,7 @@ src/
 The project maintains an exhaustive test suite covering headless domain logic, process lifecycle, UI state machines, golden-frame visual regressions, and automated release gates:
 
 ```bash
-# Run full unit and integration test suite (490 tests across 93 files)
+# Run full unit and integration test suite (780+ tests across 130 files)
 bun test
 
 # Run code style & linting checks (Biome)
