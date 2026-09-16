@@ -75,7 +75,7 @@ async function gotoPresets(
 	await act(async () => {
 		await setup.flush();
 	});
-	expect(setup.captureCharFrame()).toContain("PRESETS");
+	expect(setup.captureCharFrame()).toContain("Presets");
 }
 
 /**
@@ -154,7 +154,7 @@ describe("preset load-and-go (F3)", () => {
 			await setup.flush();
 		});
 		expect(loaded).toEqual(["p1"]);
-		expect(setup.captureCharFrame()).toContain("LAUNCH CONFIG");
+		expect(setup.captureCharFrame()).toContain("Launch config");
 	});
 });
 

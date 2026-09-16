@@ -1,5 +1,5 @@
-╭─PRESETS────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│NAME                               MODEL                                    STATUS     LAST USED            │
+╭─Presets────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│Name                               Model                                    Status     Last used            │
 │* Qwen 32B Full Offload            ~/models/llm/qwen.gguf                   ok         never                │
 │Gone Model                         ~/models/llm/deleted.gguf                BROKEN     2026-08-24 09:15     │
 │                                                                                                            │
@@ -15,7 +15,7 @@
 │                                                                                                            │
 │                                                                                                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ACTIONS────────────────────────────────────────────────────────────────────────────────────────────────────╮
+╭─Actions────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │  [c] Clone   [d] Delete   [Enter] Set Default   [l] Load into Configurator   [i] Import                    │
 │  unknown flags kept verbatim: future_flag                                                                  │
 │  * default preset (restored on boot)                                                                       │

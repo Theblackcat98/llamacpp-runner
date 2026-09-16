@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
+import { toTitleCase } from "../title-case";
 import {
 	applyTableKey,
 	clampSelection,
@@ -71,12 +72,17 @@ export function VirtualizedTable<T>({
 		const row = data[i];
 		if (row !== undefined) rows.push({ row, idx: i });
 	}
+	// #47: column headers render in title case, not ALL-CAPS.
+	const casedColumns = columns.map((c) => ({
+		...c,
+		title: toTitleCase(c.title),
+	}));
 
 	return (
 		<text>
 			{header ? (
 				<span fg={focused ? theme.accent : theme.muted}>
-					{formatHeader(columns)}
+					{formatHeader(casedColumns)}
 					{"\n"}
 				</span>
 			) : null}
@@ -86,7 +92,7 @@ export function VirtualizedTable<T>({
 					bg={idx === view.selected && focused ? theme.focusBg : undefined}
 					fg={idx === view.selected && focused ? theme.fgBright : theme.fg}
 				>
-					{formatRow(columns, row)}
+					{formatRow(casedColumns, row)}
 					{"\n"}
 				</span>
 			))}

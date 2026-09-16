@@ -26,7 +26,7 @@ export function ConsoleDrawer({
 	const height = collapsed ? 2 : viewportHeight;
 	return (
 		<box
-			title={collapsed ? "─ CONSOLE (o to expand)" : "CONSOLE"}
+			title={collapsed ? "─ Console (o to expand)" : "Console"}
 			style={{
 				border: true,
 				borderColor: focused ? theme.accent : theme.border,

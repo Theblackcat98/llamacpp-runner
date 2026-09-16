@@ -325,7 +325,7 @@ describe("shell yields printables while typing (Phase 13)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(setup.captureCharFrame()).toContain("LAUNCH CONFIG");
+		expect(setup.captureCharFrame()).toContain("Launch config");
 		for (let i = 0; i < 12; i++) {
 			await act(async () => {
 				await setup.mockInput.pressKeys(["\x1b[B"]); // down
@@ -345,7 +345,7 @@ describe("shell yields printables while typing (Phase 13)", () => {
 			await setup.flush();
 		});
 		const frame = setup.captureCharFrame();
-		expect(frame).toContain("LAUNCH CONFIG");
+		expect(frame).toContain("Launch config");
 		expect(frame).not.toContain("MODEL EXPLORER");
 	});
 

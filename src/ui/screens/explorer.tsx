@@ -150,7 +150,7 @@ export function Explorer({
 				<box style={{ flexDirection: "row", flexGrow: 1 }}>
 					<TuiBox
 						theme={theme}
-						title={`MODELS${modelsDir ? ` (${modelsDir})` : ""}`}
+						title={`Models${modelsDir ? ` (${modelsDir})` : ""}`}
 						width="60%"
 						flexGrow={1}
 						focused={focused}
@@ -244,10 +244,7 @@ export function Explorer({
 				</box>
 			)}
 
-			<TuiBox
-				theme={theme}
-				title="QUICK LAUNCH COMMAND PREVIEW"
-			>
+			<TuiBox theme={theme} title="QUICK LAUNCH COMMAND PREVIEW">
 				{current?.incomplete ? (
 					<text fg={theme.warn}>
 						{`incomplete split group — add the missing parts and rescan [r]`}

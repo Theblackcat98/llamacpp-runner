@@ -76,7 +76,7 @@ describe("help overlay content (F15)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(setup.captureCharFrame()).not.toContain("SHORTCUTS");
+		expect(setup.captureCharFrame()).not.toContain("shortcuts");
 	});
 });
 
@@ -90,7 +90,7 @@ describe("help overlay toggle (F15)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(setup.captureCharFrame()).not.toContain("SHORTCUTS");
+		expect(setup.captureCharFrame()).not.toContain("shortcuts");
 
 		await act(async () => {
 			await setup.mockInput.pressKeys(["?"]);
@@ -98,7 +98,7 @@ describe("help overlay toggle (F15)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(setup.captureCharFrame()).toContain("SHORTCUTS");
+		expect(setup.captureCharFrame()).toContain("shortcuts");
 
 		await act(async () => {
 			await setup.mockInput.pressKeys(["?"]);
@@ -106,7 +106,7 @@ describe("help overlay toggle (F15)", () => {
 		await act(async () => {
 			await setup.flush();
 		});
-		expect(setup.captureCharFrame()).not.toContain("SHORTCUTS");
+		expect(setup.captureCharFrame()).not.toContain("shortcuts");
 	});
 
 	it("footer advertises the legend", async () => {

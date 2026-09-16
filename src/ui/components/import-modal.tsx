@@ -80,7 +80,7 @@ export function ImportModal({
 
 	return (
 		<box
-			title="IMPORT SHELL COMMAND"
+			title="Import shell command"
 			style={{
 				position: "absolute",
 				left: 6,

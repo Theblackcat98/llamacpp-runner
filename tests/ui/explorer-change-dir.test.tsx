@@ -33,7 +33,7 @@ describe("explorer change directory in TUI", () => {
 		});
 
 		const promptFrame = setup.captureCharFrame();
-		expect(promptFrame).toContain("SET MODELS DIRECTORY");
+		expect(promptFrame).toContain("Set models directory");
 
 		// Type directory path
 		await act(async () => {
@@ -95,7 +95,7 @@ describe("explorer change directory in TUI", () => {
 			await setup.flush();
 		});
 
-		expect(setup.captureCharFrame()).toContain("SET MODELS DIRECTORY");
+		expect(setup.captureCharFrame()).toContain("Set models directory");
 
 		// Press Escape to cancel
 		await act(async () => {
@@ -107,7 +107,7 @@ describe("explorer change directory in TUI", () => {
 			await setup.flush();
 		});
 
-		expect(setup.captureCharFrame()).not.toContain("SET MODELS DIRECTORY");
+		expect(setup.captureCharFrame()).not.toContain("Set models directory");
 		expect(chosenDir).toBe(null);
 
 		await act(async () => {
