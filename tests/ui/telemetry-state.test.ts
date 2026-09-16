@@ -17,8 +17,22 @@ const BASE: TelemetryInputs = {
 	promptHistory: [100, 200, 300],
 	decodeHistory: [10, 20, 30],
 	slots: [
-		{ id: 0, state: "ACTIVE", promptTokens: 128, generating: true },
-		{ id: 1, state: "IDLE", promptTokens: 0, generating: false },
+		{
+			id: 0,
+			state: "ACTIVE",
+			promptTokens: 128,
+			generating: true,
+			idTask: 1,
+			decodedTokens: 12,
+		},
+		{
+			id: 1,
+			state: "IDLE",
+			promptTokens: 0,
+			generating: false,
+			idTask: null,
+			decodedTokens: null,
+		},
 	],
 	failure: null,
 	tailLines: [],
@@ -65,17 +79,39 @@ describe("buildTelemetryViewModel (P5-FR-04)", () => {
 		expect(buildTelemetryViewModel(BASE).kvFraction).toBeCloseTo(0.42);
 	});
 
+	it("KV ratio unavailable -> null fraction, not a false zero (issue #14)", () => {
+		const vm = buildTelemetryViewModel({ ...BASE, kvUsageRatio: null });
+		expect(vm.kvFraction).toBeNull();
+	});
+
+	it("slot rows carry decoded token counts from current /slots (issue #14)", () => {
+		const vm = buildTelemetryViewModel({
+			...BASE,
+			slots: [
+				{
+					id: 0,
+					state: "PROCESSING",
+					promptTokens: 128,
+					generating: true,
+					idTask: 135,
+					decodedTokens: 136,
+				},
+			],
+		});
+		expect(vm.slotRows).toEqual([["0", "PROCESSING", "128", "136", "*"]]);
+	});
+
 	it("sparklines render block glyphs from history", () => {
 		const vm = buildTelemetryViewModel(BASE);
 		expect(vm.promptSpark.length).toBe(3);
 		expect(vm.decodeSpark.length).toBe(3);
 	});
 
-	it("slots table rows include id, state, prompt tokens, gen flag", () => {
+	it("slots table rows include id, state, prompt tokens, decoded, gen flag", () => {
 		const vm = buildTelemetryViewModel(BASE);
 		expect(vm.slotRows).toEqual([
-			["0", "ACTIVE", "128", "*"],
-			["1", "IDLE", "0", ""],
+			["0", "ACTIVE", "128", "12", "*"],
+			["1", "IDLE", "0", "-", ""],
 		]);
 	});
 

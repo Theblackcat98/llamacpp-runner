@@ -92,13 +92,17 @@ export function Telemetry({
 				<box style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}>
 					<Gauge
 						theme={theme}
-						value={vm.kvFraction}
+						value={vm.kvFraction ?? 0}
 						width={gaugeWidth}
 						label="KV"
 					/>
-					<text
-						fg={theme.muted}
-					>{`   ${Math.round(vm.kvFraction * 100)}% of KV cache`}</text>
+					<text fg={theme.muted}>
+						{`   ${
+							vm.kvFraction === null
+								? "KV usage unavailable"
+								: `${Math.round(vm.kvFraction * 100)}% of KV cache`
+						}`}
+					</text>
 				</box>
 			</box>
 
@@ -138,13 +142,15 @@ export function Telemetry({
 						{ key: "id", title: "ID", width: 6, align: "left" },
 						{ key: "state", title: "STATE", width: 14, align: "left" },
 						{ key: "ptok", title: "PROMPT TOKENS", width: 16, align: "right" },
+						{ key: "dtok", title: "DECODED", width: 10, align: "right" },
 						{ key: "gen", title: "GEN", width: 5, align: "left" },
 					]}
 					data={vm.slotRows.map((r) => ({
 						id: r[0],
 						state: r[1],
 						ptok: r[2],
-						gen: r[3],
+						dtok: r[3],
+						gen: r[4],
 					}))}
 					viewport={6}
 					captureKeys={false}

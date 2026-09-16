@@ -7,9 +7,9 @@
  decode ▁▃▇▅ 25.0                                                                                   
                                                                                                     
  Slots                                                                                              
- Id     State             Prompt tokens Gen                                                         
- 0      ACTIVE                      128 *                                                           
- 1      IDLE                          0                                                             
+ Id     State             Prompt tokens    Decoded Gen                                              
+ 0      ACTIVE                      128         12 *                                                
+ 1      IDLE                          0          -                                                  
                                                                                                     
                                                                                                     
                                                                                                     

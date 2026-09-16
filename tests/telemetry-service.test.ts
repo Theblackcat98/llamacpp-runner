@@ -49,7 +49,14 @@ describe("telemetry service", () => {
 			at: 1,
 		});
 		const slots = fakePoller([
-			{ id: 0, state: "IDLE", promptTokens: 0, generating: false },
+			{
+				id: 0,
+				state: "IDLE",
+				promptTokens: 0,
+				generating: false,
+				idTask: null,
+				decodedTokens: null,
+			},
 		]);
 		const service = createTelemetryService({
 			supervisor,

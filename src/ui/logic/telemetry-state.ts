@@ -30,7 +30,8 @@ export interface TelemetryViewModel {
 	endpointLabel: string;
 	vramFraction: number;
 	vramLabel: string;
-	kvFraction: number;
+	/** null = KV usage unavailable upstream (no false zero). */
+	kvFraction: number | null;
 	promptSpark: string;
 	decodeSpark: string;
 	promptTpsLabel: string;
@@ -90,7 +91,7 @@ export function buildTelemetryViewModel(
 		vramFraction = Math.min(memUsedBytes / vramEstimatedBytes.high, 1);
 		vramLabel = `${gb(memUsedBytes)} actual / ${gb(vramEstimatedBytes.high)} est`;
 	}
-	let kvFraction = 0;
+	let kvFraction: number | null = null;
 	if (kvUsageRatio !== null)
 		kvFraction = Math.min(Math.max(kvUsageRatio, 0), 1);
 
@@ -103,6 +104,9 @@ export function buildTelemetryViewModel(
 		String(s.id),
 		s.state,
 		s.promptTokens === null ? "-" : String(s.promptTokens),
+		// Decoded token count from the current upstream /slots contract
+		// (next_token.n_decoded); "-" when the field is absent (issue #14).
+		s.decodedTokens === null ? "-" : String(s.decodedTokens),
 		s.generating ? "*" : "",
 	]);
 

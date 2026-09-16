@@ -1,0 +1,59 @@
+[
+	{
+		"id": 0,
+		"id_task": 135,
+		"n_ctx": 65536,
+		"speculative": false,
+		"is_processing": true,
+		"n_prompt_tokens": 128,
+		"n_prompt_tokens_processed": 128,
+		"n_prompt_tokens_cache": 0,
+		"params": {
+			"n_predict": -1,
+			"seed": 4294967295,
+			"temperature": 0.800000011920929,
+			"top_k": 40,
+			"top_p": 0.949999988079071,
+			"min_p": 0.05000000074505806,
+			"n_keep": 0,
+			"stream": true,
+			"samplers": [
+				"penalties",
+				"dry",
+				"top_k",
+				"typ_p",
+				"top_p",
+				"min_p",
+				"xtc",
+				"temperature"
+			]
+		},
+		"next_token": {
+			"has_next_token": true,
+			"has_new_line": false,
+			"n_remain": -1,
+			"n_decoded": 136
+		}
+	},
+	{
+		"id": 1,
+		"id_task": 0,
+		"n_ctx": 65536,
+		"speculative": false,
+		"is_processing": false,
+		"n_prompt_tokens": 0,
+		"n_prompt_tokens_processed": 0,
+		"n_prompt_tokens_cache": 0,
+		"params": {
+			"n_predict": -1,
+			"seed": 4294967295,
+			"temperature": 0.800000011920929
+		},
+		"next_token": {
+			"has_next_token": true,
+			"has_new_line": false,
+			"n_remain": -1,
+			"n_decoded": 0
+		}
+	}
+]
