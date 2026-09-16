@@ -84,6 +84,110 @@ describe("models service over the bus (P3-FR-17/19)", () => {
 	});
 });
 
+describe("lossless invalidation (#17)", () => {
+	it("a change arriving during a scan schedules exactly one follow-up scan", async () => {
+		const seed = seedPaths("change-during-scan");
+		// Several models widen the first scan's walk window.
+		for (let i = 0; i < 30; i++) {
+			writeFileSync(
+				join(seed.modelsDir, `m${i}.gguf`),
+				sampleLlamaQ4Km().buffer,
+			);
+		}
+		writeFileSync(
+			join(seed.configDir, "config.json"),
+			JSON.stringify({ modelsDir: seed.modelsDir }),
+		);
+
+		const bus = createBus<IntentMap, StateMap>();
+		const completions: number[] = [];
+		let nudged = false;
+		bus.onState("MODELS_STATE", (e) => {
+			if (e.scanning && !nudged) {
+				// The first scan is now in flight. Defer to a macrotask so the
+				// boot path has finished wiring the watcher, then drop a new
+				// model into a NESTED directory mid-scan.
+				nudged = true;
+				setTimeout(() => {
+					mkdirSync(join(seed.modelsDir, "late"), { recursive: true });
+					writeFileSync(
+						join(seed.modelsDir, "late", "b.gguf"),
+						sampleLlamaQ4Km().buffer,
+					);
+				}, 0);
+			}
+			if (!e.scanning) completions.push(e.entries.length);
+		});
+
+		const svc = createModelsService(bus, seed);
+		svc.boot();
+		await waitFor(() => (completions.length >= 2 ? completions : null));
+		await new Promise((r) => setTimeout(r, 1200));
+
+		// The mid-scan change is never lost: a second scan includes it...
+		expect(completions[completions.length - 1]).toBe(31);
+		// ...and after quiescence exactly one follow-up happened (no loops).
+		expect(completions).toHaveLength(2);
+		svc.dispose();
+	}, 20_000);
+
+	it("nested-directory changes trigger a rescan without manual refresh", async () => {
+		const seed = seedPaths("nested-watch");
+		writeFileSync(join(seed.modelsDir, "a.gguf"), sampleLlamaQ4Km().buffer);
+		writeFileSync(
+			join(seed.configDir, "config.json"),
+			JSON.stringify({ modelsDir: seed.modelsDir }),
+		);
+
+		const bus = createBus<IntentMap, StateMap>();
+		let lastEntries = 0;
+		let scans = 0;
+		bus.onState("MODELS_STATE", (e) => {
+			if (!e.scanning) {
+				lastEntries = e.entries.length;
+				scans++;
+			}
+		});
+
+		const svc = createModelsService(bus, seed);
+		svc.boot();
+		await new Promise((r) => setTimeout(r, 400));
+		const bootScans = scans;
+
+		mkdirSync(join(seed.modelsDir, "family"), { recursive: true });
+		writeFileSync(
+			join(seed.modelsDir, "family", "nested.gguf"),
+			sampleLlamaQ4Km().buffer,
+		);
+
+		await waitFor(() => (lastEntries === 2 ? lastEntries : null));
+		expect(scans).toBeGreaterThan(bootScans);
+		svc.dispose();
+	}, 20_000);
+});
+
+function waitFor<T>(
+	fn: () => T | null | undefined,
+	timeoutMs = 8000,
+): Promise<T> {
+	return new Promise((resolve, reject) => {
+		const started = Date.now();
+		const tick = (): void => {
+			const v = fn();
+			if (v != null) {
+				resolve(v);
+				return;
+			}
+			if (Date.now() - started > timeoutMs) {
+				reject(new Error("waitFor timeout"));
+				return;
+			}
+			setTimeout(tick, 50);
+		};
+		tick();
+	});
+}
+
 import { fileURLToPath } from "node:url";
 
 const SEED_TMP = fileURLToPath(

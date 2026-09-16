@@ -7,8 +7,14 @@ export interface WatcherHandle {
 const DEBOUNCE_MS = 300;
 
 /**
- * Watches directories for .gguf create/unlink/rename events and invokes the
- * callback at most once per debounce window (P3-FR-11: >=300 ms).
+ * Watches directory trees recursively for changes and invokes the callback
+ * at most once per debounce window (P3-FR-11: >=300 ms).
+ *
+ * #17: the watch is RECURSIVE so changes inside nested model directories
+ * invalidate too, and EVERY filesystem event schedules a rescan — a
+ * rename/delete may present a filename that no longer ends in .gguf (or
+ * none at all), so the event name must not be the invalidation filter.
+ * The debounced full rescan is the filter.
  */
 export function createModelWatcher(
 	dirs: string[],
@@ -18,20 +24,23 @@ export function createModelWatcher(
 	const timers = new Map<string, ReturnType<typeof setTimeout>>();
 	const watchers: FSWatcher[] = [];
 
+	const schedule = (dir: string): void => {
+		const existing = timers.get(dir);
+		if (existing) clearTimeout(existing);
+		timers.set(
+			dir,
+			setTimeout(() => {
+				timers.delete(dir);
+				onChange(dir);
+			}, debounceMs),
+		);
+	};
+
 	for (const dir of dirs) {
 		try {
-			const watcher = watch(dir, { persistent: false }, (_event, filename) => {
-				if (filename && !filename.toLowerCase().endsWith(".gguf")) return;
-				const existing = timers.get(dir);
-				if (existing) clearTimeout(existing);
-				timers.set(
-					dir,
-					setTimeout(() => {
-						timers.delete(dir);
-						onChange(dir);
-					}, debounceMs),
-				);
-			});
+			const watcher = watch(dir, { persistent: false, recursive: true }, () =>
+				schedule(dir),
+			);
 			watchers.push(watcher);
 		} catch {
 			// dir vanished or unsupported -> full-rescan fallback stays available

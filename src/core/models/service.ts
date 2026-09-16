@@ -32,6 +32,8 @@ export function createModelsService(
 ): ModelsService {
 	let watcher: { close(): void } | null = null;
 	let scanning = false;
+	/** #17: a change arrived while a scan was in flight — rescan after. */
+	let pendingRescan = false;
 	let disposed = false;
 	let currentDir: string | null = null;
 	let lastEntries: ModelEntry[] = [];
@@ -40,6 +42,9 @@ export function createModelsService(
 	async function scan(dir: string): Promise<void> {
 		if (disposed) return;
 		if (scanning) {
+			// #17: never drop invalidation — coalesce into exactly one
+			// follow-up scan after the in-flight scan finishes.
+			pendingRescan = true;
 			bus.emitState("MODELS_STATE", {
 				dir: currentDir,
 				entries: lastEntries,
@@ -80,13 +85,20 @@ export function createModelsService(
 			});
 		} finally {
 			scanning = false;
+			if (pendingRescan && !disposed) {
+				pendingRescan = false;
+				void scan(dir);
+			}
 		}
 	}
 
 	function watch(dir: string): void {
 		watcher?.close();
+		// #17: every watcher event requests a scan; the service coalesces
+		// bursts (debounce) and mid-scan arrivals (pending flag) instead of
+		// dropping them.
 		watcher = createModelWatcher([dir], () => {
-			if (!scanning && !disposed) void scan(dir);
+			if (!disposed) void scan(dir);
 		});
 	}
 
@@ -138,6 +150,7 @@ export function createModelsService(
 		},
 		dispose(): void {
 			disposed = true;
+			pendingRescan = false;
 			watcher?.close();
 			watcher = null;
 		},
