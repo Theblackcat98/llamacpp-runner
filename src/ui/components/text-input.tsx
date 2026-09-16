@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
 import {
@@ -79,20 +79,47 @@ export function TextInput({
 		(s: TextInputState, k: TextInputKey) =>
 			applyKey(s, k, { maxLength, numeric }),
 		undefined,
-		() => createTextInputState({ initial, maxLength, numeric }),
+		// A controlled `value` wins over `initial` at mount so the buffer
+		// starts in sync and the sync effect below stays quiet (#37).
+		() =>
+			createTextInputState({
+				initial: value ?? initial,
+				maxLength,
+				numeric,
+			}),
 	);
+
+	const onChangeRef = useRef(onChange);
+	onChangeRef.current = onChange;
+	const lastNotifiedBuffer = useRef(state.buffer);
 
 	// Phase 13: controlled-from-outside sync — follow the external value only
 	// when it differs from what the user currently sees, so mid-edit caret
 	// position is preserved while preset loads / model changes snap the buffer.
+	// A buffer not yet reported to the parent is a local edit, not an external
+	// divergence; waiting for the notification prevents the old prop from
+	// clobbering fast typing before the parent can commit it (#37).
 	useEffect(() => {
-		if (value === undefined || value === state.buffer) return;
+		if (
+			value === undefined ||
+			value === state.buffer ||
+			state.buffer !== lastNotifiedBuffer.current
+		)
+			return;
 		dispatch({ kind: "reset", value });
 	}, [value, state.buffer]);
 
+	// Notify the parent when the buffer genuinely changes — user edits
+	// and external resets alike — but never on mount or on
+	// callback-identity churn. Firing from an effect (not the key
+	// handler) collapses keys processed in one batch into a single
+	// notification carrying the final buffer, so fast typing or pasted
+	// input can't drop characters (#37).
 	useEffect(() => {
-		onChange?.(state);
-	}, [state, onChange]);
+		if (state.buffer === lastNotifiedBuffer.current) return;
+		lastNotifiedBuffer.current = state.buffer;
+		onChangeRef.current?.(state);
+	}, [state]);
 
 	useScopedKeyboard(captureKeys, (key) => {
 		const mapped = keyEventToInputKey(key);
