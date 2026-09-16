@@ -4,7 +4,10 @@ import { join } from "node:path";
 import {
 	CATPPUCCIN,
 	CYBERPUNK,
+	EVERFOREST,
 	GRUVBOX,
+	NORD,
+	ROSE_PINE,
 	THEME_NAMES,
 	THEMES,
 	TOKYO_NIGHT,
@@ -92,15 +95,85 @@ describe("theme tokens lifted from plans/opentui.html (P2-FR-14)", () => {
 		});
 	});
 
-	it("registry carries all 4 themes with unique names (P2-FR-14, #49)", () => {
-		expect(THEMES).toHaveLength(4);
+	it("rosepine matches Rose Pine palette", () => {
+		expect(ROSE_PINE).toEqual({
+			name: "RosePine",
+			bg: "#191724",
+			surface: "#1f1d2e",
+			fg: "#e0def4",
+			fgBright: "#ffffff",
+			border: "#26233a",
+			accent: "#c4a7e7",
+			accentHover: "#ebbcba",
+			muted: "#908caa",
+			success: "#31748f",
+			warn: "#f6c177",
+			error: "#eb6f92",
+			purple: "#c4a7e7",
+			cyan: "#9ccfd8",
+			focusBg: "#26233a",
+		});
+	});
+
+	it("nord matches Nord palette", () => {
+		expect(NORD).toEqual({
+			name: "Nord",
+			bg: "#2e3440",
+			surface: "#3b4252",
+			fg: "#d8dee9",
+			fgBright: "#eceff4",
+			border: "#434c5e",
+			accent: "#88c0d0",
+			accentHover: "#8fbcbb",
+			muted: "#93a3bd",
+			success: "#a3be8c",
+			warn: "#ebcb8b",
+			error: "#bf616a",
+			purple: "#b48ead",
+			cyan: "#8fbcbb",
+			focusBg: "#434c5e",
+		});
+	});
+
+	it("everforest matches Everforest dark palette", () => {
+		expect(EVERFOREST).toEqual({
+			name: "Everforest",
+			bg: "#2b3339",
+			surface: "#323c41",
+			fg: "#d3c6aa",
+			fgBright: "#ffffff",
+			border: "#3a454a",
+			accent: "#83c092",
+			accentHover: "#7fbbb3",
+			muted: "#9da9a0",
+			success: "#a7c080",
+			warn: "#dbbc7f",
+			error: "#e67e80",
+			purple: "#d699b6",
+			cyan: "#83c092",
+			focusBg: "#3a454a",
+		});
+	});
+
+	it("themeByName resolves palette action ids case-insensitively (#50)", () => {
+		for (const t of THEMES) {
+			expect(themeByName(t.name.toLowerCase()).name).toBe(t.name);
+		}
+		expect(themeByName("Matrix").name).toBe(TOKYO_NIGHT.name);
+	});
+
+	it("registry carries all 7 themes with unique names (P2-FR-14, #49, #50)", () => {
+		expect(THEMES).toHaveLength(7);
 		const names = THEMES.map((t) => t.name);
-		expect(new Set(names).size).toBe(4);
+		expect(new Set(names).size).toBe(7);
 		expect(THEME_NAMES).toEqual([
 			"TokyoNight",
 			"Catppuccin",
 			"Gruvbox",
 			"Cyberpunk",
+			"RosePine",
+			"Nord",
+			"Everforest",
 		]);
 	});
 
