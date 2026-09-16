@@ -22,17 +22,27 @@ interface WalkedFile {
 export interface ScanOptions {
 	/** Report directories/files that could not be read instead of silently skipping them. */
 	onError?: (path: string, error: unknown) => void;
-	/** Do not follow symlinks, preventing recursive/out-of-tree scans. */
+	/**
+	 * Follow directory and file symlinks during the walk. Symlink cycles are
+	 * detected and skipped; broken links are reported via `errors`/`onError`.
+	 * Defaults to false (symlinks are skipped).
+	 */
 	followSymlinks?: boolean;
 	/** $XDG_STATE_HOME/llama-deck — enables the metadata cache (P3-FR-10). */
 	stateDir?: string;
-	/** Worker pool size (P3-FR-18). Defaults to 4. */
+	/** Worker pool size (P3-FR-18). Must be a positive integer. Defaults to 4. */
 	concurrency?: number;
-	/** Maximum directory recursion depth (defaults to 3 layers). */
+	/**
+	 * Maximum directory recursion depth. Must be a non-negative integer;
+	 * 0 walks only the top-level directory. Defaults to DEFAULT_MAX_DEPTH.
+	 */
 	maxDepth?: number;
 }
 
 export const DEFAULT_CONCURRENCY = 4;
+
+/** Default recursion depth for scanModels when ScanOptions.maxDepth is unset. */
+export const DEFAULT_MAX_DEPTH = 3;
 
 function walkDirents(dir: string) {
 	return readdirSync(dir, { withFileTypes: true });
@@ -44,6 +54,7 @@ function walk(
 	options: ScanOptions,
 	errors: string[],
 	depth = 0,
+	seen: Set<string> = new Set(),
 ): void {
 	let dirEntries: ReturnType<typeof walkDirents>;
 	try {
@@ -55,17 +66,65 @@ function walk(
 		options.onError?.(dir, error);
 		return;
 	}
-	const maxDepth = options.maxDepth ?? 3;
+	if (depth === 0) {
+		// Seed symlink-cycle detection with the walk root itself.
+		try {
+			const st = statSync(dir);
+			seen.add(`${st.dev}:${st.ino}`);
+		} catch {
+			// Ignore: readdir already succeeded, the walk below will surface it.
+		}
+	}
+	const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
 	for (const de of dirEntries) {
 		const path = join(dir, de.name);
-		if (de.isSymbolicLink() && !options.followSymlinks) continue;
-		if (de.isDirectory()) {
+		const isLink = de.isSymbolicLink();
+		if (isLink && !options.followSymlinks) continue;
+
+		// Dirent type checks do not follow symlinks, so resolve the target
+		// kind explicitly when following links.
+		let kind: "dir" | "file" | "other";
+		let identity: string | undefined;
+		if (!isLink) {
+			kind = de.isDirectory() ? "dir" : de.isFile() ? "file" : "other";
+		} else {
+			let target: ReturnType<typeof statSync>;
+			try {
+				target = statSync(path);
+			} catch (error) {
+				errors.push(
+					`${path}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				options.onError?.(path, error);
+				continue;
+			}
+			kind = target.isDirectory() ? "dir" : target.isFile() ? "file" : "other";
+			if (kind === "dir") identity = `${target.dev}:${target.ino}`;
+		}
+
+		if (kind === "dir") {
 			if (depth < maxDepth) {
-				walk(path, out, options, errors, depth + 1);
+				if (!identity) {
+					try {
+						const st = statSync(path);
+						identity = `${st.dev}:${st.ino}`;
+					} catch {
+						// Ignore: the recursive walk reports unreadable dirs.
+					}
+				}
+				if (identity && seen.has(identity)) continue; // symlink cycle
+				walk(
+					path,
+					out,
+					options,
+					errors,
+					depth + 1,
+					identity ? new Set(seen).add(identity) : seen,
+				);
 			}
 			continue;
 		}
-		if (!de.isFile() || !de.name.toLowerCase().endsWith(".gguf")) continue;
+		if (kind !== "file" || !de.name.toLowerCase().endsWith(".gguf")) continue;
 		try {
 			const st = statSync(path);
 			out.push({
@@ -94,6 +153,11 @@ class ParsePool {
 	private queue: ((worker: Worker) => void)[] = [];
 
 	constructor(size: number) {
+		if (!Number.isInteger(size) || size < 1) {
+			throw new RangeError(
+				`ParsePool: size must be a positive integer, got ${String(size)}`,
+			);
+		}
 		for (let i = 0; i < size; i++) {
 			const worker = new Worker(new URL("./scan-worker.ts", import.meta.url));
 			this.workers.push(worker);
@@ -143,6 +207,19 @@ export async function scanModels(
 	dirs: string[],
 	options: ScanOptions = {},
 ): Promise<ScanResult> {
+	const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+	if (!Number.isInteger(concurrency) || concurrency < 1) {
+		throw new RangeError(
+			`scanModels: concurrency must be a positive integer, got ${String(options.concurrency)}`,
+		);
+	}
+	const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH;
+	if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+		throw new RangeError(
+			`scanModels: maxDepth must be a non-negative integer, got ${String(options.maxDepth)}`,
+		);
+	}
+
 	const walked: WalkedFile[] = [];
 	const walkErrors: string[] = [];
 	for (const dir of dirs) {
@@ -212,7 +289,7 @@ export async function scanModels(
 		jobs.push({ id: jobs.length, file: primary });
 	}
 
-	const pool = new ParsePool(options.concurrency ?? DEFAULT_CONCURRENCY);
+	const pool = new ParsePool(concurrency);
 	const parsedInfos = new Map<string, ModelInfo>();
 	const parseErrors = new Map<string, string>();
 	await Promise.all(
