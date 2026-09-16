@@ -23,7 +23,6 @@ export const PALETTE_ACTION_IDS = [
 	"theme-catppuccin",
 	"theme-gruvbox",
 	"theme-cyberpunk",
-	"theme-matrix",
 	"set-port",
 	"kill-server",
 	"export-command",
@@ -42,7 +41,6 @@ const THEMES: [string, string][] = [
 	["catppuccin", "Catppuccin"],
 	["gruvbox", "Gruvbox"],
 	["cyberpunk", "Cyberpunk"],
-	["matrix", "Matrix"],
 ];
 
 const TABS: [number, string][] = [

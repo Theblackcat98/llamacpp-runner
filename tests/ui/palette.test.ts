@@ -33,8 +33,8 @@ describe("action registry coverage (P5-FR-09)", () => {
 		);
 	});
 
-	it("has 16 actions: 5 themes + 7 singletons + 4 tabs (Issue #8)", () => {
-		expect(ACTIONS.length).toBe(16);
+	it("has 15 actions: 4 themes + 7 singletons + 4 tabs (Issue #8, #49)", () => {
+		expect(ACTIONS.length).toBe(15);
 	});
 
 	it("ships no orphan action until adopt lands (F4)", () => {
@@ -73,11 +73,11 @@ describe("fuzzy filter", () => {
 	it("matches keywords too", () => {
 		expect(filterActions(ACTIONS, "prometheus").length).toBe(0);
 		const hits = filterActions(ACTIONS, "theme");
-		expect(hits.length).toBeGreaterThanOrEqual(5);
+		expect(hits.length).toBeGreaterThanOrEqual(4);
 	});
 
 	it("empty query returns all", () => {
-		expect(filterActions(ACTIONS, "").length).toBe(16);
+		expect(filterActions(ACTIONS, "").length).toBe(15);
 	});
 
 	it("no match -> empty", () => {

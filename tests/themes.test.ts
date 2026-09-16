@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	CATPPUCCIN,
 	CYBERPUNK,
 	GRUVBOX,
-	MATRIX,
 	THEME_NAMES,
 	THEMES,
 	TOKYO_NIGHT,
@@ -21,7 +22,7 @@ describe("theme tokens lifted from plans/opentui.html (P2-FR-14)", () => {
 			border: "#414868",
 			accent: "#7aa2f7",
 			accentHover: "#89ddff",
-			muted: "#565f89",
+			muted: "#7a86b8",
 			success: "#9ece6a",
 			warn: "#e0af68",
 			error: "#f7768e",
@@ -37,11 +38,11 @@ describe("theme tokens lifted from plans/opentui.html (P2-FR-14)", () => {
 			bg: "#1e1e2e",
 			surface: "#313244",
 			fg: "#cdd6f4",
-			fgBright: "#f5e0dc",
+			fgBright: "#ffffff",
 			border: "#45475a",
 			accent: "#89b4fa",
 			accentHover: "#b4befe",
-			muted: "#6c7086",
+			muted: "#8a8fa8",
 			success: "#a6e3a1",
 			warn: "#f9e2af",
 			error: "#f38ba8",
@@ -61,7 +62,7 @@ describe("theme tokens lifted from plans/opentui.html (P2-FR-14)", () => {
 			border: "#504945",
 			accent: "#83a598",
 			accentHover: "#8ec07c",
-			muted: "#928374",
+			muted: "#a89984",
 			success: "#b8bb26",
 			warn: "#fabd2f",
 			error: "#fb4934",
@@ -76,56 +77,122 @@ describe("theme tokens lifted from plans/opentui.html (P2-FR-14)", () => {
 			name: "Cyberpunk",
 			bg: "#0d0e15",
 			surface: "#1a1c29",
-			fg: "#00f0ff",
+			fg: "#8fd6e8",
 			fgBright: "#ffffff",
 			border: "#ff0055",
 			accent: "#ff0055",
 			accentHover: "#ffe600",
-			muted: "#4a5171",
+			muted: "#7a86ad",
 			success: "#00ff66",
 			warn: "#ffe600",
-			error: "#ff0055",
+			error: "#ff3131",
 			purple: "#9d00ff",
 			cyan: "#00f0ff",
 			focusBg: "#33001a",
 		});
 	});
 
-	it("matrix matches [data-theme=matrix]", () => {
-		expect(MATRIX).toEqual({
-			name: "Matrix",
-			bg: "#050b05",
-			surface: "#0a180a",
-			fg: "#00ff41",
-			fgBright: "#80ff9f",
-			border: "#008f11",
-			accent: "#00ff41",
-			accentHover: "#66ff8c",
-			muted: "#003b00",
-			success: "#00ff41",
-			warn: "#a3ff00",
-			error: "#ff3300",
-			purple: "#00ffaa",
-			cyan: "#00e5ff",
-			focusBg: "#003b00",
-		});
-	});
-
-	it("registry carries all 5 themes with unique names (P2-FR-14)", () => {
-		expect(THEMES).toHaveLength(5);
+	it("registry carries all 4 themes with unique names (P2-FR-14, #49)", () => {
+		expect(THEMES).toHaveLength(4);
 		const names = THEMES.map((t) => t.name);
-		expect(new Set(names).size).toBe(5);
+		expect(new Set(names).size).toBe(4);
 		expect(THEME_NAMES).toEqual([
 			"TokyoNight",
 			"Catppuccin",
 			"Gruvbox",
 			"Cyberpunk",
-			"Matrix",
 		]);
 	});
 
 	it("themeByName falls back to tokyo night for unknown names", () => {
 		expect(themeByName("nope")).toBe(TOKYO_NIGHT);
 		expect(themeByName("Gruvbox")).toBe(GRUVBOX);
+	});
+});
+
+/** WCAG relative luminance for a #rrggbb hex color. */
+function luminance(hex: string): number {
+	const [r, g, b] = [0, 2, 4].map((i) => {
+		const c = Number.parseInt(hex.slice(i + 1, i + 3), 16) / 255;
+		return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+}
+
+/** WCAG contrast ratio between two #rrggbb hex colors. */
+function contrastRatio(a: string, b: string): number {
+	const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+	return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+}
+
+function lab(hex: string): [number, number, number] {
+	const [r, g, bl] = [0, 2, 4].map((i) => {
+		const c = Number.parseInt(hex.slice(i + 1, i + 3), 16) / 255;
+		return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	});
+	const x =
+		((r ?? 0) * 0.4124 + (g ?? 0) * 0.3576 + (bl ?? 0) * 0.1805) / 0.95047;
+	const y = (r ?? 0) * 0.2126 + (g ?? 0) * 0.7152 + (bl ?? 0) * 0.0722;
+	const z =
+		((r ?? 0) * 0.0193 + (g ?? 0) * 0.1192 + (bl ?? 0) * 0.9505) / 1.08883;
+	const f = (t: number) => (t > 0.008856 ? t ** (1 / 3) : 7.787 * t + 16 / 116);
+	const [fx, fy, fz] = [f(x), f(y), f(z)];
+	return [
+		116 * (fy ?? 0) - 16,
+		500 * ((fx ?? 0) - (fy ?? 0)),
+		200 * ((fy ?? 0) - (fz ?? 0)),
+	];
+}
+
+/** CIE76 color difference between two #rrggbb hex colors. */
+function deltaE(a: string, b: string): number {
+	const [l1, a1, b1] = lab(a);
+	const [l2, a2, b2] = lab(b);
+	return Math.sqrt((l1 - l2) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2);
+}
+
+describe("theme contrast (#49)", () => {
+	for (const theme of THEMES) {
+		it(`${theme.name}: body text fg/fgBright/muted reach 4.5:1 on bg`, () => {
+			for (const role of ["fg", "fgBright", "muted"] as const) {
+				const ratio = contrastRatio(theme[role], theme.bg);
+				expect(ratio).toBeGreaterThanOrEqual(4.5);
+			}
+		});
+
+		it(`${theme.name}: success/warn/error reach 3:1 on bg`, () => {
+			for (const role of ["success", "warn", "error"] as const) {
+				const ratio = contrastRatio(theme[role], theme.bg);
+				expect(ratio).toBeGreaterThanOrEqual(3);
+			}
+		});
+
+		it(`${theme.name}: success/warn/error are pairwise distinct`, () => {
+			const roles = [theme.success, theme.warn, theme.error];
+			for (let i = 0; i < roles.length; i++) {
+				for (let j = i + 1; j < roles.length; j++) {
+					expect(deltaE(roles[i] ?? "", roles[j] ?? "")).toBeGreaterThanOrEqual(
+						20,
+					);
+				}
+			}
+		});
+
+		it(`${theme.name}: semantic colors differ from body text`, () => {
+			for (const role of ["success", "warn", "error"] as const) {
+				expect(deltaE(theme[role], theme.fg)).toBeGreaterThanOrEqual(15);
+			}
+		});
+	}
+
+	it("README theme list matches THEME_NAMES", () => {
+		const readme = readFileSync(
+			join(import.meta.dir, "..", "README.md"),
+			"utf8",
+		);
+		for (const name of THEME_NAMES) {
+			expect(readme).toContain(name);
+		}
+		expect(readme).not.toContain("Monokai");
 	});
 });
