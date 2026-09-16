@@ -5,7 +5,12 @@ import { createBus } from "./core/bus";
 import type { IntentMap, StateMap } from "./core/bus-contract";
 import { DEFAULT_HOST, DEFAULT_PORT, LLAMA_SERVER_BIN } from "./core/constants";
 import { copyToClipboard } from "./core/export/clipboard";
-import { buildCommand } from "./core/flags/builder";
+import { buildCommand, commandLine } from "./core/flags/builder";
+import {
+	type ProbeResult,
+	probeBinaryAvailability,
+	resolveBinaryPath,
+} from "./core/flags/validate";
 import { getOrDetectHardware, type HardwareInfo } from "./core/hardware/detect";
 import { entryLaunchBlocker } from "./core/models/launch-guard";
 import { createModelsService } from "./core/models/service";
@@ -32,7 +37,6 @@ import {
 	createConfigurator,
 	effectiveValues,
 	loadPresetInto,
-	previewLine,
 	setFlag,
 	solveAutoFitNgl,
 	vramRangeBytes,
@@ -169,6 +173,7 @@ export function SessionApp({
 	);
 	const [telemetryEnabled, setTelemetryEnabled] = useState(true);
 	const [telemetryEndpoint, setTelemetryEndpoint] = useState("");
+	const [capability, setCapability] = useState<ProbeResult | null>(null);
 	const metricsRef = useRef<MetricsPoller | null>(null);
 	const boundSupervisorRef = useRef<Supervisor | null>(null);
 	const [procStartedAtMs, setProcStartedAtMs] = useState<number | null>(null);
@@ -319,6 +324,42 @@ export function SessionApp({
 		};
 	}, []);
 
+	// Issue #15: one binary probe feeds preview AND launch. The resolved
+	// binary is probed once per distinct configured path; its --help drives
+	// registry availability for every plan built afterwards. A failed or
+	// missing capture stays explicitly "unverified" — never silently
+	// presented as validated.
+	const configuredBinaryPath = presetsFile.binary_path;
+	useEffect(() => {
+		let cancelled = false;
+		void probeBinaryAvailability({ configured: configuredBinaryPath }).then(
+			(result) => {
+				if (cancelled) return;
+				setCapability(result);
+				// Issue #15: the unverified state is surfaced explicitly — a
+				// missing binary or failed --help capture is never silently
+				// presented as capability-validated.
+				if (!result.verified) {
+					bus.emitState("LOG_LINE", {
+						stream: "out",
+						text:
+							result.resolvedPath === null
+								? `[SYS] binary unverified: llama-server not found (${configuredBinaryPath ?? "not on PATH"})`
+								: `[SYS] binary unverified: --help capture failed for ${result.resolvedPath}`,
+					});
+				} else {
+					bus.emitState("LOG_LINE", {
+						stream: "out",
+						text: `[SYS] binary verified: ${result.resolvedPath}`,
+					});
+				}
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, [bus, configuredBinaryPath]);
+
 	// Telemetry follows the managed server lifecycle — never React render
 	// (Issue #16). Exactly one poller set is bound while a server instance
 	// is active; it is disposed on exit/kill/swap or when telemetry is
@@ -402,15 +443,24 @@ export function SessionApp({
 		const cfg = config;
 		// #18: an incomplete split group never resolves to a launch plan.
 		if (!cfg.model || cfg.model.incomplete) return null;
+		const binary = resolveBinaryPath({ configured: configuredBinaryPath });
+		const command =
+			capability?.resolvedPath ??
+			(binary.status === "ok"
+				? binary.path
+				: (configuredBinaryPath ?? LLAMA_SERVER_BIN));
 		const built = buildCommand({
 			modelPath: cfg.model.path,
 			meta: { blockCount: cfg.model.blockCount },
 			values: effectiveValues(cfg),
+			// Issue #15: flags the resolved binary does not support are
+			// dropped from the actual argv — the same map drives the preview.
+			availability: capability?.availability,
 		});
 		return {
-			// F10: honor the configured binary_path (Phase 8 file-level
-			// setting); the boot PATH check and pre-spawn which() follow it.
-			command: presetsFile.binary_path || LLAMA_SERVER_BIN,
+			// F10/#15: the RESOLVED binary path (configured binary_path or
+			// PATH) is the single source of truth for preview and launch.
+			command,
 			args: built.args,
 			port:
 				typeof cfg.values.port === "number"
@@ -428,6 +478,10 @@ export function SessionApp({
 	} else {
 		planSource = buildPlan;
 	}
+	const launchPlan = buildPlan();
+	const launchPreview = launchPlan
+		? commandLine({ command: launchPlan.command, args: launchPlan.args })
+		: "";
 
 	function launchSplitDiagnostic(): boolean {
 		if (!config.model?.incomplete) return false;
@@ -526,7 +580,10 @@ export function SessionApp({
 	}
 
 	function handleYank(): void {
-		const result = copyToClipboard({ text: previewLine(config) });
+		const plan = buildPlan();
+		const result = copyToClipboard({
+			text: plan ? commandLine({ command: plan.command, args: plan.args }) : "",
+		});
 		bus.emitState("LOG_LINE", {
 			stream: "out",
 			text:
@@ -600,6 +657,7 @@ export function SessionApp({
 			configuratorControl={{
 				state: config,
 				setState: (next) => setConfig(next),
+				previewCommand: launchPreview,
 				hardware,
 				onAutoFit: handleAutoFit,
 			}}

@@ -4,6 +4,7 @@ import { registryAvailability } from "../src/core/flags/help-parser";
 import {
 	type BinaryStatus,
 	captureHelp,
+	probeBinaryAvailability,
 	resolveBinaryPath,
 } from "../src/core/flags/validate";
 
@@ -35,6 +36,18 @@ describe("resolveBinaryPath", () => {
 		});
 		expect(result.status).toBe("missing");
 	});
+});
+
+describe("probeBinaryAvailability", () => {
+	it("probes the binary returned by PATH resolution", async () => {
+		const result = await probeBinaryAvailability({
+			whichFn: () => DUMMY,
+		});
+		expect(result.resolvedPath).toBe(DUMMY);
+		expect(result.verified).toBe(true);
+		expect(result.availability.ctx_size?.supported).toBe(true);
+		expect(result.availability.n_gpu_layers?.supported).toBe(false);
+	}, 10_000);
 });
 
 describe("captureHelp", () => {
