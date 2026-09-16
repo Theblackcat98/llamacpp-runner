@@ -64,8 +64,18 @@ function defaultValues(model: ConfiguratorModel): Record<string, unknown> {
 	if (model.blockCount !== undefined) {
 		values.n_gpu_layers = model.blockCount + 1;
 	}
-	values.ctx_size = DEFAULT_CTX;
+	// Issue #9: model-native default — only the INITIAL configurator state
+	// uses the model's own context_length; preset loads override it.
+	values.ctx_size = model.contextLength ?? DEFAULT_CONTEXT;
 	return values;
+}
+
+/**
+ * Issue #9: visible -ngl default. The ngl max IS DEFAULT_GPU_LAYERS_REF
+ * (meta:block_count+1); render that meta-derived number as human text.
+ */
+export function nglDefaultLabel(nglMax: number): string {
+	return `all layers (${nglMax})`;
 }
 
 export function createConfigurator(

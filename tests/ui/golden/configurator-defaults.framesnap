@@ -1,7 +1,7 @@
 ╭─Launch config───────────────────────────────────────╮╭─Runtime───────────────────────────────────╮
 │ > GPU Offload [████████████████████████] 29/29      ││ Model: ~/models/llm/qwen25-7b-q4km.gguf   │
-│ Context Length                                      ││ ngl max: 29 (block_count+1)               │
-│  4096  8192  16384  32768  65536  131072            ││ 5.4 GiB – 6.1 GiB (estimated range)       │
+│ Context Length                                      ││ ngl max: all layers (29)                  │
+│  4096  8192  16384  32768  65536  131072            ││ 13.7 GiB – 14.1 GiB (estimated range)     │
 │ K Cache <f16>                                       ││                                           │
 │ V Cache <f16>                                       ││                                           │
 │ [ ] Flash Attention                                 ││ [Enter] Launch                            │
@@ -20,7 +20,7 @@
 │                                                     ││                                           │
 ╰─────────────────────────────────────────────────────╯╰───────────────────────────────────────────╯
 ╭─Quick launch command preview─────────────────────────────────────────────────────────────────────╮
-│ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gguf' -ngl 29 -c 4096 -ctk f16 -ctv f16 --host    │
+│ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gguf' -ngl 29 -c 131072 -ctk f16 -ctv f16 --host  │
 │127.0.0.1 --port 8080 --slots --metrics                                                           │
 │ no hardware data — run reprobe                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
