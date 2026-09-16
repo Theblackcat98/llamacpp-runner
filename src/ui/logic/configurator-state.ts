@@ -28,6 +28,8 @@ export interface ConfiguratorModel {
 	headCountKv?: number;
 	embeddingLength?: number;
 	keyLength?: number;
+	/** Split group missing siblings (#18): launch must be refused. */
+	incomplete?: boolean;
 }
 
 export interface ConfiguratorState {

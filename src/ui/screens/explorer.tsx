@@ -249,11 +249,17 @@ export function Explorer({
 				title="QUICK LAUNCH COMMAND PREVIEW"
 				variant="single"
 			>
-				<text fg={current && !current.error ? theme.fg : theme.muted}>
-					{current && !current.error
-						? `llama-server -m ${shellQuote(current.path)}`
-						: "select a model to preview its command"}
-				</text>
+				{current?.incomplete ? (
+					<text fg={theme.warn}>
+						{`incomplete split group — add the missing parts and rescan [r]`}
+					</text>
+				) : (
+					<text fg={current && !current.error ? theme.fg : theme.muted}>
+						{current && !current.error
+							? `llama-server -m ${shellQuote(current.path)}`
+							: "select a model to preview its command"}
+					</text>
+				)}
 			</TuiBox>
 		</box>
 	);
