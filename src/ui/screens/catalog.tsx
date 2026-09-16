@@ -99,7 +99,7 @@ export function Catalog({ theme }: { theme: Theme }) {
 				paddingRight: 1,
 			}}
 		>
-			<TuiBox theme={theme} variant="rounded">
+			<TuiBox theme={theme}>
 				<box style={{ flexDirection: "column" }}>
 					{BANNER.map((line) => (
 						<text key={line} fg={theme.accent}>
