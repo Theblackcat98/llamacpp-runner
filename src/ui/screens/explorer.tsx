@@ -1,3 +1,4 @@
+import { useTerminalDimensions } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { formatBytes } from "../../core/estimate/vram";
 import { shellQuote } from "../../core/export/quote";
@@ -47,6 +48,11 @@ export function Explorer({
 	onEditingChange,
 }: ExplorerProps) {
 	const rows = buildRows(entries);
+	const { height } = useTerminalDimensions();
+	// The table lives above the fixed command-preview strip. Keep the table
+	// virtualized, but derive its window from the terminal instead of imposing
+	// an arbitrary twelve-row ceiling.
+	const tableViewport = Math.max(1, height - 12);
 	const [internalSelected, setSelected] = useState(0);
 	const [editingDir, setEditingDir] = useState(false);
 	const [dirInput, setDirInput] = useState(() => createTextInputState());
@@ -170,7 +176,7 @@ export function Explorer({
 									},
 								]}
 								data={rows}
-								viewport={12}
+								viewport={tableViewport}
 								captureKeys={captureKeys}
 								focused={focused}
 								onSelectionChange={(index) => select(index)}

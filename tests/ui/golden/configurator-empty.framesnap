@@ -1,12 +1,12 @@
 ┌─LAUNCH CONFIG───────────────────────────────────────┐┌─RUNTIME───────────────────────────────────┐
-│ > GPU Offload [░░░░░░░░░░░░░░░░░░░░░░░░] 0/1        ││ Model: <none>                             │
+│ GPU Offload [░░░░░░░░░░░░░░░░░░░░░░░░] 0/1          ││ Model: <none>                             │
 │ Context Length                                      ││ ngl max: 0 (block_count+1)                │
 │  4096  8192  16384  32768  65536  131072            ││ VRAM: n/a (missing model metadata)        │
 │ K Cache <f16>                                       ││                                           │
 │ V Cache <f16>                                       ││                                           │
 │ [ ] Flash Attention                                 ││ [Enter] Launch                            │
 │ [ ] mlock                                           ││ [Ctrl+S] Save Preset   [Esc] Reset        │
-│ [ ] no-mmap                                         ││ [Tab] cycle fields     [y] Yank cmd       │
+│ [ ] no-mmap                                         ││ [Tab] focus console/screen  [y] Yank cmd  │
 │ [ ] Slots endpoint                                  ││ [a] Auto-fit ngl       [i] Import shell   │
 │ [ ] Metrics endpoint                                ││ cmd                                       │
 │ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)       ││                                           │

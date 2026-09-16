@@ -9,6 +9,7 @@ export interface TelemetryScreenProps {
 	theme: Theme;
 	vm: TelemetryViewModel;
 	onEnableTelemetry?: () => void;
+	focused?: boolean;
 }
 
 /**
@@ -22,11 +23,17 @@ export function Telemetry({
 	theme,
 	vm,
 	onEnableTelemetry,
+	focused = false,
 }: TelemetryScreenProps) {
 	if (vm.dormant) {
 		return (
 			<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
-				<TuiBox theme={theme} title="SERVER TELEMETRY" flexGrow={1}>
+				<TuiBox
+					theme={theme}
+					title="SERVER TELEMETRY"
+					flexGrow={1}
+					focused={focused}
+				>
 					<box
 						style={{ flexDirection: "column", paddingLeft: 1, paddingTop: 1 }}
 					>
@@ -46,7 +53,7 @@ export function Telemetry({
 
 	return (
 		<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
-			<TuiBox theme={theme} title="STATUS" height={3}>
+			<TuiBox theme={theme} title="STATUS" height={3} focused={focused}>
 				<box style={{ flexDirection: "row", paddingLeft: 1 }}>
 					<Badge theme={theme} status={vm.badge} label={vm.statusLabel} />
 					<text fg={theme.fgBright}>{`  ${vm.modelLabel}`}</text>

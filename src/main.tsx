@@ -70,11 +70,11 @@ const defaultSession = createSession({
 	resolveLaunch: () => planSource?.() ?? null,
 });
 
-const defaultModelsService = createModelsService(defaultBus, defaultPaths, {
-	// Default scan root is the launch folder; the user can point elsewhere
-	// at any time with [m] (persisted to config.json via SET_MODELS_DIR).
-	defaultDir: process.cwd(),
-});
+// Do not implicitly scan the application working tree. A checkout/build of
+// llama.cpp commonly lives beside the app and may contain unrelated GGUF test
+// files. Discovery starts only from the persisted models directory (or the
+// configured presets default); users can choose a directory with [m].
+const defaultModelsService = createModelsService(defaultBus, defaultPaths);
 
 export interface SessionAppProps {
 	bus?: ReturnType<typeof createBus<IntentMap, StateMap>>;

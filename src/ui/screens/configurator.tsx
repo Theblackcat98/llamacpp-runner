@@ -80,7 +80,7 @@ export function Configurator({
 				key={id}
 				theme={theme}
 				captureKeys={captureKeys && field === FIELD[id]}
-				focused={field === FIELD[id]}
+				focused={focused && field === FIELD[id]}
 				checked={state.values[id] === true}
 				label={label}
 				onToggle={() => update((s) => setFlag(s, id, !(s.values[id] === true)))}
@@ -140,7 +140,7 @@ export function Configurator({
 						<Slider
 							theme={theme}
 							captureKeys={captureKeys && field === 0}
-							focused={field === 0}
+							focused={focused && field === 0}
 							label="GPU Offload"
 							min={0}
 							max={Math.max(state.nglMax, 1)}
@@ -149,13 +149,13 @@ export function Configurator({
 							onChange={(v) => update((s) => setFlag(s, "n_gpu_layers", v))}
 						/>
 						<box style={{ flexDirection: "column" }}>
-							<text fg={field === 1 ? theme.fgBright : theme.muted}>
-								{field === 1 ? "> Context Length" : "Context Length"}
+							<text fg={focused && field === 1 ? theme.fgBright : theme.muted}>
+								{focused && field === 1 ? "> Context Length" : "Context Length"}
 							</text>
 							<ChipGroup
 								theme={theme}
 								captureKeys={captureKeys && field === 1}
-								focused={field === 1}
+								focused={focused && field === 1}
 								chips={CTX_CHIPS.map(String)}
 								activeIndex={nearestChip(ctx)}
 								onSelect={(i) =>
@@ -166,7 +166,7 @@ export function Configurator({
 						<CyclingSelect
 							theme={theme}
 							captureKeys={captureKeys && field === 2}
-							focused={field === 2}
+							focused={focused && field === 2}
 							label="K Cache"
 							options={KV_OPTIONS.slice()}
 							index={kvIndex(state.values.cache_type_k)}
@@ -177,7 +177,7 @@ export function Configurator({
 						<CyclingSelect
 							theme={theme}
 							captureKeys={captureKeys && field === 3}
-							focused={field === 3}
+							focused={focused && field === 3}
 							label="V Cache"
 							options={KV_OPTIONS.slice()}
 							index={kvIndex(state.values.cache_type_v)}
@@ -193,7 +193,7 @@ export function Configurator({
 						<Slider
 							theme={theme}
 							captureKeys={captureKeys && field === 9}
-							focused={field === 9}
+							focused={focused && field === 9}
 							label="Batch Size"
 							min={1}
 							max={8192}
@@ -204,7 +204,7 @@ export function Configurator({
 						<Slider
 							theme={theme}
 							captureKeys={captureKeys && field === 10}
-							focused={field === 10}
+							focused={focused && field === 10}
 							label="Micro-batch"
 							min={1}
 							max={4096}
@@ -215,7 +215,7 @@ export function Configurator({
 						<Slider
 							theme={theme}
 							captureKeys={captureKeys && field === 11}
-							focused={field === 11}
+							focused={focused && field === 11}
 							label="Threads"
 							min={1}
 							max={256}
@@ -226,7 +226,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 12}
-							focused={field === 12}
+							focused={focused && field === 12}
 							label="host"
 							placeholder="127.0.0.1"
 							value={strValue(state.values.host)}
@@ -237,7 +237,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 13}
-							focused={field === 13}
+							focused={focused && field === 13}
 							label="port"
 							placeholder="8080"
 							numeric
@@ -252,7 +252,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 14}
-							focused={field === 14}
+							focused={focused && field === 14}
 							label="alias"
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
@@ -260,7 +260,7 @@ export function Configurator({
 						<TextInput
 							theme={theme}
 							captureKeys={captureKeys && field === 15}
-							focused={field === 15}
+							focused={focused && field === 15}
 							label="chat-template"
 							value={strValue(state.values.chat_template)}
 							onChange={(st) =>
@@ -280,7 +280,7 @@ export function Configurator({
 						{text("", theme.muted)}
 						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
-						{text("[Tab] cycle fields     [y] Yank cmd", theme.muted)}
+						{text("[Tab] focus console/screen  [y] Yank cmd", theme.muted)}
 						{text("[a] Auto-fit ngl       [i] Import shell cmd", theme.muted)}
 					</box>
 				</TuiBox>

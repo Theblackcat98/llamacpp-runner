@@ -4,6 +4,8 @@ export interface KeyRef {
 	name?: string;
 	ctrl?: boolean;
 	shift?: boolean;
+	/** Raw control sequence, present for terminal/parser events without a name. */
+	sequence?: string;
 }
 
 export function nextTab(current: number): number {

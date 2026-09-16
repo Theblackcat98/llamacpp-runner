@@ -267,6 +267,34 @@ describe("keyboard ownership (Phase 13)", () => {
 		// registers a `return` handler, so a press can't double-launch.
 		expect(launches).toBe(0);
 	});
+
+	it("keeps Ctrl+S owned by the shell and fires it once", async () => {
+		let saves = 0;
+		const setup = await testRender(
+			<App
+				theme={DEFAULT_THEME}
+				configuratorControl={{
+					state: createConfigurator(MODEL),
+					setState: () => {},
+				}}
+				onSavePreset={() => {
+					saves++;
+				}}
+			/>,
+			{ width: 100, height: 30 },
+		);
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+			await setup.mockInput.pressKeys(["2"]);
+			await setup.flush();
+		});
+		await act(async () => {
+			setup.mockInput.pressKey("s", { ctrl: true });
+			await setup.flush();
+		});
+		expect(saves).toBe(1);
+	});
 });
 
 /**

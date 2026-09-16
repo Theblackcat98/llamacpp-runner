@@ -6,7 +6,7 @@
 │ V Cache <f16>                                       ││                                           │
 │ [ ] Flash Attention                                 ││ [Enter] Launch                            │
 │ [ ] mlock                                           ││ [Ctrl+S] Save Preset   [Esc] Reset        │
-│ [ ] no-mmap                                         ││ [Tab] cycle fields     [y] Yank cmd       │
+│ [ ] no-mmap                                         ││ [Tab] focus console/screen  [y] Yank cmd  │
 │ [x] Slots endpoint                                  ││ [a] Auto-fit ngl       [i] Import shell   │
 │ [x] Metrics endpoint                                ││ cmd                                       │
 │ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)       ││                                           │

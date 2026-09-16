@@ -71,7 +71,9 @@ const TAB_LABELS = [
 	"Server Telemetry",
 	"Presets",
 ];
-const PANE_COUNT = 4;
+// Only these two shell regions participate in global focus traversal. Screen
+// widgets own their internal fields/rows after the screen receives focus.
+const PANE_COUNT = 2;
 
 export interface ExplorerControl {
 	entries: import("../core/models/types").ModelEntry[];
@@ -199,14 +201,20 @@ export function App({
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
-		setPort: () => setTab(1),
+		setPort: () => {
+			setTab(1);
+			setFocusPane(0);
+		},
 		killServer: () => (onKill ? onKill() : onKillOrphan?.()),
 		exportCommand: () => onYankCommand?.(),
 		rescanModels: () => explorerControl?.onRescan(),
 		toggleTelemetry: () =>
 			paletteControl?.toggleTelemetry?.() ??
 			telemetryControl?.onEnableTelemetry?.(),
-		goToTab: (t) => setTab(t - 1),
+		goToTab: (t) => {
+			setTab(t - 1);
+			setFocusPane(0);
+		},
 		clearLog: () => setDrawer(() => createDrawerState(DRAWER_HEIGHT)),
 		autoFitNgl: () => configuratorControl?.onAutoFit?.(),
 	});
@@ -225,7 +233,7 @@ export function App({
 		// pass: Ctrl+C/P/S/Y/L are non-printable shell bindings.
 		const textFieldActive =
 			(tab === 1 &&
-				focusPane !== 3 &&
+				focusPane === 0 &&
 				isConfiguratorTextField(activeConfiguratorField.current)) ||
 			(tab === 0 && explorerEditing);
 		if (textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
@@ -289,7 +297,12 @@ export function App({
 			explorerControl.onRescan();
 			return;
 		}
-		if (key.ctrl && key.name === "s" && tab === 1 && onSavePreset) {
+		// OpenTUI normally reports Ctrl+S as { name: "s", ctrl: true }, but
+		// terminals using a raw control sequence can omit `name`. Accept both
+		// forms so saving does not depend on the terminal/parser combination.
+		const isCtrlS =
+			key.ctrl && (key.name?.toLowerCase() === "s" || key.sequence === "\x13");
+		if (isCtrlS && tab === 1 && onSavePreset) {
 			onSavePreset();
 			return;
 		}
@@ -328,12 +341,11 @@ export function App({
 		const digit = Number.parseInt(key.name ?? "", 10);
 		if (digit >= 1 && digit <= TAB_COUNT) {
 			setTab(digit - 1);
-			// Phase 13: switching screens remaps focus to the content pane so
-			// the newly shown screen is immediately interactive.
-			setFocusPane(2);
+			// Switching screens always returns focus to the visible content pane.
+			setFocusPane(0);
 			return;
 		}
-		if (focusPane === 3) {
+		if (focusPane === 1) {
 			if (key.name === "up") setDrawer((s) => scrollBy(s, -1));
 			else if (key.name === "down") setDrawer((s) => scrollBy(s, 1));
 			else if (key.name === "g" || key.name === "end") setDrawer(pinToTail);
@@ -398,11 +410,8 @@ export function App({
 			</box>
 			<box
 				key="screen-pane"
-				title={TAB_LABELS[tab]}
 				style={{
 					flexGrow: 1,
-					border: focusPane === 2,
-					borderColor: theme.focusBg,
 					marginTop: 1,
 					paddingLeft: 1,
 				}}
@@ -418,8 +427,8 @@ export function App({
 						onSelectIndex={explorerControl.onSelectIndex}
 						onSetModelsDir={explorerControl.onSetModelsDir}
 						onEditingChange={setExplorerEditing}
-						focused={focusPane === 2}
-						captureKeys={focusPane !== 3 && !importOpen}
+						focused={focusPane === 0}
+						captureKeys={focusPane === 0 && !importOpen}
 					/>
 				) : tab === 1 && configuratorControl ? (
 					<Configurator
@@ -428,8 +437,8 @@ export function App({
 						hardware={configuratorControl.hardware}
 						onAutoFit={configuratorControl.onAutoFit}
 						onChange={configuratorControl.setState}
-						focused
-						captureKeys={focusPane !== 3 && !importOpen}
+						focused={focusPane === 0}
+						captureKeys={focusPane === 0 && !importOpen}
 						onActiveFieldChange={(f) => {
 							activeConfiguratorField.current = f;
 						}}
@@ -458,6 +467,7 @@ export function App({
 							}
 						}
 						onEnableTelemetry={telemetryControl?.onEnableTelemetry}
+						focused={focusPane === 0}
 					/>
 				) : tab === 3 && presetsControl ? (
 					<PresetsScreen
@@ -472,22 +482,23 @@ export function App({
 							// so Enter launches through the single tested path.
 							presetsControl.onLoad?.(preset);
 							setTab(CONFIGURATOR_TAB);
+							setFocusPane(0);
 						}}
 						onRelink={presetsControl.onRelink}
 						relinkTarget={relinkTarget}
-						focused={focusPane === 2}
-						captureKeys={focusPane !== 3 && !importOpen}
+						focused={focusPane === 0}
+						captureKeys={focusPane === 0 && !importOpen}
 					/>
 				) : (
 					<text
-						fg={focusPane === 2 ? theme.fg : theme.muted}
+						fg={focusPane === 0 ? theme.fg : theme.muted}
 					>{`${TAB_LABELS[tab]} arrives in a later phase`}</text>
 				)}
 			</box>
 			<ConsoleDrawer
 				lines={visibleEntries(drawer)}
 				viewportHeight={DRAWER_HEIGHT}
-				focused={focusPane === 3}
+				focused={focusPane === 1}
 				collapsed={collapsed}
 				theme={theme}
 			/>
@@ -509,6 +520,7 @@ export function App({
 						);
 					}
 					setTab(CONFIGURATOR_TAB);
+					setFocusPane(0);
 					setImportOpen(false);
 				}}
 			/>
