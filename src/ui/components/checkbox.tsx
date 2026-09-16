@@ -24,6 +24,7 @@ export function Checkbox({
 
 	return (
 		<text fg={focused ? theme.fgBright : theme.fg}>
+			{focused ? <span fg={theme.accent}>{"> "}</span> : null}
 			<span fg={focused ? theme.accent : theme.border}>[</span>
 			<span fg={checked ? theme.success : theme.muted}>
 				{checked ? "x" : " "}

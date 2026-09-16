@@ -46,6 +46,7 @@ export function Slider({
 
 	return (
 		<text fg={focused ? theme.fgBright : theme.fg}>
+			{focused ? <span fg={theme.accent}>{"> "}</span> : null}
 			{label ? <span fg={theme.muted}>{`${label} `}</span> : null}
 			<span fg={focused ? theme.accent : theme.border}>[</span>
 			<span fg={theme.success}>{renderTrack(current, min, max, width)}</span>

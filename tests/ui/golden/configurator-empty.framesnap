@@ -1,24 +1,24 @@
-┌─LAUNCH CONFIG──────────────────────────────────────┐┌─RUNTIME────────────────────────────────────┐
-│ GPU Offload [░░░░░░░░░░░░░░░░░░░░░░░░] 0/1         ││ Model: <none>                              │
-│  4096  8192  16384  32768  65536  131072           ││ ngl max: 0 (block_count+1)                 │
-│ K Cache <f16>                                      ││ VRAM: n/a (missing model metadata)         │
-│ V Cache <f16>                                      ││                                            │
-│ [ ] Flash Attention                                ││                                            │
-│ [ ] mlock                                          ││ [Enter] Launch                             │
-│ [ ] no-mmap                                        ││ [Ctrl+S] Save Preset   [Esc] Reset         │
-│ [ ] Slots endpoint                                 ││ [Tab] cycle fields     [y] Yank cmd        │
-│ [ ] Metrics endpoint                               ││ [a] Auto-fit ngl       [i] Import shell cmd│
-│ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)      ││                                            │
-│ Micro-batch [██░░░░░░░░░░░░░░░░] 512/4096 (1)      ││                                            │
-│ Threads [░░░░░░░░░░░░░░░░░░] 8/256 (1)             ││                                            │
-│ host 127.0.0.1 INS                                 ││                                            │
-│ port 8080 INS                                      ││                                            │
-│ alias   INS                                        ││                                            │
-│ chat-template   INS                                ││                                            │
-│                                                    ││                                            │
-│                                                    ││                                            │
-│                                                    ││                                            │
-└────────────────────────────────────────────────────┘└────────────────────────────────────────────┘
+┌─LAUNCH CONFIG───────────────────────────────────────┐┌─RUNTIME───────────────────────────────────┐
+│ > GPU Offload [░░░░░░░░░░░░░░░░░░░░░░░░] 0/1        ││ Model: <none>                             │
+│ Context Length                                      ││ ngl max: 0 (block_count+1)                │
+│  4096  8192  16384  32768  65536  131072            ││ VRAM: n/a (missing model metadata)        │
+│ K Cache <f16>                                       ││                                           │
+│ V Cache <f16>                                       ││                                           │
+│ [ ] Flash Attention                                 ││ [Enter] Launch                            │
+│ [ ] mlock                                           ││ [Ctrl+S] Save Preset   [Esc] Reset        │
+│ [ ] no-mmap                                         ││ [Tab] cycle fields     [y] Yank cmd       │
+│ [ ] Slots endpoint                                  ││ [a] Auto-fit ngl       [i] Import shell   │
+│ [ ] Metrics endpoint                                ││ cmd                                       │
+│ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)       ││                                           │
+│ Micro-batch [██░░░░░░░░░░░░░░░░] 512/4096 (1)       ││                                           │
+│ Threads [░░░░░░░░░░░░░░░░░░] 8/256 (1)              ││                                           │
+│ host 127.0.0.1 INS                                  ││                                           │
+│ port 8080 INS                                       ││                                           │
+│ alias   INS                                         ││                                           │
+│ chat-template   INS                                 ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+└─────────────────────────────────────────────────────┘└───────────────────────────────────────────┘
 ┌─QUICK LAUNCH COMMAND PREVIEW─────────────────────────────────────────────────────────────────────┐
 │ <select a model in the Explorer>                                                                 │
 │                                                                                                  │

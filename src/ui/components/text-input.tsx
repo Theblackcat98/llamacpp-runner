@@ -12,6 +12,7 @@ import {
 export interface TextInputProps extends TextInputOptions {
 	theme: Theme;
 	captureKeys: boolean;
+	focused?: boolean;
 	/** Visible label rendered before the buffer (Phase 13). */
 	label?: string;
 	placeholder?: string;
@@ -66,6 +67,7 @@ export function keyEventToInputKey(key: {
 export function TextInput({
 	theme,
 	captureKeys,
+	focused = false,
 	label,
 	placeholder,
 	onChange,
@@ -135,6 +137,7 @@ export function TextInput({
 
 	return (
 		<text fg={cursorAtPlaceholder ? theme.muted : theme.fg} width={width}>
+			{focused ? <span fg={theme.accent}>{"> "}</span> : null}
 			{label ? <span fg={theme.muted}>{label} </span> : null}
 			<span>{before}</span>
 			<span bg={theme.accent} fg={theme.bg}>
