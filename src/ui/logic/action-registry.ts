@@ -42,7 +42,6 @@ const THEMES: [string, string][] = [
 	["catppuccin", "Catppuccin"],
 	["gruvbox", "Gruvbox"],
 	["cyberpunk", "Cyberpunk"],
-	["matrix", "Matrix"],
 ];
 
 const TABS: [number, string][] = [

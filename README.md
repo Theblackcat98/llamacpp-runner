@@ -13,7 +13,7 @@
 - **Zero-Orphan Process Supervisor**: Reliable lifecycle management running under strict process group teardown (SIGINT → 5s grace → SIGKILL escalation) with PID reuse protection.
 - **Live Telemetry & Diagnostics**: Real-time Prometheus metrics scraping (`tokens/sec`, prompt/decode speeds, KV cache utilization, memory usage) and slot activity sparklines.
 - **Fail-Safe Persistence**: Atomic JSON storage (same-directory temporary file + fsync + rename) for presets and session state with forward-only schema migrations.
-- **Terminal Portability & Truecolor**: Full OSC 52 clipboard yanking, 1-column braille spinners, box borders, responsive degraded layouts for compact terminals (<100x30), and 5 themes (TokyoNight, Nord, Catppuccin, Gruvbox, Monokai).
+- **Terminal Portability & Truecolor**: Full OSC 52 clipboard yanking, 1-column braille spinners, box borders, responsive degraded layouts for compact terminals (<100x30), and 4 themes (TokyoNight, Catppuccin, Gruvbox, Cyberpunk).
 - **Dual Interface**: Full interactive TUI alongside a fast headless CLI (`scan`, `list`, `presets`, `export`, `start`, `kill`) with optional `--json` output.
 
 ---
@@ -132,7 +132,7 @@ src/
 │   ├── components/       # Forms, tables, sparklines, gauges, dialogs
 │   ├── logic/            # Pure state machines for views & key handling
 │   ├── screens/          # Models, Configure, Presets, Telemetry viewports
-│   └── themes/           # TokyoNight, Nord, Catppuccin, Gruvbox, Monokai
+│   └── themes/           # TokyoNight, Catppuccin, Gruvbox, Cyberpunk
 ├── cli.ts        # Fast standalone CLI entrypoint (<20ms startup)
 └── main.tsx      # TUI composition root & bus wiring
 ```

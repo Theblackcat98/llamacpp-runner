@@ -16,9 +16,4 @@ export interface Theme {
 	focusBg: string;
 }
 
-export type ThemeName =
-	| "TokyoNight"
-	| "Catppuccin"
-	| "Gruvbox"
-	| "Cyberpunk"
-	| "Matrix";
+export type ThemeName = "TokyoNight" | "Catppuccin" | "Gruvbox" | "Cyberpunk";
