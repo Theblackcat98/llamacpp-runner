@@ -115,4 +115,56 @@ describe("telemetry service", () => {
 		health.emit(health.value);
 		expect(called).toBe(true);
 	});
+
+	it("#12: tracks peak mem_used across a run and fires onRunEnd at teardown", () => {
+		const supervisor = {
+			onState() {
+				return () => {};
+			},
+		} as never;
+		const health = fakePoller({ status: "ready", latencyMs: 1, at: 1 });
+		const metrics = fakePoller({
+			promptTps: 1,
+			decodeTps: 2,
+			kvUsageRatio: 0.3,
+			memUsedBytes: null as number | null,
+			at: 1,
+		});
+		const slots = fakePoller([]);
+		const ended: (number | null)[] = [];
+		const service = createTelemetryService({
+			supervisor,
+			health: health as never,
+			metrics: metrics as never,
+			slots: slots as never,
+			onRunEnd: (peak) => ended.push(peak),
+		});
+		service.start();
+		metrics.emit({ ...metrics.value, memUsedBytes: 100 });
+		metrics.emit({ ...metrics.value, memUsedBytes: 300 });
+		metrics.emit({ ...metrics.value, memUsedBytes: 200 });
+		service.stop();
+		expect(ended).toEqual([300]);
+
+		// Second run resets the peak; no metrics seen -> null.
+		service.start();
+		service.stop();
+		expect(ended).toEqual([300, null]);
+	});
+
+	it("#12: onRunEnd is optional and defaults to no-op", () => {
+		const supervisor = {
+			onState() {
+				return () => {};
+			},
+		} as never;
+		const service = createTelemetryService({
+			supervisor,
+			health: fakePoller(null) as never,
+			metrics: fakePoller(null) as never,
+			slots: fakePoller([]) as never,
+		});
+		service.start();
+		service.stop();
+	});
 });
