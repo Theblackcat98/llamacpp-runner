@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { atomicWrite } from "../store/atomic";
 import type { ModelEntry } from "./types";
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 interface CacheEntry {
 	signature: string;
 	entry: ModelEntry;

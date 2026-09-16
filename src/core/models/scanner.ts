@@ -282,6 +282,7 @@ export async function scanModels(
 			quantName: info ? info.quantName : "UNKNOWN",
 			contextLength: info?.contextLength,
 			blockCount: info?.blockCount,
+			embeddingLength: info?.embeddingLength,
 			headCount: info?.headCount,
 			headCountKv: info?.headCountKv,
 			keyLength: info?.keyLength,
