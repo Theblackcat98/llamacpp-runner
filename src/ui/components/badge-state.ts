@@ -1,3 +1,5 @@
+import { iconFor, type IconKind, type IconSet } from "../glyphs";
+
 export type BadgeStatus = "ok" | "warn" | "error";
 
 export interface BadgeState {
@@ -12,6 +14,12 @@ const GLYPHS: Record<BadgeStatus, string> = {
 	error: "✖",
 };
 
+const BADGE_ICON_KIND: Record<BadgeStatus, IconKind> = {
+	ok: "badge-ok",
+	warn: "badge-warn",
+	error: "badge-error",
+};
+
 export function createBadgeState(
 	status: BadgeStatus,
 	options?: { blink?: boolean },
@@ -24,6 +32,10 @@ export function tick(state: BadgeState): BadgeState {
 	return { ...state, visible: !state.visible };
 }
 
-export function badgeGlyph(state: BadgeState): string {
+export function badgeGlyph(
+	state: BadgeState,
+	iconSet: IconSet = "ascii",
+): string {
+	if (iconSet === "nerd") return iconFor(BADGE_ICON_KIND[state.status], "nerd");
 	return GLYPHS[state.status];
 }

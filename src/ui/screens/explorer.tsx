@@ -6,6 +6,7 @@ import type { ModelEntry } from "../../core/models/types";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
 import { TextInput } from "../components/text-input";
+import { iconFor, type IconSet } from "../glyphs";
 import { createTextInputState } from "../components/text-input-state";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
@@ -28,6 +29,8 @@ export interface ExplorerProps {
 	onSelectIndex?: (index: number) => void;
 	onSetModelsDir?: (dir: string) => void;
 	onEditingChange?: (editing: boolean) => void;
+	/** Nerd Font icons when "nerd", ASCII glyphs otherwise. */
+	iconSet?: IconSet;
 }
 
 /**
@@ -46,8 +49,13 @@ export function Explorer({
 	onSelectIndex,
 	onSetModelsDir,
 	onEditingChange,
+	iconSet = "ascii",
 }: ExplorerProps) {
-	const rows = buildRows(entries);
+	const rows = buildRows(entries, iconSet);
+	const welcomeIcon = iconFor("empty-welcome", iconSet);
+	const emptyIcon = iconFor("empty-none", iconSet);
+	const withIcon = (icon: string, text: string) =>
+		icon ? `${icon} ${text}` : text;
 	const { height } = useTerminalDimensions();
 	// The table lives above the fixed command-preview strip. Keep the table
 	// virtualized, but derive its window from the terminal instead of imposing
@@ -138,7 +146,9 @@ export function Explorer({
 			) : modelsDir === null && !scanning ? (
 				<TuiBox theme={theme} title="WELCOME" variant="double" accent>
 					<box style={{ flexDirection: "column" }}>
-						<text fg={theme.fgBright}>No model directory configured yet.</text>
+						<text fg={theme.fgBright}>
+							{withIcon(welcomeIcon, "No model directory configured yet.")}
+						</text>
 						<text fg={theme.muted}>
 							Set one to begin scanning for .gguf files:
 						</text>
@@ -196,9 +206,10 @@ export function Explorer({
 							) : null}
 							{!scanning && rows.length === 0 && !scanError ? (
 								<text fg={theme.warn}>
-									{
-										" no .gguf files found — add models, [r] rescan · [m] change dir"
-									}
+									{withIcon(
+										emptyIcon,
+										"no .gguf files found — add models, [r] rescan · [m] change dir",
+									)}
 								</text>
 							) : null}
 						</box>
