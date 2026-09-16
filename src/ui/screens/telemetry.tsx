@@ -10,91 +10,121 @@ export interface TelemetryScreenProps {
 	vm: TelemetryViewModel;
 	onEnableTelemetry?: () => void;
 	focused?: boolean;
+	/** Terminal width in columns; gauges scale to half the width. */
+	width?: number;
 }
 
 /**
- * Viewport 3 — Server Telemetry (§2.4, P5-FR-04): status header (badge,
- * model, uptime, endpoint), VRAM actual-vs-estimated + KV gauges, prompt/
- * decode sparklines, slots table. Dormant state when telemetry flags are
- * disabled (P5-FR-06); failure summary + last error lines on FAILED
- * (§6.4, P5-FR-15).
+ * Viewport 3 — Server Telemetry (§2.4, P5-FR-04): 1-line status strip
+ * (badge, model, uptime, endpoint), side-by-side VRAM/KV gauges,
+ * prompt/decode sparklines, slots table. Dormant state when telemetry
+ * flags are disabled (P5-FR-06); failure summary + last error lines on
+ * FAILED (§6.4, P5-FR-15).
+ *
+ * #45: de-chromed — no titled boxes for status/meters/throughput; the
+ * slots table and failure panel are the only boxed regions left, and
+ * their titles are title-cased, not ALL-CAPS.
  */
 export function Telemetry({
 	theme,
 	vm,
 	onEnableTelemetry,
 	focused = false,
+	width = 100,
 }: TelemetryScreenProps) {
+	// Gauges sit side by side, so each gets half the terminal minus the
+	// label/bracket/percent chrome (~14 cols) and padding.
+	const gaugeWidth = Math.max(20, Math.floor(width / 2) - 14);
+
 	if (vm.dormant) {
 		return (
-			<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
-				<TuiBox
-					theme={theme}
-					title="SERVER TELEMETRY"
-					flexGrow={1}
-					focused={focused}
-				>
-					<box
-						style={{ flexDirection: "column", paddingLeft: 1, paddingTop: 1 }}
-					>
-						<text fg={theme.warn}> telemetry disabled for this launch</text>
-						<text fg={theme.muted}>
-							{" enable --slots / --metrics in the configurator to activate"}
-						</text>
-						{text(
-							onEnableTelemetry ? " press [t] to toggle telemetry on" : "",
-							theme.accent,
-						)}
-					</box>
-				</TuiBox>
+			<box
+				style={{
+					flexDirection: "column",
+					width: "100%",
+					height: "100%",
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<text fg={theme.warn}>telemetry disabled for this launch</text>
+				<text fg={theme.muted}>
+					{"enable --slots / --metrics in the configurator to activate"}
+				</text>
+				{text(
+					onEnableTelemetry ? "press [t] to toggle telemetry on" : "",
+					theme.accent,
+				)}
 			</box>
 		);
 	}
 
 	return (
 		<box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
-			<TuiBox theme={theme} title="STATUS" height={3} focused={focused}>
-				<box style={{ flexDirection: "row", paddingLeft: 1 }}>
-					<Badge theme={theme} status={vm.badge} label={vm.statusLabel} />
-					<text fg={theme.fgBright}>{`  ${vm.modelLabel}`}</text>
-					<text fg={theme.muted}>{`  up ${vm.uptime}`}</text>
-					<text fg={theme.accent}>{`  ${vm.endpointLabel}`}</text>
-				</box>
-			</TuiBox>
+			{/* Status strip: 1 borderless line replacing the old STATUS box. */}
+			<box style={{ flexDirection: "row", height: 1, paddingLeft: 1 }}>
+				<Badge theme={theme} status={vm.badge} label={vm.statusLabel} />
+				<text fg={theme.fgBright}>{`  ${vm.modelLabel}`}</text>
+				<text fg={theme.muted}>{`  up ${vm.uptime}`}</text>
+				<text fg={theme.accent}>{`  ${vm.endpointLabel}`}</text>
+			</box>
 
-			<TuiBox theme={theme} title="METERS" height={7}>
-				<box style={{ flexDirection: "column", paddingLeft: 1 }}>
+			{/* Meters: VRAM and KV gauges side by side, no METERS box. */}
+			<box style={{ flexDirection: "row", marginTop: 1 }}>
+				<box
+					style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}
+				>
 					<Gauge
 						theme={theme}
 						value={vm.vramFraction}
-						width={24}
+						width={gaugeWidth}
 						label="VRAM"
 					/>
 					<text fg={theme.muted}>{`   ${vm.vramLabel}`}</text>
-					<Gauge theme={theme} value={vm.kvFraction} width={24} label="KV" />
 				</box>
-			</TuiBox>
-
-			<TuiBox theme={theme} title="THROUGHPUT" height={4}>
-				<box style={{ flexDirection: "column", paddingLeft: 1 }}>
-					<text>
-						<span fg={theme.muted}>prompt </span>
-						<span fg={theme.accent}>{vm.promptSpark}</span>
-						<span fg={theme.fgBright}>
-							{` ${vm.promptTpsLabel.replace("prompt t/s: ", "")}`}
-						</span>
-					</text>
-					<text>
-						<span fg={theme.muted}>decode </span>
-						<span fg={theme.accent}>{vm.decodeSpark}</span>
-						<span fg={theme.fgBright}>
-							{` ${vm.decodeTpsLabel.replace("decode t/s: ", "")}`}
-						</span>
-					</text>
+				<box
+					style={{ flexDirection: "column", width: "50%", paddingLeft: 1 }}
+				>
+					<Gauge
+						theme={theme}
+						value={vm.kvFraction}
+						width={gaugeWidth}
+						label="KV"
+					/>
+					<text fg={theme.muted}>{`   ${Math.round(vm.kvFraction * 100)}% of KV cache`}</text>
 				</box>
-			</TuiBox>
+			</box>
 
-			<TuiBox theme={theme} title="SLOTS (--slots)" flexGrow={1}>
+			{/* Throughput sparklines, borderless. */}
+			<box style={{ flexDirection: "column", paddingLeft: 1, marginTop: 1 }}>
+				<text>
+					<span fg={theme.muted}>prompt </span>
+					<span fg={theme.accent}>{vm.promptSpark}</span>
+					<span fg={theme.fgBright}>
+						{` ${vm.promptTpsLabel.replace("prompt t/s: ", "")}`}
+					</span>
+				</text>
+				<text>
+					<span fg={theme.muted}>decode </span>
+					<span fg={theme.accent}>{vm.decodeSpark}</span>
+					<span fg={theme.fgBright}>
+						{` ${vm.decodeTpsLabel.replace("decode t/s: ", "")}`}
+					</span>
+				</text>
+			</box>
+
+			{/* Slots table: the screen's main panel, borderless with a muted
+			    caption; focus shows through the table's own header/row
+			    highlighting. */}
+			<box
+				style={{
+					flexDirection: "column",
+					flexGrow: 1,
+					marginTop: 1,
+					paddingLeft: 1,
+				}}
+			>
+				<text fg={theme.muted}>Slots</text>
 				<VirtualizedTable
 					theme={theme}
 					columns={[
@@ -111,12 +141,12 @@ export function Telemetry({
 					}))}
 					viewport={6}
 					captureKeys={false}
-					focused={false}
+					focused={focused}
 				/>
-			</TuiBox>
+			</box>
 
 			{vm.failureSummary ? (
-				<TuiBox theme={theme} title="FAILURE (§6.4)" height={8}>
+				<TuiBox theme={theme} title="Failure (§6.4)" height={8}>
 					<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 						<text fg={theme.error}>{` ${vm.failureSummary}`}</text>
 						{vm.failureSuggestion ? (

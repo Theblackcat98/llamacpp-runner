@@ -318,7 +318,8 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 		await h.press("2");
 		expect(h.frame()).toContain("LAUNCH CONFIG");
 		await h.press("3");
-		expect(h.frame()).toContain("SERVER TELEMETRY");
+		// #45: the dormant telemetry screen is a borderless message now.
+		expect(h.frame()).toContain("telemetry disabled");
 		await h.press("4");
 		expect(h.frame()).toContain("Presets arrives");
 		await h.press("1");

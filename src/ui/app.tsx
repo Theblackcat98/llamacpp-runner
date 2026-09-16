@@ -426,6 +426,7 @@ export function App({
 						}
 						onEnableTelemetry={telemetryControl?.onEnableTelemetry}
 						focused={focusPane === 0}
+						width={dims.width}
 					/>
 				) : tab === 3 && presetsControl ? (
 					<PresetsScreen
