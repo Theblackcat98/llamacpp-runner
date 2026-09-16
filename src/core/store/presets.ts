@@ -103,6 +103,8 @@ function isPresetFile(value: unknown): value is PresetFile {
 		);
 	});
 }
+/** Structural validation of a full PresetFile document (#11 portability). */
+export const isPresetFileShape = isPresetFile;
 export function splitFlags(flags: Record<string, unknown>): {
 	known: Record<string, unknown>;
 	unknown: Record<string, unknown>;

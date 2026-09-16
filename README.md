@@ -122,8 +122,16 @@ bun run cli presets [--json]
 bun run cli export <preset-id> --format sh
 bun run cli export <preset-id> --format systemd
 
+# Export a preset itself as portable JSON (self-contained schema v2 document)
+bun run cli export <preset-id> --format json > my-preset.json
+
 # Import a shell command into a preset (reads file or stdin with `-`)
 bun run cli import ./launch.sh --name "my preset" --save
+
+# Import a shared preset JSON document (exported via --format json).
+# IDs already in your store are suffixed (-2, -3, ...); future schema
+# versions are rejected (forward-only).
+bun run cli import my-preset.json
 
 # Launch a preset in foreground
 bun run cli start <preset-id>
