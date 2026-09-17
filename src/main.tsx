@@ -37,6 +37,7 @@ import {
 	clampContext,
 	createConfigurator,
 	effectiveValues,
+	libraryFromEntries,
 	loadPresetInto,
 	setFlag,
 	solveAutoFitNgl,
@@ -286,16 +287,24 @@ export function SessionApp({
 										embeddingLength: matched.embeddingLength,
 										keyLength: matched.keyLength,
 										incomplete: matched.incomplete,
+										// #60: the file is back in the library.
+										stale: false,
 									},
 								};
 							});
 						}
 					} else {
-						const firstValid = event.entries.findIndex(
-							(e) => !e.error && !e.incomplete,
-						);
-						if (firstValid !== -1) {
-							selectModelFromEntries(event.entries, firstValid);
+						// #60: the configured model vanished (deleted file, watcher
+						// rescan, transient scan error). Keep the configurator —
+						// edits intact — mark it stale, and prompt to relink. The
+						// old path silently swapped to the first valid model.
+						const prev = configRef.current;
+						if (prev.model && !prev.model.stale) {
+							setConfig({ ...prev, model: { ...prev.model, stale: true } });
+							bus.emitState("LOG_LINE", {
+								stream: "err",
+								text: "[SYS] configured model missing from library — relink in Explorer or rescan",
+							});
 						}
 					}
 				} else {
@@ -456,7 +465,8 @@ export function SessionApp({
 	function buildPlan(): LaunchPlan | null {
 		const cfg = config;
 		// #18: an incomplete split group never resolves to a launch plan.
-		if (!cfg.model || cfg.model.incomplete) return null;
+		// #60: neither does a stale (vanished) model file.
+		if (!cfg.model || cfg.model.incomplete || cfg.model.stale) return null;
 		const binary = resolveBinaryPath({ configured: configuredBinaryPath });
 		const command =
 			capability?.resolvedPath ??
@@ -507,6 +517,14 @@ export function SessionApp({
 	}
 
 	function handleLaunch(): void {
+		// #60: a vanished model launches nothing — prompt to relink instead.
+		if (config.model?.stale) {
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: "[SYS] model file missing — relink in Explorer first",
+			});
+			return;
+		}
 		if (launchSplitDiagnostic()) return;
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
 	}
@@ -533,7 +551,15 @@ export function SessionApp({
 		flags: Record<string, unknown>;
 	}): void {
 		const next = clampContext(
-			loadPresetInto(config, preset.flags, preset.model_path),
+			loadPresetInto(
+				config,
+				preset.flags,
+				preset.model_path,
+				// #60: resolve metadata from the real library — a model in the
+				// scanned dir gets its true header numbers, never the previous
+				// model's.
+				libraryFromEntries(entries),
+			),
 		);
 		// #18: a preset pointing at an incomplete split group carries the
 		// validation state into the Configurator — launch stays blocked.

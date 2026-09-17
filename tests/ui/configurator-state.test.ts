@@ -207,3 +207,74 @@ describe("loadPresetInto (Phase 13)", () => {
 		expect(loaded.values.n_gpu_layers).toBe(10);
 	});
 });
+
+describe("loadPresetInto metadata honesty (#60A)", () => {
+	const MODEL_B_PATH = "~/models/portable/llama-b.gguf";
+
+	it("never fabricates metadata from the previous model on a path change", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { ctx_size: 8192 }, MODEL_B_PATH);
+		expect(loaded.model?.path).toBe(MODEL_B_PATH);
+		// The previous model's metadata must not leak into the new path.
+		expect(loaded.model?.blockCount).toBeUndefined();
+		expect(loaded.model?.headCount).toBeUndefined();
+		expect(loaded.model?.contextLength).toBeUndefined();
+		expect(loaded.model?.embeddingLength).toBeUndefined();
+		expect(loaded.model?.metadataUnknown).toBe(true);
+		// Estimates refuse to run on fabricated data.
+		expect(vramRangeBytes(loaded)).toBeNull();
+	});
+
+	it("prefers real library metadata when the model is known", () => {
+		const cfg = createConfigurator(MODEL);
+		const library: ConfiguratorModel[] = [
+			{
+				path: MODEL_B_PATH,
+				blockCount: 20,
+				contextLength: 8192,
+				fileSize: 4 * 1024 ** 3,
+				headCount: 32,
+				headCountKv: 8,
+				embeddingLength: 4096,
+			},
+		];
+		const loaded = loadPresetInto(cfg, {}, MODEL_B_PATH, library);
+		expect(loaded.model?.blockCount).toBe(20);
+		expect(loaded.model?.contextLength).toBe(8192);
+		expect(loaded.model?.fileSize).toBe(4 * 1024 ** 3);
+		expect(loaded.model?.metadataUnknown).toBeUndefined();
+		expect(loaded.nglMax).toBe(21);
+	});
+
+	it("unknown blockCount never defaults ngl to a silent 0", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { ctx_size: 4096 }, MODEL_B_PATH);
+		// The preset lacks n_gpu_layers and the model is unknown — the old
+		// code wrote ngl=0 (GPU offload silently disabled).
+		expect(loaded.values.n_gpu_layers).not.toBe(0);
+	});
+
+	it("keeps an explicit preset ngl even when metadata is unknown", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, { n_gpu_layers: 12 }, MODEL_B_PATH);
+		expect(loaded.values.n_gpu_layers).toBe(12);
+	});
+
+	it("same-path preset loads keep the live model untouched", () => {
+		const cfg = createConfigurator(MODEL);
+		const loaded = loadPresetInto(cfg, {}, MODEL.path);
+		expect(loaded.model).toEqual(MODEL);
+		expect(loaded.model?.metadataUnknown).toBeUndefined();
+	});
+});
+
+describe("stale model (vanished file, #60B)", () => {
+	it("vramRangeText distinguishes unknown metadata from missing model", () => {
+		const stale = createConfigurator({
+			path: "~/models/gone.gguf",
+			fileSize: 0,
+			metadataUnknown: true,
+		});
+		expect(vramRangeText(stale)).toContain("metadata unknown");
+	});
+});

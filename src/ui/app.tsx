@@ -26,6 +26,7 @@ import {
 import {
 	type ConfiguratorState,
 	clampContext,
+	libraryFromEntries,
 	loadPresetInto,
 } from "./logic/configurator-state";
 import {
@@ -524,6 +525,8 @@ export function App({
 									configuratorControl.state,
 									parsed.values,
 									parsed.modelPath || undefined,
+									// #60: real library metadata over fabrication.
+									libraryFromEntries(explorerEntries),
 								),
 							),
 						);

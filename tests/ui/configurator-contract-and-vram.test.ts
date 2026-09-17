@@ -47,10 +47,11 @@ describe("silent zero VRAM estimate handling (P3)", () => {
 		);
 		expect(presetLoaded.model?.fileSize).toBe(0);
 
-		// Must return null bytes and honest guidance
+		// Must return null bytes and honest guidance (#60: the absent model
+		// is metadata-unknown, not silently fabricated).
 		expect(vramRangeBytes(presetLoaded)).toBeNull();
 		expect(vramRangeText(presetLoaded)).toBe(
-			"model missing — estimate unavailable",
+			"metadata unknown — estimate unavailable",
 		);
 	});
 });
