@@ -24,6 +24,9 @@ function ctx(overrides: Partial<ShellKeyContext> = {}): ShellKeyContext {
 		hasSavePreset: true,
 		hasYank: true,
 		hasConfirmHost: true,
+		// #55: the k tests below assume an orphan exists and no list owns k.
+		foundOrphanPid: 4242,
+		tableFocused: false,
 		...overrides,
 	};
 }
@@ -295,6 +298,30 @@ describe("k orphan-kill arm/execute window", () => {
 				notice: "press k again within 2s to kill the orphaned server",
 			},
 		]);
+	});
+});
+
+describe("k gating (#55 one-owner rule)", () => {
+	it("no orphan found: k is a no-op — no arm, no notice", () => {
+		expect(routeShellKey(ctx({ foundOrphanPid: null }), { name: "k" })).toEqual(
+			[],
+		);
+		expect(
+			routeShellKey(ctx({ foundOrphanPid: null, killArmedAt: NOW - 100 }), {
+				name: "k",
+			}),
+		).toEqual([]);
+	});
+
+	it("a focused table owns k: no arm even when an orphan exists", () => {
+		expect(routeShellKey(ctx({ tableFocused: true }), { name: "k" })).toEqual(
+			[],
+		);
+		expect(
+			routeShellKey(ctx({ tableFocused: true, killArmedAt: NOW - 100 }), {
+				name: "k",
+			}),
+		).toEqual([]);
 	});
 });
 

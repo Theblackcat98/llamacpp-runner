@@ -15,7 +15,7 @@ const GLOBAL_ROWS: Row[] = [
 	["[1-4]", "switch tabs"],
 	["[Enter]", "launch (set-default on the Presets tab)"],
 	["[x]", "kill server (confirms while running)"],
-	["[k]", "kill orphaned server (press twice)"],
+	["[k]", "kill orphaned server (twice; not while a list is focused)"],
 	["[o]", "collapse / expand console"],
 	["[Ctrl+L]", "clear log"],
 	["[Ctrl+P]", "command palette"],

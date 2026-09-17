@@ -71,7 +71,7 @@ Press `?` anywhere in the TUI for the full contextual shortcut legend. The table
 | `Ctrl+P` | Global | Open **Command Palette** |
 | `q` / `Ctrl+C` | Global | Quit (confirms if server running) |
 | `x` | Global | Kill running server instance (with confirmation prompt) |
-| `k` | Global | Kill orphaned server (press twice within 2s) |
+| `k` | Global | Kill orphaned server (press twice within 2s; only when an orphan exists and no list is focused) |
 | `o` | Global | Collapse / expand console drawer |
 | `Ctrl+L` | Global | Clear log |
 | `Enter` | Global | Launch configured `llama-server` instance (on Presets: set default preset) |

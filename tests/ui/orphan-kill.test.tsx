@@ -28,6 +28,8 @@ async function press(
 /**
  * F8: killing the orphaned server is destructive, so `k` arms and a second
  * `k` within 2 s executes — a single stray keypress never kills it.
+ * #55: the shell only arms when an orphan actually exists (foundOrphanPid);
+ * with none, k never arms and never kills.
  */
 describe("orphan kill confirmation (F8)", () => {
 	it("first k arms (no kill); second k within window kills", async () => {
@@ -35,6 +37,7 @@ describe("orphan kill confirmation (F8)", () => {
 		const setup = await testRender(
 			<App
 				theme={DEFAULT_THEME}
+				foundOrphanPid={4242}
 				onKillOrphan={() => {
 					kills.push(1);
 				}}
@@ -59,6 +62,7 @@ describe("orphan kill confirmation (F8)", () => {
 		const setup = await testRender(
 			<App
 				theme={DEFAULT_THEME}
+				foundOrphanPid={4242}
 				onKillOrphan={() => {
 					kills.push(1);
 				}}
@@ -72,5 +76,28 @@ describe("orphan kill confirmation (F8)", () => {
 
 		await press(setup, ["k"]);
 		expect(kills).toEqual([]);
+	});
+
+	it("no orphan found: k never arms and never kills (#55)", async () => {
+		const kills: number[] = [];
+		const setup = await testRender(
+			<App
+				theme={DEFAULT_THEME}
+				foundOrphanPid={null}
+				onKillOrphan={() => {
+					kills.push(1);
+				}}
+			/>,
+			{ width: 100, height: 30 },
+		);
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+
+		await press(setup, ["k"]);
+		await press(setup, ["k"]);
+		expect(kills).toEqual([]);
+		expect(setup.captureCharFrame()).not.toContain("press k again");
 	});
 });

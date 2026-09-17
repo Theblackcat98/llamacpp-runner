@@ -295,6 +295,52 @@ describe("keyboard ownership (Phase 13)", () => {
 		});
 		expect(saves).toBe(1);
 	});
+
+	it("a focused table owns k: the shell never arms the orphan kill (#55)", async () => {
+		let killed = 0;
+		const setup = await testRender(
+			<App
+				theme={DEFAULT_THEME}
+				foundOrphanPid={4242}
+				explorerControl={{
+					entries: [
+						{
+							name: "qwen.gguf",
+							path: "~/models/qwen.gguf",
+							paths: ["~/models/qwen.gguf"],
+							totalBytes: MODEL.fileSize,
+							quantName: "Q4_K_M",
+							contextLength: MODEL.contextLength,
+							blockCount: MODEL.blockCount,
+							headCount: MODEL.headCount,
+							headCountKv: MODEL.headCountKv,
+							embeddingLength: MODEL.embeddingLength,
+						},
+					],
+					scanning: false,
+					modelsDir: "~/models",
+					onRescan: () => {},
+				}}
+				onKillOrphan={() => {
+					killed++;
+				}}
+			/>,
+			{ width: 100, height: 30 },
+		);
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+		// Two k presses within the 2 s window — normal vim navigation.
+		await act(async () => {
+			await setup.mockInput.pressKeys(["k", "k"]);
+		});
+		await act(async () => {
+			await setup.flush();
+		});
+		expect(killed).toBe(0);
+		expect(setup.captureCharFrame()).not.toContain("press k again");
+	});
 });
 
 /**

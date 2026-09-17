@@ -138,6 +138,8 @@ export interface AppProps {
 	paletteControl?: PaletteControl;
 	/** Live-server signal for quit/kill confirmation (P5-FR-11). */
 	serverRunning?: boolean;
+	/** #55: pid of the discovered orphaned llama-server, null when none. */
+	foundOrphanPid?: number | null;
 	/** Tab index restored from lastSession on boot (F9); defaults to 0. */
 	initialTab?: number;
 }
@@ -158,6 +160,7 @@ export function App({
 	telemetryControl,
 	paletteControl,
 	serverRunning = false,
+	foundOrphanPid = null,
 	initialTab = 0,
 }: AppProps) {
 	const renderer = useRenderer();
@@ -205,6 +208,17 @@ export function App({
 	// #42: the Explorer notifies at event time; a ref (not state) keeps the
 	// yield guard correct within the same key batch that opened the editor.
 	const explorerEditingRef = useRef(false);
+	// #55: a focused list table claims k for row navigation — the shell must
+	// never arm the orphan kill on the same press. Mirrors each screen's
+	// render conditions: Explorer hides its table behind first-run, the
+	// Telemetry slots table behind dormant.
+	const tableFocused =
+		focusPane === 0 &&
+		((tab === 0 &&
+			explorerControl !== undefined &&
+			(explorerControl.modelsDir !== null || explorerControl.scanning)) ||
+			(tab === 2 && telemetryControl?.vm?.dormant === false) ||
+			(tab === 3 && presetsControl !== undefined));
 
 	const paletteActions = buildDefaultActions({
 		switchTheme: (name) => paletteControl?.switchTheme?.(name),
@@ -248,6 +262,8 @@ export function App({
 				hasSavePreset: onSavePreset !== undefined,
 				hasYank: onYankCommand !== undefined,
 				hasConfirmHost: onConfirmHost !== undefined,
+				foundOrphanPid: foundOrphanPid ?? null,
+				tableFocused,
 			},
 			key,
 		);
