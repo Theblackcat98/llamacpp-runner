@@ -137,3 +137,26 @@ function portUsable(port: number): Promise<boolean> {
 		server.listen(port, "127.0.0.1", () => server.close(() => resolve(true)));
 	});
 }
+
+describe("pidfile hygiene (#61)", () => {
+	it("KILL clears the pidfile only after the kill settles", async () => {
+		const port = 18095;
+		const session = makeSession(port);
+		await session.boot();
+		const sup = session.supervisor;
+		if (!sup) throw new Error("expected supervisor");
+		await sup.start();
+		const pidFile = resolvePaths().pidFile;
+		const appeared = await waitFor(() => readPidFile(pidFile)?.pid === sup.pid);
+		expect(appeared).toBe(true);
+
+		// Synchronously after KILL dispatch the §6.3 recovery record must
+		// still exist — the old code cleared it before signaling.
+		session.bus.emitIntent("KILL", {});
+		expect(readPidFile(pidFile)).not.toBeNull();
+
+		// After teardown settles, the record is gone.
+		expect(await waitFor(() => readPidFile(pidFile) === null)).toBe(true);
+		await session.shutdown();
+	}, 20000);
+});

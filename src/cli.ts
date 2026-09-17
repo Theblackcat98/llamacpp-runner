@@ -108,6 +108,48 @@ function resolveDirs(args: string[]): string[] {
 	return [expandPath(modelsDir)];
 }
 
+/**
+ * #61: pure kill-outcome mapping so every inspection status reports
+ * honestly — "unknown" (identity unavailable: macOS, permission failures)
+ * is NOT "no server running" and exits non-zero.
+ */
+export function killOutcome(
+	status: string,
+	killed: boolean,
+	pid?: number,
+): { reason: string; message: string; exitCode: number } {
+	if (killed) {
+		return {
+			reason: "alive",
+			message: `killed llama-server pid=${pid}`,
+			exitCode: 0,
+		};
+	}
+	switch (status) {
+		case "alive":
+			return { reason: "alive", message: "failed to kill", exitCode: 1 };
+		case "unknown":
+			return {
+				reason: "unknown",
+				message:
+					"cannot verify server state (process identity unavailable) — kill skipped",
+				exitCode: 1,
+			};
+		case "stale":
+			return {
+				reason: "stale",
+				message: "stale pidfile cleaned — no server running",
+				exitCode: 0,
+			};
+		default:
+			return {
+				reason: "no_pidfile",
+				message: "no server running",
+				exitCode: 0,
+			};
+	}
+}
+
 async function main(): Promise<void> {
 	const [, , command, ...args] = process.argv;
 	if (!command || command === "help" || command === "--help") usage();
@@ -117,33 +159,30 @@ async function main(): Promise<void> {
 	if (command === "kill") {
 		const { json } = jsonFlag(args);
 		const inspection = await inspectOrphan(paths.pidFile);
-		const out = (payload: {
-			killed: boolean;
-			pid?: number;
-			reason?: string;
-		}) =>
-			json
-				? console.log(JSON.stringify(payload))
-				: console.log(
-						payload.killed
-							? `killed llama-server pid=${payload.pid}`
-							: payload.reason === "alive"
-								? "failed to kill"
-								: payload.reason === "stale"
-									? "stale pidfile cleaned — no server running"
-									: "no server running",
-					);
 		if (inspection.status === "alive" && inspection.record) {
 			const killed = await killOrphan(inspection.record.pid);
 			if (!killed) clearPidFile(paths.pidFile);
-			out({ killed, pid: inspection.record.pid, reason: "alive" });
-			process.exit(killed ? 0 : 1);
+			const out = killOutcome(inspection.status, killed, inspection.record.pid);
+			if (json) {
+				console.log(
+					JSON.stringify({
+						killed,
+						pid: inspection.record.pid,
+						reason: out.reason,
+					}),
+				);
+			} else {
+				console.log(out.message);
+			}
+			process.exit(out.exitCode);
 		}
-		out({
-			killed: false,
-			reason: inspection.status === "stale" ? "stale" : "no_pidfile",
-		});
-		return;
+		const out = killOutcome(inspection.status, false);
+		if (json) {
+			console.log(JSON.stringify({ killed: false, reason: out.reason }));
+		} else {
+			console.log(out.message);
+		}
+		process.exit(out.exitCode);
 	}
 
 	if (command === "presets") {
@@ -500,4 +539,6 @@ function formatRows(entries: ModelEntry[]): Record<string, string>[] {
 	}));
 }
 
-main();
+if (import.meta.main) {
+	void main();
+}

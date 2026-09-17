@@ -221,6 +221,9 @@ export async function runQuickSupervisor(
 				writePidFile(pidFile, {
 					pid: supervisor.pid,
 					port: plan.port,
+					// #61: CLI-started servers keep preset attribution so the
+					// orphan record matches the TUI path's shape.
+					presetId: plan.presetId,
 					startedAt: new Date().toISOString(),
 				});
 			}
