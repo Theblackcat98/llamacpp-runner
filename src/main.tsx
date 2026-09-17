@@ -131,12 +131,21 @@ export function SessionApp({
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [initialState] = useState(() => {
 		const configFile = loadConfig(paths.configDir);
+		// #59: this is the FIRST presets load — its backup rename wins over
+		// every later load, so the corrupt path is captured here and
+		// announced once the LOG_LINE subscription exists.
 		const presetStore = loadPresets(presetsFilePath(paths.configDir));
 		const last = presetStore.data?.lastSession;
 		const preset = last
 			? presetStore.data?.presets.find((item) => item.id === last.preset_id)
 			: undefined;
-		return { configFile, presetStore: presetStore.data, last, preset };
+		return {
+			configFile,
+			presetStore: presetStore.data,
+			last,
+			preset,
+			corruptBackup: presetStore.corruptBackup,
+		};
 	});
 	const [modelsDir, setModelsDir] = useState<string | null>(
 		() => initialState.configFile.modelsDir ?? null,
@@ -185,19 +194,6 @@ export function SessionApp({
 	} | null>(null);
 	const [tailLines, setTailLines] = useState<string[]>([]);
 
-	useEffect(() => {
-		const store = loadPresets(presetsFilePath(paths.configDir));
-		if (store.data) {
-			bus.emitState("LOG_LINE", {
-				stream: "out",
-				text: `[SYS] presets loaded: ${store.data.presets.length}`,
-			});
-		}
-		// Boot-sync: trigger rescan on mount so if modelsService.boot() completed
-		// before React mounted, we synchronize state immediately (Issue #25).
-		bus.emitIntent("RESCAN", {});
-	}, [bus, paths.configDir]);
-
 	function persistPresets(next: PresetFile): void {
 		setPresetsFile(next);
 		const store = loadPresets(presetsFilePath(paths.configDir));
@@ -213,6 +209,26 @@ export function SessionApp({
 				appendLines(s, [{ text: event.text, stream: event.stream }]),
 			);
 		});
+		// Boot log emission happens AFTER the LOG_LINE binding — effects run
+		// in declaration order, so the old standalone presets effect lost
+		// every line it emitted before this subscription existed (#59).
+		// The load itself ran in the initialState initializer; here we only
+		// announce what it found, including the corrupt-file backup (#59).
+		if (initialState.corruptBackup) {
+			bus.emitState("LOG_LINE", {
+				stream: "err",
+				text: `[ERR] presets.json was unreadable — original preserved at ${initialState.corruptBackup}`,
+			});
+		}
+		if (initialState.presetStore) {
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: `[SYS] presets loaded: ${initialState.presetStore.presets.length}`,
+			});
+		}
+		// Boot-sync: trigger rescan on mount so if modelsService.boot() completed
+		// before React mounted, we synchronize state immediately (Issue #25).
+		bus.emitIntent("RESCAN", {});
 		const offProc = bus.onState("PROC_STATE", (event) => {
 			setProcState(event.state);
 			if (event.state === "IDLE") {

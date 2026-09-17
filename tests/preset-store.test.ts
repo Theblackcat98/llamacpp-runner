@@ -167,6 +167,57 @@ describe("atomic writes (P4-NFR-02)", () => {
 	});
 });
 
+describe("corrupt file handling (#59)", () => {
+	it("truncated JSON is preserved as .corrupt-<ts> and not silently overwritten", () => {
+		const path = scratchFile("truncated.json");
+		const corrupt = '{"version":2,"presets":[{"id":"x"'; // interrupted write
+		writeFileSync(path, corrupt);
+
+		const loaded = loadPresets(path, { now: () => 1_700_000_000_000 });
+		expect(loaded.data?.version).toBe(2);
+		expect(loaded.data?.presets).toEqual([]);
+		expect(loaded.corruptBackup).toBe(`${path}.corrupt-1700000000000`);
+
+		// The original bytes live in the backup, verbatim.
+		expect(existsSync(loaded.corruptBackup ?? "")).toBe(true);
+		expect(readFileSync(loaded.corruptBackup ?? "", "utf8")).toBe(corrupt);
+
+		// A subsequent persist writes the fresh store; the backup survives.
+		savePresets(path, { version: 2, presets: [] });
+		expect(readFileSync(loaded.corruptBackup ?? "", "utf8")).toBe(corrupt);
+	});
+
+	it("valid JSON with an invalid shape is backed up the same way", () => {
+		const path = scratchFile("bad-shape.json");
+		const invalid = JSON.stringify({
+			version: 2,
+			presets: [{ id: 3, nope: true }],
+		});
+		writeFileSync(path, invalid);
+
+		const loaded = loadPresets(path);
+		expect(loaded.data?.presets).toEqual([]);
+		expect(loaded.corruptBackup).toBeDefined();
+		expect(existsSync(loaded.corruptBackup ?? "")).toBe(true);
+		// The corrupt original was moved away — presets.json no longer holds it.
+		expect(existsSync(path)).toBe(false);
+	});
+
+	it("a missing file is a fresh install, not corruption — no backup", () => {
+		const loaded = loadPresets(scratchFile("absent-2.json"));
+		expect(loaded.data?.presets).toEqual([]);
+		expect(loaded.corruptBackup).toBeUndefined();
+	});
+
+	it("non-object JSON documents are corruption too", () => {
+		const path = scratchFile("array.json");
+		writeFileSync(path, "[1,2,3]");
+		const loaded = loadPresets(path);
+		expect(loaded.data?.presets).toEqual([]);
+		expect(loaded.corruptBackup).toBeDefined();
+	});
+});
+
 describe("unknown flags (P4-FR-15)", () => {
 	it("unknown flags survive save/load verbatim", () => {
 		const path = scratchFile("unknown.json");

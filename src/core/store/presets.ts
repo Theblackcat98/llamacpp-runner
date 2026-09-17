@@ -63,21 +63,66 @@ export function savePresets(
 export interface LoadResult {
 	data: PresetFile | null;
 	migratedFrom: number | undefined;
+	/** #59: set when the on-disk file was unreadable/invalid. The original
+	 *  was preserved at this path before any write could clobber it. */
+	corruptBackup?: string;
 }
-export function loadPresets(filePath: string): LoadResult {
+export interface LoadOptions {
+	/** Injectable for tests; defaults to renameSync. */
+	renameFn?: (from: string, to: string) => void;
+	/** Injectable clock for deterministic backup names in tests. */
+	now?: () => number;
+}
+
+function isEnoent(error: unknown): boolean {
+	return (error as NodeJS.ErrnoException)?.code === "ENOENT";
+}
+
+/** #59: preserve a corrupt file as `presets.json.corrupt-<timestamp>` so a
+ *  truncated write or stray comma never becomes quiet total preset loss. */
+function backupCorruptFile(filePath: string, opts: LoadOptions): string {
+	const backup = `${filePath}.corrupt-${opts.now ? opts.now() : Date.now()}`;
+	(opts.renameFn ?? renameSync)(filePath, backup);
+	return backup;
+}
+
+export function loadPresets(
+	filePath: string,
+	opts: LoadOptions = {},
+): LoadResult {
 	let raw: unknown;
 	try {
 		raw = JSON.parse(readFileSync(filePath, "utf8"));
-	} catch {
-		return { data: emptyPresetFile(), migratedFrom: undefined };
+	} catch (error) {
+		// A missing file is a fresh install, not corruption (#59).
+		if (isEnoent(error)) {
+			return { data: emptyPresetFile(), migratedFrom: undefined };
+		}
+		return {
+			data: emptyPresetFile(),
+			migratedFrom: undefined,
+			corruptBackup: backupCorruptFile(filePath, opts),
+		};
 	}
-	if (typeof raw !== "object" || raw === null)
-		return { data: emptyPresetFile(), migratedFrom: undefined };
+	// Arrays parse as objects but are never valid preset documents — the
+	// migration would silently normalize them into an empty store (#59).
+	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+		return {
+			data: emptyPresetFile(),
+			migratedFrom: undefined,
+			corruptBackup: backupCorruptFile(filePath, opts),
+		};
+	}
 	const doc = raw as Record<string, unknown>;
 	const sourceVersion = typeof doc.version === "number" ? doc.version : 1;
 	const migrated = migrate(doc) as unknown as PresetFile;
-	if (!isPresetFile(migrated))
-		return { data: emptyPresetFile(), migratedFrom: undefined };
+	if (!isPresetFile(migrated)) {
+		return {
+			data: emptyPresetFile(),
+			migratedFrom: undefined,
+			corruptBackup: backupCorruptFile(filePath, opts),
+		};
+	}
 	return {
 		data: migrated,
 		migratedFrom: sourceVersion === 2 ? undefined : sourceVersion,
