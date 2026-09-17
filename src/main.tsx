@@ -52,6 +52,7 @@ import {
 	relink,
 	setDefault,
 } from "./ui/logic/presets-state";
+import { serverIsRunning } from "./ui/logic/proc-status";
 import { TAB_COUNT } from "./ui/logic/shell-state";
 import { buildTelemetryViewModel } from "./ui/logic/telemetry-state";
 import type { ThemeName } from "./ui/themes";
@@ -679,7 +680,8 @@ export function SessionApp({
 					setTelemetryEnabled((enabled) => !enabled);
 				},
 			}}
-			serverRunning={procState !== "IDLE"}
+			serverRunning={serverIsRunning(procState)}
+			serverFailed={procState === "FAILED"}
 			foundOrphanPid={session.foundOrphanPid ?? null}
 		/>
 	);

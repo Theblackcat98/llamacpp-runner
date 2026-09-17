@@ -373,6 +373,16 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 		expect(h.spies.quit).toBe(1);
 	});
 
+	it("FAILED state: single q quits cleanly, no confirm (#56)", async () => {
+		const h = await renderApp({ serverFailed: true });
+		expect(h.frame()).toContain("server failed");
+		expect(h.frame()).not.toContain("server running");
+		await h.press("q");
+		expect(h.spies.quit).toBe(1);
+		// x offers nothing to kill for a dead supervisor.
+		expect(h.frame()).not.toContain("press x again");
+	});
+
 	it("x/k/q confirm flows arm first, then execute while a server runs", async () => {
 		const h = await renderApp({ serverRunning: true, foundOrphanPid: 4242 });
 		// #55: the Explorer table owns k for navigation — the orphan-kill
