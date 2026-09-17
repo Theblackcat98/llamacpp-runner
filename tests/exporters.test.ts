@@ -73,3 +73,55 @@ describe("systemd exporter", () => {
 		expect(unit).toContain('"/opt/my models/a.gguf"');
 	});
 });
+
+describe("exporter sanitization (#62)", () => {
+	const HOSTILE_NAME = "evil\nrm -rf /\n# injected";
+
+	it("sh comment stays one line with control chars stripped", () => {
+		const script = buildShellScript({
+			built: { command: "llama-server", args: ["-m", "x.gguf"] },
+			envVars: {},
+			presetName: HOSTILE_NAME,
+		});
+		// Exactly the golden shape: shebang, one comment line, generated-by,
+		// blank, exec, trailing newline — the name never adds lines.
+		expect(script.split("\n").length).toBe(6);
+		expect(script).toContain("# llama-deck preset: evil rm -rf / # injected");
+		// The hostile lines exist only inside the inert comment.
+		for (const line of script.split("\n")) {
+			expect(line.startsWith("rm -rf")).toBe(false);
+			expect(line.startsWith("# injected")).toBe(false);
+		}
+	});
+
+	it("invalid env keys are never exported", () => {
+		const script = buildShellScript({
+			built: { command: "llama-server", args: [] },
+			envVars: {
+				OK_KEY: "1",
+				"BAD-KEY": "x",
+				"A B": "y",
+				"X\nY": "z",
+				"1STARTS": "w",
+			},
+			presetName: "fine",
+		});
+		expect(script).toContain("export OK_KEY=1");
+		expect(script).not.toContain("BAD-KEY");
+		expect(script).not.toContain("A B");
+		expect(script).not.toContain("X\nY");
+		expect(script).not.toContain("1STARTS");
+	});
+
+	it("systemd Description and Environment keys are sanitized the same way", () => {
+		const unit = buildSystemdUnit({
+			built: { command: "llama-server", args: [] },
+			envVars: { OK: "1", "BAD KEY": "x" },
+			description: HOSTILE_NAME,
+		});
+		expect(unit.split("\n").length).toBe(12);
+		expect(unit).toContain("Description=evil rm -rf / # injected");
+		expect(unit).toContain('Environment="OK=1"');
+		expect(unit).not.toContain("BAD KEY");
+	});
+});

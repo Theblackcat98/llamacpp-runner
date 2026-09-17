@@ -20,7 +20,8 @@ describe("clipboard (P4-FR-16a, D6)", () => {
 			writeFn: (s) => written.push(s),
 			runners: {},
 		});
-		expect(result.method).toBe("osc52");
+		// #62: honest reporting — the write proves SEND, not delivery.
+		expect(result.method).toBe("osc52-unconfirmed");
 		expect(written.length).toBe(1);
 	});
 
@@ -89,6 +90,75 @@ describe("clipboard (P4-FR-16a, D6)", () => {
 		expect(result.method).toBe("failed");
 		if (result.method === "failed") {
 			expect(result.notice).toContain("clipboard");
+		}
+	});
+});
+
+describe("honest OSC 52 reporting (#62)", () => {
+	it("reports osc52-unconfirmed — sent, never verified", () => {
+		let written = "";
+		const result = copyToClipboard({
+			text: "hello",
+			writeFn: (s) => {
+				written += s;
+			},
+		});
+		expect(result.method).toBe("osc52-unconfirmed");
+		expect(written).toContain("52;c;");
+	});
+
+	it("an allowlisted tool skips OSC 52 entirely", () => {
+		let written = "";
+		const result = copyToClipboard({
+			text: "hello",
+			clipboardEnv: "xclip",
+			writeFn: (s) => {
+				written += s;
+			},
+			runners: { xclip: () => true },
+		});
+		expect(written).toBe("");
+		expect(result.method).toBe("xclip");
+	});
+
+	it("opt-out without allowlist walks the fallback chain", () => {
+		let written = "";
+		const order: string[] = [];
+		const result = copyToClipboard({
+			text: "hello",
+			clipboardEnv: "local",
+			writeFn: (s) => {
+				written += s;
+			},
+			// Hermetic: no real tools on this machine may answer.
+			whichFn: () => null,
+			runners: {
+				xclip: () => {
+					order.push("xclip");
+					return false;
+				},
+				pbcopy: () => {
+					order.push("pbcopy");
+					return true;
+				},
+			},
+		});
+		expect(written).toBe("");
+		// xclip is tried (and refuses), then pbcopy succeeds.
+		expect(order).toEqual(["xclip", "pbcopy"]);
+		expect(result.method).toBe("pbcopy");
+	});
+
+	it("an allowlisted missing tool fails honestly", () => {
+		const result = copyToClipboard({
+			text: "hello",
+			clipboardEnv: "wl_copy",
+			writeFn: () => {},
+			whichFn: () => null,
+		});
+		expect(result.method).toBe("failed");
+		if (result.method === "failed") {
+			expect(result.notice).toContain("LLAMA_DECK_CLIPBOARD=wl_copy");
 		}
 	});
 });

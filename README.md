@@ -83,7 +83,7 @@ Press `?` anywhere in the TUI for the full contextual shortcut legend. The table
 | `Esc` | Launch Config | Reset configurator |
 | `a` | Launch Config | Auto-fit GPU layers to VRAM |
 | `Ctrl+S` | Launch Config | Save current configuration as a Preset |
-| `y` | Launch Config | Yank command line to system clipboard (via OSC 52 / xclip / xsel) |
+| `y` | Launch Config | Yank command line to system clipboard (via OSC 52 / xclip / xsel). Set `LLAMA_DECK_CLIPBOARD` to a tool name (e.g. `xclip`) to skip the unconfirmed OSC 52 write |
 | `Ctrl+Y` | Launch Config | Confirm host-exposing launch |
 | `i` | Launch Config / Presets | Import shell command |
 | `t` | Server Telemetry | Toggle telemetry on / off |
