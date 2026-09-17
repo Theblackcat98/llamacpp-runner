@@ -4,7 +4,12 @@
  */
 
 import type { BuiltCommand } from "../flags/builder";
-import { formatCommand, systemdEnvironment } from "./quote";
+import {
+	formatCommand,
+	isValidEnvKey,
+	sanitizeTextLine,
+	systemdEnvironment,
+} from "./quote";
 
 export interface SystemdUnitInput {
 	built: BuiltCommand;
@@ -15,13 +20,16 @@ export interface SystemdUnitInput {
 export function buildSystemdUnit(input: SystemdUnitInput): string {
 	const lines: string[] = [
 		"[Unit]",
-		`Description=${input.description}`,
+		// #62: the description is untrusted — one line, no controls.
+		`Description=${sanitizeTextLine(input.description)}`,
 		"",
 		"[Service]",
 		"Type=simple",
 		"Restart=on-failure",
 	];
 	for (const [key, value] of Object.entries(input.envVars)) {
+		// #62: invalid identifiers cannot be exported safely — skipped.
+		if (!isValidEnvKey(key)) continue;
 		lines.push(systemdEnvironment(key, value));
 	}
 	lines.push(

@@ -64,3 +64,22 @@ export function formatCommand(
 export function formatEnvValue(value: string, format: CommandFormat): string {
 	return format === "systemd" ? systemdQuote(value) : shellQuote(value);
 }
+
+/**
+ * #62: names/descriptions are interpolated into generated scripts and unit
+ * files — control characters (newlines, ESC, NUL) would inject arbitrary
+ * lines, so they are flattened to spaces. Single-line by construction.
+ */
+export function sanitizeTextLine(text: string): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the entire purpose (#62)
+	return text.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+}
+
+/**
+ * #62: env keys must be valid POSIX identifiers. Neither sh nor systemd can
+ * accept anything else safely, so exporters skip invalid keys entirely —
+ * a hostile imported key can never reach generated output.
+ */
+export function isValidEnvKey(key: string): boolean {
+	return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key);
+}
