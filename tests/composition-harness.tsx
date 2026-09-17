@@ -11,7 +11,7 @@
  * composition root by hand.
  */
 
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { testRender } from "@opentui/react/test-utils";
 import { act } from "react";
@@ -50,6 +50,8 @@ export interface BootOptions {
 	fixtureNames?: string[];
 	/** Persist modelsDir in config (false → boots into the WELCOME panel). */
 	configureDir?: boolean;
+	/** #59: seed a truncated presets.json to exercise the corrupt path. */
+	corruptPresets?: boolean;
 	width?: number;
 	height?: number;
 	configuredBinary?: string;
@@ -75,6 +77,10 @@ export async function bootCompositionApp(
 		writeFixture(modelsDir, name, sampleLlamaQ4Km().buffer);
 	}
 	saveConfig(configDir, configureDir ? { modelsDir } : {});
+	if (opts.corruptPresets) {
+		// Simulate an interrupted write: valid filename, truncated JSON.
+		writeFileSync(presetsFilePath(configDir), '{"version":2,"presets":[{"');
+	}
 	if (opts.configuredBinary !== undefined) {
 		savePresets(presetsFilePath(configDir), {
 			version: 2,

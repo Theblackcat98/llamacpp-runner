@@ -6,6 +6,7 @@
  * the harness exactly like the golden tests do. No hand-fed props.
  */
 import { describe, expect, it } from "bun:test";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
 import { loadPresets, presetsFilePath } from "../src/core/store/presets";
@@ -120,6 +121,32 @@ describe("composition root E2E (Issue #31)", () => {
 			const saved = store.data?.presets.find((p) => p.name.includes("beta"));
 			expect(saved?.model_path).toBe(join(app.modelsDir, "beta.gguf"));
 			expect(saved?.name.startsWith("beta.gguf")).toBe(true);
+		} finally {
+			await app.dispose();
+		}
+	});
+
+	it("boot with a corrupt presets.json warns loudly and preserves the original (#59)", async () => {
+		const app = await bootCompositionApp({ corruptPresets: true });
+		try {
+			// The [ERR] line is visible in the console drawer on first run…
+			const frame = await waitForFrame(
+				app,
+				(f) => f.includes("presets.json was unreadable"),
+				3000,
+			);
+			expect(frame).toContain(".corrupt-");
+
+			// …and the original file was preserved before any write.
+			const configDir = join(app.scratch, "config", "llama-deck");
+			const backup = join(configDir, "presets.json.corrupt-");
+			const found = readdirSync(configDir).find((f) =>
+				f.startsWith("presets.json.corrupt-"),
+			);
+			expect(found).toBeDefined();
+			expect(readFileSync(join(configDir, found ?? backup), "utf8")).toContain(
+				'{"version":2,"presets":[{"',
+			);
 		} finally {
 			await app.dispose();
 		}

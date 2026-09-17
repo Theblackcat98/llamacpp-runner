@@ -73,11 +73,24 @@ function findPreset(
 	return found;
 }
 
+/**
+ * #59: the loader preserves a corrupt presets.json as .corrupt-<ts>; the
+ * CLI surfaces that loudly on stderr instead of silently showing nothing.
+ */
+function loadPresetsWarned(): ReturnType<typeof loadPresets> {
+	const store = loadPresets(presetsFilePath(resolvePaths().configDir));
+	if (store.corruptBackup) {
+		console.error(
+			`[ERR] presets.json was unreadable — original preserved at ${store.corruptBackup}`,
+		);
+	}
+	return store;
+}
+
 function findPresetById(
 	id: string,
 ): import("./core/store/presets").Preset | null {
-	const paths = resolvePaths();
-	const store = loadPresets(presetsFilePath(paths.configDir));
+	const store = loadPresetsWarned();
 	const file = store.data as PresetFile | null;
 	return file?.presets.find((p) => p.id === id || p.name === id) ?? null;
 }
@@ -136,7 +149,7 @@ async function main(): Promise<void> {
 	if (command === "presets") {
 		const { rest, json } = jsonFlag(args);
 		void rest;
-		const store = loadPresets(presetsFilePath(paths.configDir));
+		const store = loadPresetsWarned();
 		const file = store.data as PresetFile | null;
 		if (json) {
 			console.log(JSON.stringify(file?.presets ?? []));
@@ -247,7 +260,7 @@ async function main(): Promise<void> {
 				console.error(`Import failed: ${parsed.error}`);
 				process.exit(1);
 			}
-			const store = loadPresets(presetsFilePath(paths.configDir));
+			const store = loadPresetsWarned();
 			const current = store.data ?? emptyPresetFile();
 			const { doc: merged, imported } = importPresetsInto(current, parsed.doc);
 			savePresets(presetsFilePath(paths.configDir), merged);
@@ -288,7 +301,7 @@ async function main(): Promise<void> {
 		};
 
 		if (shouldSave) {
-			const store = loadPresets(presetsFilePath(paths.configDir));
+			const store = loadPresetsWarned();
 			const file = (store.data as PresetFile | null) ?? {
 				version: 2,
 				presets: [],
@@ -454,7 +467,7 @@ async function main(): Promise<void> {
 
 /** Configured binary_path from the presets file (file-level, Phase 8). */
 function configuredBinary(): string | undefined {
-	const store = loadPresets(presetsFilePath(resolvePaths().configDir));
+	const store = loadPresetsWarned();
 	return (store.data as PresetFile | null)?.binary_path ?? undefined;
 }
 
