@@ -7,6 +7,8 @@
  */
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
+import { act } from "react";
+import { loadPresets, presetsFilePath } from "../src/core/store/presets";
 import { bootCompositionApp, waitForFrame } from "./composition-harness";
 
 describe("composition root E2E (Issue #31)", () => {
@@ -81,6 +83,43 @@ describe("composition root E2E (Issue #31)", () => {
 
 			expect(app.planSource.current?.()?.args[1]).toBe(before);
 			expect(app.frame()).toContain("alpha.gguf");
+		} finally {
+			await app.dispose();
+		}
+	});
+
+	it("Ctrl+S save → Presets tab lists the preset immediately (#58)", async () => {
+		const app = await bootCompositionApp({});
+		try {
+			await waitForFrame(app, (f) => f.includes("alpha.gguf"));
+
+			// Move the selection to beta, then save from the Configurator:
+			// the preset must capture beta (config.model), not the stale
+			// Explorer cursor, and must be visible on tab 4 at once.
+			await app.press(["\x1b[B"]);
+			expect(app.planSource.current?.()?.args[1]).toBe(
+				join(app.modelsDir, "beta.gguf"),
+			);
+			await app.press(["2"]);
+			await act(async () => {
+				app.setup.mockInput.pressKey("s", { ctrl: true });
+				await app.setup.flush();
+			});
+			await waitForFrame(app, (f) => f.includes("preset saved"));
+
+			// Switch to the Presets tab — no restart allowed here. The tight
+			// timeout keeps the red state loud inside bun's test deadline.
+			await app.press(["4"]);
+			const frame = await waitForFrame(app, (f) => f.includes("(saved"), 3000);
+			expect(frame).toContain("beta.gguf");
+
+			// Disk round-trip: the persisted store carries the same preset.
+			const store = loadPresets(
+				presetsFilePath(join(app.scratch, "config", "llama-deck")),
+			);
+			const saved = store.data?.presets.find((p) => p.name.includes("beta"));
+			expect(saved?.model_path).toBe(join(app.modelsDir, "beta.gguf"));
+			expect(saved?.name.startsWith("beta.gguf")).toBe(true);
 		} finally {
 			await app.dispose();
 		}
