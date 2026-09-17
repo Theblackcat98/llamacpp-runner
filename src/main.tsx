@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
@@ -410,10 +411,6 @@ export function SessionApp({
 		};
 	}, [bus, procState, session, telemetryEnabled]);
 
-	function selectedEntry(): ModelEntry | undefined {
-		return entries[Math.min(selectedIndex, Math.max(entries.length - 1, 0))];
-	}
-
 	function selectModelFromEntries(list: ModelEntry[], index: number): void {
 		setSelectedIndex(index);
 		const entry = list[index];
@@ -555,25 +552,33 @@ export function SessionApp({
 	}
 
 	function handleSavePreset(): void {
-		const entry = selectedEntry();
-		if (!entry || !config.model) return;
+		if (!config.model) return;
 		const store = loadPresets(presetsFilePath(paths.configDir));
 		const file = store.data;
 		if (!file) return;
 		const id = `preset-${Date.now()}`;
-		file.presets.push({
-			id,
-			name: `${entry.name} (saved ${new Date().toISOString().slice(11, 19)})`,
-			model_path: config.model.path,
-			flags: config.values,
-			env_vars: {},
-			created_at: new Date().toISOString(),
-			last_used: null,
-		});
-		file.lastSession = { preset_id: id, tab: 1 };
-		savePresets(presetsFilePath(paths.configDir), file, {
-			migratedFrom: store.migratedFrom === 2 ? undefined : store.migratedFrom,
-		});
+		// #58: the preset identity derives from the CONFIGURED model — the
+		// Explorer cursor is a navigation aid, not the save source.
+		const name = basename(config.model.path);
+		const next: PresetFile = {
+			...file,
+			presets: [
+				...file.presets,
+				{
+					id,
+					name: `${name} (saved ${new Date().toISOString().slice(11, 19)})`,
+					model_path: config.model.path,
+					flags: config.values,
+					env_vars: {},
+					created_at: new Date().toISOString(),
+					last_used: null,
+				},
+			],
+			lastSession: { preset_id: id, tab: 1 },
+		};
+		// #58: state + disk in ONE path — saving never diverges from what
+		// the Presets tab renders (the old path skipped setPresetsFile).
+		persistPresets(next);
 		bus.emitState("LOG_LINE", {
 			stream: "out",
 			text: `[SYS] preset saved: ${id}`,
