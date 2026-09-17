@@ -6,7 +6,7 @@
  * the harness exactly like the golden tests do. No hand-fed props.
  */
 import { describe, expect, it } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
 import { loadPresets, presetsFilePath } from "../src/core/store/presets";
@@ -151,4 +151,37 @@ describe("composition root E2E (Issue #31)", () => {
 			await app.dispose();
 		}
 	});
+});
+
+describe("rescan keeps the configured model (#60B)", () => {
+	it("deleting the configured model marks it stale — no auto-swap", async () => {
+		const app = await bootCompositionApp({});
+		try {
+			await waitForFrame(
+				app,
+				(f) => f.includes("alpha.gguf") && f.includes("beta.gguf"),
+			);
+
+			// Configure beta, then delete the file out from under it.
+			await app.press(["\x1b[B"]);
+			expect(app.planSource.current?.()?.args[1]).toBe(
+				join(app.modelsDir, "beta.gguf"),
+			);
+			// Watch the Configurator (banner + kept model live there).
+			await app.press(["2"]);
+			rmSync(join(app.modelsDir, "beta.gguf"));
+
+			// The watcher rescans; the configurator must keep beta, mark it
+			// stale, and refuse launch — never jump to alpha.
+			const frame = await waitForFrame(
+				app,
+				(f) => f.includes("model file missing"),
+				8000,
+			);
+			expect(frame).toContain("beta.gguf");
+			expect(app.planSource.current?.()).toBeNull();
+		} finally {
+			await app.dispose();
+		}
+	}, 15000);
 });

@@ -335,7 +335,18 @@ export function Configurator({
 						{state.ctxWarning
 							? text(`ctx warning: ${state.ctxWarning}`, theme.error)
 							: text("", theme.muted)}
-						{text("", theme.muted)}
+						{/* #60: honest state surfacing for unscannable models. */}
+						{state.model?.stale
+							? text(
+									"model file missing — relink in Explorer / rescan",
+									theme.error,
+								)
+							: state.model?.metadataUnknown
+								? text(
+										"metadata unknown — select in Explorer / rescan",
+										theme.warn,
+									)
+								: text("", theme.muted)}
 						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
 						{text("[Tab] focus console/screen  [y] Yank cmd", theme.muted)}

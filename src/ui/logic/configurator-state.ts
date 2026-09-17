@@ -30,6 +30,10 @@ export interface ConfiguratorModel {
 	keyLength?: number;
 	/** Split group missing siblings (#18): launch must be refused. */
 	incomplete?: boolean;
+	/** #60: path known but no scanned metadata — never estimate from it. */
+	metadataUnknown?: boolean;
+	/** #60: the configured file vanished from the library — relink prompt. */
+	stale?: boolean;
 }
 
 export interface ConfiguratorState {
@@ -143,21 +147,30 @@ export function resetConfigurator(state: ConfiguratorState): ConfiguratorState {
  * selected model (or the preset's model path) and replaces values wholesale;
  * nudges nglMax to keep the slider in range. Returns a fresh state so
  * restart-required/ctx warnings reset on load.
+ *
+ * #60: a preset model that is NOT the live model and NOT in `library`
+ * yields a metadata-less placeholder (`metadataUnknown`) — the previous
+ * model's numbers are never copied onto the new path, and an absent ngl
+ * is never silently filled with 0.
  */
 export function loadPresetInto(
 	state: ConfiguratorState,
 	values: Record<string, unknown>,
 	modelPath?: string,
+	library?: ConfiguratorModel[],
 ): ConfiguratorState {
-	const model =
-		modelPath !== undefined
-			? state.model && state.model.path === modelPath
-				? state.model
-				: { ...(state.model ?? { fileSize: 0 }), path: modelPath }
-			: (state.model ?? null);
+	let model: ConfiguratorModel | null = state.model ?? null;
+	if (modelPath !== undefined && state.model?.path !== modelPath) {
+		const known = library?.find((entry) => entry.path === modelPath);
+		model = known
+			? { ...known }
+			: { path: modelPath, fileSize: 0, metadataUnknown: true };
+	}
 	const nglMax = model?.blockCount === undefined ? 0 : model.blockCount + 1;
 	const merged = { ...effectiveValues(state), ...values };
-	if (typeof merged.n_gpu_layers !== "number") {
+	// #60: with unknown blockCount there is no honest ngl default — leave
+	// the preset's explicit value (or nothing) instead of writing 0.
+	if (typeof merged.n_gpu_layers !== "number" && nglMax > 0) {
 		merged.n_gpu_layers = nglMax;
 	}
 	return {
@@ -167,6 +180,29 @@ export function loadPresetInto(
 		launched: false,
 		restartRequired: false,
 	};
+}
+
+/**
+ * #60: library view of scanned entries for preset loads — real metadata
+ * only, so loadPresetInto can match the preset's model_path against what
+ * the scanner actually saw.
+ */
+export function libraryFromEntries(
+	entries: import("../../core/models/types").ModelEntry[],
+): ConfiguratorModel[] {
+	return entries
+		.filter((entry) => !entry.error)
+		.map((entry) => ({
+			path: entry.path,
+			blockCount: entry.blockCount,
+			contextLength: entry.contextLength,
+			fileSize: entry.totalBytes,
+			headCount: entry.headCount,
+			headCountKv: entry.headCountKv,
+			embeddingLength: entry.embeddingLength,
+			keyLength: entry.keyLength,
+			incomplete: entry.incomplete,
+		}));
 }
 
 /** Effective builder inputs: user values overlaying registry defaults. */
@@ -264,7 +300,11 @@ export function vramRangeBytes(
 /** VRAM estimate text wired to ngl/ctx/KV precision (P4-FR-07). */
 export function vramRangeText(state: ConfiguratorState): string | null {
 	if (state.model && (!state.model.fileSize || state.model.fileSize <= 0)) {
-		return "model missing — estimate unavailable";
+		// #60: distinguish "path known, metadata never scanned" from a file
+		// that is plainly missing.
+		return state.model.metadataUnknown
+			? "metadata unknown — estimate unavailable"
+			: "model missing — estimate unavailable";
 	}
 	const range = vramRangeBytes(state);
 	if (!range) return null;
