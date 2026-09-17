@@ -374,7 +374,11 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 	});
 
 	it("x/k/q confirm flows arm first, then execute while a server runs", async () => {
-		const h = await renderApp({ serverRunning: true });
+		const h = await renderApp({ serverRunning: true, foundOrphanPid: 4242 });
+		// #55: the Explorer table owns k for navigation — the orphan-kill
+		// flow is exercised on the Configurator, where no table claims k.
+		await h.press("2");
+		expect(h.frame()).toContain("Launch config");
 		await h.press("x");
 		expect(h.frame()).toContain("press x again to confirm");
 		expect(h.spies.kill).toBe(0);
@@ -392,5 +396,13 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 		expect(h.spies.quit).toBe(0);
 		await h.press("q");
 		expect(h.spies.quit).toBe(1);
+	});
+
+	it("k in the focused Explorer table never arms the orphan kill (#55)", async () => {
+		const h = await renderApp({ serverRunning: true, foundOrphanPid: 4242 });
+		await h.press("k");
+		await h.press("k");
+		expect(h.spies.killOrphan).toBe(0);
+		expect(h.frame()).not.toContain("press k again");
 	});
 });

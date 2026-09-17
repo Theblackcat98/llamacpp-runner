@@ -62,6 +62,7 @@ describe("kill-key routing regression (P0, §4, P5-FR-11)", () => {
 			<App
 				theme={DEFAULT_THEME}
 				serverRunning={true}
+				foundOrphanPid={4242}
 				onKill={() => {
 					kills.push("managed");
 				}}
@@ -84,6 +85,38 @@ describe("kill-key routing regression (P0, §4, P5-FR-11)", () => {
 		// Second k: executes orphan kill only
 		await press(setup, ["k"]);
 		expect(kills).toEqual(["orphan"]);
+	});
+
+	it("double k in a focused table never arms or kills the orphan (#55)", async () => {
+		const kills: string[] = [];
+		const setup = await testRender(
+			<App
+				theme={DEFAULT_THEME}
+				foundOrphanPid={4242}
+				explorerControl={{
+					entries: [],
+					scanning: false,
+					modelsDir: "~/models",
+					onRescan: () => {},
+				}}
+				onKill={() => {
+					kills.push("managed");
+				}}
+				onKillOrphan={() => {
+					kills.push("orphan");
+				}}
+			/>,
+			{ width: 100, height: 30 },
+		);
+		setups.push(setup);
+		await act(async () => {
+			await setup.flush();
+		});
+
+		// Vim-style navigation: two k presses inside the 2 s window.
+		await press(setup, ["k", "k"]);
+		expect(kills).toEqual([]);
+		expect(setup.captureCharFrame()).not.toContain("press k again");
 	});
 
 	it("Ctrl+k is guarded and does not arm orphan kill", async () => {

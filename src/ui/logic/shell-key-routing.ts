@@ -33,6 +33,10 @@ export interface ShellKeyContext {
 	hasSavePreset: boolean;
 	hasYank: boolean;
 	hasConfirmHost: boolean;
+	/** #55: pid of the discovered orphaned server, null when none exists. */
+	foundOrphanPid: number | null;
+	/** #55: a focused list table claims k for row navigation. */
+	tableFocused: boolean;
 }
 
 export type ShellAction =
@@ -126,6 +130,12 @@ export function routeShellKey(
 		);
 	}
 	if (key.name === "k" && !key.ctrl) {
+		// #55 one-owner rule: a focused list table owns k for row
+		// navigation, and with no orphan discovered there is nothing to
+		// arm — the notice must never fire from plain table scrolling.
+		if (ctx.tableFocused || ctx.foundOrphanPid === null) {
+			return [];
+		}
 		if (ctx.killArmedAt !== null && ctx.nowMs - ctx.killArmedAt <= 2000) {
 			return [
 				{ type: "setNotice", notice: null },

@@ -680,6 +680,7 @@ export function SessionApp({
 				},
 			}}
 			serverRunning={procState !== "IDLE"}
+			foundOrphanPid={session.foundOrphanPid ?? null}
 		/>
 	);
 }
