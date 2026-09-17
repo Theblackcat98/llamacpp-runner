@@ -27,12 +27,6 @@ export interface TelemetryServiceOptions {
 	health: HealthPoller;
 	metrics: MetricsPoller;
 	slots: SlotsPoller;
-	/**
-	 * #12: fired exactly once per stop() with the peak mem_used_bytes seen
-	 * during the run (null when no metrics were observed) — the calibration
-	 * hook for estimator drift tracking.
-	 */
-	onRunEnd?: (peakMemUsedBytes: number | null) => void;
 }
 
 export function createTelemetryService(
@@ -48,17 +42,9 @@ export function createTelemetryService(
 		slots: [],
 	};
 	let started = false;
-	let peakMemUsedBytes: number | null = null;
 
 	const publish = (patch: Partial<TelemetrySnapshot>) => {
 		current = { ...current, ...patch };
-		if (patch.metrics) {
-			const seen = patch.metrics.memUsedBytes;
-			if (typeof seen === "number" && seen > 0) {
-				peakMemUsedBytes =
-					peakMemUsedBytes === null ? seen : Math.max(peakMemUsedBytes, seen);
-			}
-		}
 		for (const listener of [...listeners]) {
 			try {
 				listener(current);
@@ -110,8 +96,6 @@ export function createTelemetryService(
 			detach?.();
 			detach = null;
 			current = { phase: "IDLE", health: null, metrics: null, slots: [] };
-			opts.onRunEnd?.(peakMemUsedBytes);
-			peakMemUsedBytes = null;
 		},
 		onSnapshot(cb) {
 			listeners.add(cb);
