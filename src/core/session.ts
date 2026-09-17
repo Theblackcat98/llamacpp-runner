@@ -197,8 +197,13 @@ export function createSession(opts: SessionOptions): Session {
 		void handleLaunch(intent);
 	});
 	bus.onIntent("KILL", () => {
-		clearPidFile(paths.pidFile);
-		void active?.kill();
+		// #61: the pidfile is the §6.3 recovery record — clear it only
+		// AFTER the kill settles, never before signaling. A stalled
+		// teardown keeps its recovery record.
+		void (async () => {
+			await active?.kill();
+			clearPidFile(paths.pidFile);
+		})();
 	});
 	bus.onIntent("QUIT", () => {
 		void shutdown();
