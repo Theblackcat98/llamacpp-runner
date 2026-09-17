@@ -207,11 +207,17 @@ export function createSession(opts: SessionOptions): Session {
 	async function boot(): Promise<void> {
 		ensureDir(paths.stateDir);
 		ensureDir(paths.configDir);
+		// #57: only judge a binary boot can actually see. The TUI wires
+		// resolveLaunch after mount, so at boot time no command exists —
+		// warning then trains users to ignore SYS warnings. The SessionApp
+		// probeBinaryAvailability effect is the single source of truth.
 		const bin = opts.resolveLaunch?.()?.command ?? opts.command;
-		if (bin && (bin.includes("/") || Bun.which(bin))) {
-			sysLog(`binary ok: ${bin}`);
-		} else {
-			sysLog(`warning: ${bin ?? "llama-server"} not found on PATH`);
+		if (bin) {
+			if (bin.includes("/") || Bun.which(bin)) {
+				sysLog(`binary ok: ${bin}`);
+			} else {
+				sysLog(`warning: ${bin} not found on PATH`);
+			}
 		}
 		const inspection = await inspectOrphan(paths.pidFile);
 		if (inspection.status === "stale") {
