@@ -197,3 +197,41 @@ describe("boot binary reporting (#57)", () => {
 		}
 	}, 15000);
 });
+
+describe("preset last_used tracking (#64)", () => {
+	it("launching a loaded preset stamps last_used — the column stops lying", async () => {
+		const app = await bootCompositionApp({});
+		try {
+			await waitForFrame(app, (f) => f.includes("alpha.gguf"));
+
+			// Save a preset from the Configurator (#58 flow).
+			await app.press(["2"]);
+			await act(async () => {
+				app.setup.mockInput.pressKey("s", { ctrl: true });
+				await app.setup.flush();
+			});
+			await waitForFrame(app, (f) => f.includes("preset saved"));
+
+			// Load it back ("l" = Load+go), then launch with Enter. The
+			// binary is absent in the test env — the launch fails fast, but
+			// the ATTEMPT is what stamps last_used.
+			await app.press(["4"]);
+			await waitForFrame(app, (f) => f.includes("(saved"));
+			await app.press(["l"]);
+			expect(app.frame()).toContain("Launch config");
+			await app.press(["\r"]);
+
+			// Back to the Presets tab: the row shows a real timestamp.
+			await app.press(["4"]);
+			const frame = await waitForFrame(
+				app,
+				(f) => f.includes("(saved") && !f.includes("never"),
+				5000,
+			);
+			expect(frame).toContain("(saved");
+			expect(frame).not.toContain("never");
+		} finally {
+			await app.dispose();
+		}
+	}, 20000);
+});

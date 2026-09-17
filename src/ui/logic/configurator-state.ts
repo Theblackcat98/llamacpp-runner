@@ -47,6 +47,8 @@ export interface ConfiguratorState {
 	restartRequired: boolean;
 	/** P4-FR-08: set when ctx exceeds the model's context_length. */
 	ctxWarning?: string;
+	/** #64: preset this config came from — stamps last_used on launch. */
+	sourcePresetId?: string;
 }
 
 /** Flags whose edits need a server restart (§3.4). */
