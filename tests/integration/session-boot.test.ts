@@ -24,6 +24,57 @@ afterAll(() => {
 	rmSync(TMP, { recursive: true, force: true });
 });
 
+describe("boot binary log decision (#57)", () => {
+	it("logs nothing about the binary when none is resolvable (TUI boot)", async () => {
+		const bus = createBus<IntentMap, StateMap>();
+		const lines: string[] = [];
+		bus.onState("LOG_LINE", (e) => lines.push(e.text));
+		const session = createSession({
+			paths: tmpPaths("bin-silent"),
+			bus,
+			resolveLaunch: () => null,
+		});
+		await session.boot();
+		// The SessionApp probe effect owns availability reporting — a boot
+		// that cannot know the binary must stay silent, not warn falsely.
+		expect(lines.some((l) => l.includes("not found on PATH"))).toBe(false);
+		expect(lines.some((l) => l.includes("binary ok"))).toBe(false);
+		await session.shutdown();
+	});
+
+	it("still warns when a CONFIGURED command is genuinely missing", async () => {
+		const bus = createBus<IntentMap, StateMap>();
+		const lines: string[] = [];
+		bus.onState("LOG_LINE", (e) => lines.push(e.text));
+		const session = createSession({
+			paths: tmpPaths("bin-warn"),
+			bus,
+			command: "definitely-not-a-real-binary-xyz",
+		});
+		await session.boot();
+		expect(
+			lines.some((l) =>
+				l.includes("definitely-not-a-real-binary-xyz not found on PATH"),
+			),
+		).toBe(true);
+		await session.shutdown();
+	});
+
+	it("logs binary ok when the configured command resolves", async () => {
+		const bus = createBus<IntentMap, StateMap>();
+		const lines: string[] = [];
+		bus.onState("LOG_LINE", (e) => lines.push(e.text));
+		const session = createSession({
+			paths: tmpPaths("bin-ok"),
+			bus,
+			command: "bash",
+		});
+		await session.boot();
+		expect(lines.some((l) => l.startsWith("[SYS] binary ok: bash"))).toBe(true);
+		await session.shutdown();
+	});
+});
+
 describe("session boot without a static launch (main.tsx resolveLaunch path)", () => {
 	it("supervisor is null — not throwing — before the first launch", async () => {
 		const bus = createBus<IntentMap, StateMap>();

@@ -185,3 +185,15 @@ describe("rescan keeps the configured model (#60B)", () => {
 		}
 	}, 15000);
 });
+
+describe("boot binary reporting (#57)", () => {
+	it("never logs the false 'not found on PATH' warning at TUI boot", async () => {
+		const app = await bootCompositionApp({});
+		try {
+			const frame = await waitForFrame(app, (f) => f.includes("alpha.gguf"));
+			expect(frame).not.toContain("[SYS] warning:");
+		} finally {
+			await app.dispose();
+		}
+	}, 15000);
+});
