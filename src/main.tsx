@@ -51,6 +51,7 @@ import {
 import {
 	clonePreset,
 	deletePreset,
+	markLastUsed,
 	relink,
 	setDefault,
 } from "./ui/logic/presets-state";
@@ -165,13 +166,15 @@ export function SessionApp({
 		// lastSession restores the last preset into the configurator on boot
 		// (P4-FR-19); applied in the initializer so no post-mount effect is
 		// needed to converge on the restored state.
-		return initialState.preset
-			? loadPresetInto(
-					base,
-					initialState.preset.flags ?? {},
-					initialState.preset.model_path,
-				)
-			: base;
+		if (!initialState.preset) return base;
+		const restored = loadPresetInto(
+			base,
+			initialState.preset.flags ?? {},
+			initialState.preset.model_path,
+		);
+		// #64: a restored preset stays attributable for last_used stamps.
+		restored.sourcePresetId = initialState.preset.id;
+		return restored;
 	});
 	const configRef = useRef(config);
 	configRef.current = config;
@@ -526,6 +529,17 @@ export function SessionApp({
 			return;
 		}
 		if (launchSplitDiagnostic()) return;
+		// #64: a launch from a preset stamps its last_used — the Presets
+		// column reflects reality, not a permanent "never".
+		if (config.sourcePresetId) {
+			persistPresets(
+				markLastUsed(
+					presetsFile,
+					config.sourcePresetId,
+					new Date().toISOString(),
+				),
+			);
+		}
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
 	}
 
@@ -547,6 +561,7 @@ export function SessionApp({
 	}
 
 	function handleLoadPreset(preset: {
+		id: string;
 		model_path: string;
 		flags: Record<string, unknown>;
 	}): void {
@@ -561,6 +576,8 @@ export function SessionApp({
 				libraryFromEntries(entries),
 			),
 		);
+		// #64: remember the source so launching stamps its last_used.
+		next.sourcePresetId = preset.id;
 		// #18: a preset pointing at an incomplete split group carries the
 		// validation state into the Configurator — launch stays blocked.
 		if (
