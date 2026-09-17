@@ -47,6 +47,7 @@ import {
 	type PaletteState as CmdPaletteState,
 	createPaletteState,
 } from "./logic/palette-state";
+import { headerStatus } from "./logic/proc-status";
 import { createQuitState, type QuitState } from "./logic/quit-state";
 import { routeShellKey } from "./logic/shell-key-routing";
 import { cycleFocus, type KeyRef, TAB_COUNT } from "./logic/shell-state";
@@ -138,6 +139,8 @@ export interface AppProps {
 	paletteControl?: PaletteControl;
 	/** Live-server signal for quit/kill confirmation (P5-FR-11). */
 	serverRunning?: boolean;
+	/** #56: the launch FAILED — header renders an error state, never running. */
+	serverFailed?: boolean;
 	/** #55: pid of the discovered orphaned llama-server, null when none. */
 	foundOrphanPid?: number | null;
 	/** Tab index restored from lastSession on boot (F9); defaults to 0. */
@@ -160,6 +163,7 @@ export function App({
 	telemetryControl,
 	paletteControl,
 	serverRunning = false,
+	serverFailed = false,
 	foundOrphanPid = null,
 	initialTab = 0,
 }: AppProps) {
@@ -364,6 +368,8 @@ export function App({
 		explorerSelected && !explorerSelected.error
 			? { path: explorerSelected.path }
 			: undefined;
+	// #56: FAILED renders an error-toned status, never "server running".
+	const status = headerStatus(serverRunning, serverFailed);
 
 	return (
 		<box
@@ -381,9 +387,15 @@ export function App({
 					<span fg={theme.accent}>{"◆ "}</span>
 					<span fg={theme.fgBright}>{"llama-deck "}</span>
 					<span fg={theme.muted}>{`v${APP_VERSION}   `}</span>
-					<span fg={serverRunning ? theme.success : theme.muted}>
-						{`● ${procStateLabel(serverRunning)}`}
-					</span>
+					<span
+						fg={
+							status.tone === "error"
+								? theme.error
+								: status.tone === "success"
+									? theme.success
+									: theme.muted
+						}
+					>{`● ${status.label}`}</span>
 				</text>
 			</box>
 			<box style={{ flexDirection: "row", height: 1 }}>
@@ -536,9 +548,4 @@ export function App({
 			/>
 		</box>
 	);
-}
-
-/** Phase 13: live process state shown in the shell header. */
-function procStateLabel(running: boolean): string {
-	return running ? "server running" : "idle";
 }

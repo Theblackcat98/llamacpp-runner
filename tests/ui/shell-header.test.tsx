@@ -43,4 +43,21 @@ describe("shell header de-chroming (#43)", () => {
 		await teardownWithAct(setup);
 		expect(frame.split("\n")[0]).toContain("server running");
 	});
+
+	it("renders FAILED as an error state, not 'server running' (#56)", async () => {
+		const setup = await renderWithAct(
+			<App
+				theme={TOKYO_NIGHT}
+				explorerControl={explorerControl}
+				serverFailed
+			/>,
+			{ width: 120, height: 40 },
+		);
+		const frame = setup.captureCharFrame();
+		await teardownWithAct(setup);
+		const header = frame.split("\n")[0];
+		expect(header).toContain("server failed");
+		expect(header).not.toContain("server running");
+		expect(header).not.toContain("idle");
+	});
 });
