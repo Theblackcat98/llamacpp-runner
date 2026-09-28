@@ -20,6 +20,20 @@
 
 ---
 
+## Screenshots
+
+These captures show the app's clean first-run state. Choose a directory containing `.gguf` files in Model Explorer before configuring a launch.
+
+![llama-deck Model Explorer first-run screen with the prompt to set a models directory](docs/screenshots/model-explorer.png)
+
+*Model Explorer before a models directory has been configured.*
+
+![llama-deck Launch Config screen showing runtime controls and the prompt to select a model](docs/screenshots/launch-config.png)
+
+*Launch Config with no model selected yet.*
+
+---
+
 ## Prerequisites
 
 - **Runtime**: [Bun](https://bun.sh) 1.3.2 or newer (pinned via the `packageManager` field in `package.json`)
