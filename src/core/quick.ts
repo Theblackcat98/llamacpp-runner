@@ -12,7 +12,6 @@ import { estimateVram, type VramEstimate } from "./estimate/vram";
 import { buildCommand } from "./flags/builder";
 import type { FlagAvailability } from "./flags/help-parser";
 import { REGISTRY } from "./flags/registry";
-import { probeBinaryAvailability } from "./flags/validate";
 import { extractModelInfo, parseGgufFile } from "./gguf/parser";
 import type { ModelInfo } from "./gguf/types";
 import { getOrDetectHardware, type HardwareInfo } from "./hardware/detect";
@@ -34,15 +33,6 @@ export interface ResolveQuickOptions {
 	binaryPath?: string;
 	hardware?: HardwareInfo | null;
 	availability?: Record<string, FlagAvailability>;
-}
-
-export async function resolveBinaryAvailability(
-	binaryPath: string | undefined,
-): Promise<Record<string, FlagAvailability>> {
-	// Issue #19: probe AT the resolved path so PATH-found binaries are
-	// actually validated; unverified binaries yield {} (fail-open launch).
-	const probed = await probeBinaryAvailability({ configured: binaryPath });
-	return probed.availability;
 }
 
 export async function resolveQuick(

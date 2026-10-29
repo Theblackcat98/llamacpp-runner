@@ -19,7 +19,6 @@ import {
 	ESTIMATE_OVERHEAD_LOW,
 	ESTIMATE_UBATCH_BASELINE,
 } from "../constants";
-import type { ModelInfo } from "../gguf/types";
 
 export interface EstimateInput {
 	fileSize: number;
@@ -182,33 +181,6 @@ export function estimateVram(input: EstimateInput): VramEstimate {
 		kvBytesV: kv.v,
 		limitations,
 	};
-}
-
-export function estimateFromModelInfo(
-	info: ModelInfo,
-	fileSize: number,
-	gpuLayers: number,
-	contextLength: number,
-): VramEstimate | null {
-	if (
-		fileSize <= 0 ||
-		info.blockCount === undefined ||
-		info.headCount === undefined ||
-		info.headCountKv === undefined ||
-		info.embeddingLength === undefined
-	) {
-		return null;
-	}
-	return estimateVram({
-		fileSize,
-		blockCount: info.blockCount,
-		contextLength,
-		headCount: info.headCount,
-		headCountKv: info.headCountKv,
-		embeddingLength: info.embeddingLength,
-		keyLength: info.keyLength,
-		gpuLayers,
-	});
 }
 
 /** Binary-unit labels — the estimator works in GiB, say so (Phase 12). */
