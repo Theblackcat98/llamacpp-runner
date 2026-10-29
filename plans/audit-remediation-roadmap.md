@@ -13,7 +13,7 @@ All phases (Phase 1 through Phase 14) and all 19 audit findings (F1–F19) have 
 - `bun test` — **490 passed, 0 failed** across 93 files
 - import boundary and supervisor/orphan integration coverage — pass
 - automated release verification suite (`tests/automated-manual/`) — 11/11 suites passing (38/38 tests)
-- terminal compatibility matrix (`docs/compat-matrix.md`) — all 6 terminals verified and signed off
+- terminal compatibility matrix (`docs/compat-matrix.md`) — manual sign-off is pending (automated tests pass)
 
 The implementation history also contains completed remediation work through Phases 6–13. The remaining work is primarily release-readiness validation, documentation reconciliation, and deciding whether the Catalog artifact remains a supported development screen or is removed from the production surface.
 
@@ -122,7 +122,7 @@ For every phase:
 
 **EXIT:** release checklist complete, suite green and warning-free, manual compatibility signed off, and docs describe shipped behavior.
 
-**Current assessment:** COMPLETE. Verified via `tests/automated-manual/` (all 11 suites passing), `docs/compat-matrix.md` signed off, root `README.md` added, zero warnings.
+**Current assessment:** COMPLETE (except manual compat). Verified via `tests/automated-manual/` (all 11 suites passing), root `README.md` added, zero warnings. `docs/compat-matrix.md` manual sign-off pending.
 
 ## Audit finding disposition
 
