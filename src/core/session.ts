@@ -11,7 +11,7 @@ import {
 	Supervisor as SupervisorClass,
 	type SupervisorTimings,
 } from "./process/supervisor";
-import { clearPidFile, ensureDir, writePidFile } from "./store/pidfile";
+import { clearPidFile, writePidFile } from "./store/pidfile";
 import type { AppPaths } from "./store/state-paths";
 import { classifyFailure } from "./telemetry/failure-classifier";
 
@@ -210,8 +210,6 @@ export function createSession(opts: SessionOptions): Session {
 	});
 
 	async function boot(): Promise<void> {
-		ensureDir(paths.stateDir);
-		ensureDir(paths.configDir);
 		// #57: only judge a binary boot can actually see. The TUI wires
 		// resolveLaunch after mount, so at boot time no command exists —
 		// warning then trains users to ignore SYS warnings. The SessionApp

@@ -8,11 +8,6 @@ export interface PidRecord {
 	startedAt: string;
 }
 
-export function ensureDir(dir: string): void {
-	// atomicWrite creates the parent directory; retained for callers.
-	void dir;
-}
-
 export function writePidFile(file: string, record: PidRecord): void {
 	if (!isPidRecord(record)) throw new Error("invalid pid record");
 	atomicWrite(file, `${JSON.stringify(record, null, "\t")}\n`);

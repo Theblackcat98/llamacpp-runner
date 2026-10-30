@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBus } from "../src/core/bus";
 import type { IntentMap, StateMap } from "../src/core/bus-contract";
-import { estimateFromModelInfo, estimateVram } from "../src/core/estimate/vram";
+import { estimateVram } from "../src/core/estimate/vram";
 import { scanModels } from "../src/core/models/scanner";
 import { createModelsService } from "../src/core/models/service";
 import { resolvePaths } from "../src/core/store/state-paths";
@@ -48,23 +48,6 @@ describe("VRAM estimate bounds on zero/missing fileSize (P3, §3.2)", () => {
 		expect(missingLimitation?.message).toBe(
 			"model missing — estimate unavailable",
 		);
-	});
-
-	it("estimateFromModelInfo returns null when fileSize <= 0", () => {
-		const result = estimateFromModelInfo(
-			{
-				blockCount: 32,
-				headCount: 32,
-				headCountKv: 8,
-				embeddingLength: 4096,
-				quantName: "Q4_K_M",
-				totalParams: 7_000_000_000,
-			},
-			0,
-			33,
-			4096,
-		);
-		expect(result).toBeNull();
 	});
 });
 

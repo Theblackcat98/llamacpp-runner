@@ -21,9 +21,6 @@ export interface AvailabilityVerdict {
 	unsupportedCount: number;
 }
 
-export const UNAVAILABLE_HINT =
-	"not supported by this llama-server binary — remove it or upgrade the binary";
-
 /**
  * Decide which requested flags are safe to build. `availability` is the map
  * from `registryAvailability`. When omitted or when the map reports a flag as
