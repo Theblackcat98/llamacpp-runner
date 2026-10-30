@@ -20,7 +20,7 @@ Development rules for llama-deck. Spec of record: `plans/llamamanager.md` — `�
 2. Cross-layer traffic only via the typed event bus — intents down, state up.
 3. Persistence is JSON with atomic writes (temp + rename) and forward-only migrations (D1, §5). Config lives under `$XDG_CONFIG_HOME/llama-deck/`, runtime state under `$XDG_STATE_HOME/llama-deck/` — never mixed.
 4. Every process-spawn path terminates through the shared idempotent teardown (§6.2): SIGINT → wait ≤5 s → SIGKILL. Do not bypass it or register ad-hoc exit handlers.
-5. PTY default, pipe fallback (D3). Clipboard via OSC 52 first (D6). Braille/ASCII spinners only — no emoji glyphs (D8).
+5. Pipes transport (D3). Clipboard via OSC 52 first (D6). Braille/ASCII spinners only — no emoji glyphs (D8).
 6. Exactly one managed llama-server instance in v1 (D4).
 
 ## The loop

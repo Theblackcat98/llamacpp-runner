@@ -29,8 +29,8 @@ real terminal:
 3. Sparkline blocks (`▁▂▃▅▇`) measure 1 column width each.
 4. Gauge bar fills (`█░`) measure 1 column width each.
 5. OSC 52 sequence formatting and base64 round-trip, with fallback handling.
-6. 24-bit truecolor hex definitions exist for all 5 themes: **TokyoNight,
-   Catppuccin, Gruvbox, Cyberpunk, Matrix** (`src/ui/themes/index.ts`).
+6. 24-bit truecolor hex definitions exist for all 7 themes: **TokyoNight,
+   Catppuccin, Gruvbox, Cyberpunk, RosePine, Nord, Everforest** (`src/ui/themes/index.ts`).
 7. Degraded layout threshold is active below 100 columns or 30 rows.
 
 What automation **cannot** cover: real font rendering, actual clipboard

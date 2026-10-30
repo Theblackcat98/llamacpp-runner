@@ -8,7 +8,7 @@ v1 → v2 REVISION SUMMARY
  * Flag drift: centralized flag registry with version metadata and runtime --help validation.
  * Widget gap: Phase 2 (widget library) added; OpenTUI provides no batteries-included widgets.
  * Telemetry: --slots / --metrics launch prerequisites documented; Prometheus /metrics parsing specified.
- * Log drawer: \r (carriage-return) line assembler specified; PTY-default with pipe fallback.
+ * Log drawer: \r (carriage-return) line assembler specified; Pipes transport.
  * Storage: atomic writes, schema migrations, lastSession state; JSON confirmed over SQLite.
  * Added: error-state inventory, testing strategy, terminal compat matrix, decision log.
  * Roadmap v2.1: work items resized to branch granularity; §7 error states ship with
@@ -16,10 +16,8 @@ v1 → v2 REVISION SUMMARY
  * Consistency: all paths standardized to ~/.config/llama-deck/ and $XDG_STATE_HOME/llama-deck/.
 
  v2.2 RECONCILIATION (2026-09-16) — spec aligned with recorded decisions and shipped behavior:
-  * D3 (PTY) UNDER REVISION: the implementation transports logs over pipes; the Phase-1
-    "D3 pivot" (prd-phase-1 §11) was never recorded. Ratify pipes (#68 delivers the live
-    \r in-place progress) or schedule PTY work — tracked in #63. Body text below describes
-    the current pipe transport.
+  * D3: implementation transports logs over pipes; the Phase-1 "D3 pivot" (prd-phase-1 §11)
+    was ratified. PTY is dropped.
   * Orphan "adopt" retired in v1 (D11); kill with 2-press confirmation is the only recovery.
   * Components Catalog excluded from the product shell; retained as an internal regression
     artifact (D12).
@@ -112,8 +110,7 @@ v1 → v2 REVISION SUMMARY
    * Process Supervisor: Spawns llama-server over plain pipes (detached: false; shared
      process group). Assembles \r-overwritten lines before buffering into an in-memory
      ring buffer; ANSI SGR sequences in log lines are parsed and re-rendered thematically.
-     Enforces teardown guarantees (§6). Monitors health via GET /health. [D3 revision
-     pending — PTY was the v2 default but never shipped; see Decision Log and #63.]
+     Enforces teardown guarantees (§6). Monitors health via GET /health.
 
   * Telemetry Poller: Polls /health (2 s) and /slots (5 s); scrapes /metrics (Prometheus
     text format) for tokens/sec and KV cache utilization. Requires --slots and --metrics
@@ -214,7 +211,7 @@ v1 → v2 REVISION SUMMARY
      SGR preserved) → rendered viewport. Carriage-return progress lines must update IN
      PLACE, they do not append (llama.cpp model-loading progress otherwise becomes
      hundreds of lines). [The assembler collapses \r today; live in-place rendering of
-     the in-progress line is open work — #68. PTY transport: see the D3 revision.]
+     the in-progress line is open work — #68.]
   * Live autoscroll; pauses on user scroll-up; resumes via [G]/[End]. Autoscroll behavior
     is tested together with focus changes (known subtle interaction).
 
@@ -391,7 +388,7 @@ v1 → v2 REVISION SUMMARY
 6. Process Lifecycle & Safety
 
  6.1 Spawn
-   * Pipes (D3 revision pending — PTY never shipped; see the Decision Log and #63).
+   * Pipes (D3: pipes ratified).
      detached: false; child shares the app's process group so group signals cannot
      orphan it.
   * Launch command is built by the flag registry; env vars applied from preset.
@@ -473,7 +470,7 @@ v1 → v2 REVISION SUMMARY
   recorded in plans/audit-remediation-roadmap.md with the manual-evidence ledger in
   plans/manual-verification-checklist.md. The 2026-09-16 audit follow-ups are issues
   #55–#71 (plans/audit-2026-09-16-remediation-plan.md). Revisions discovered after the
-  phases closed: Phase 1's PTY spike resulted in the pipe transport (D3 revision pending);
+  phases closed: Phase 1's PTY spike resulted in the pipe transport (D3 pipes ratified);
   Phase 2's Components Catalog was later excluded from the product shell (D12); the theme
   set grew from 5 to 7 (D13).
 
@@ -487,7 +484,7 @@ v1 → v2 REVISION SUMMARY
  │    smoke test                                                            │
  │ ├─ Typed event bus (headless)                                            │
  │ ├─ \r line assembler + bounded ring buffer (pure)                        │
- │ ├─ Supervisor: PTY spawn vs fake-server.sh fixture; teardown hooks       │
+ │ ├─ Supervisor: pipe spawn vs fake-server.sh fixture; teardown hooks      │
  │    (§6.2) + port pre-flight + PATH check live here                       │
  │ ├─ Pidfile + orphan detection & recovery (§6.3)                          │
  │ ├─ Minimal shell: tabs + status bar                                      │
@@ -500,7 +497,7 @@ v1 → v2 REVISION SUMMARY
  │ ├─ Slider · checkbox · text input (cursor mgmt) · cycling select         │
  │ ├─ Virtualized data table · scrollable pane                              │
  │ ├─ Cross-pane focus engine LAST (every widget depends on it)             │
- │ ├─ Theme provider: 5 themes, tokens lifted from opentui.html             │
+ │ ├─ Theme provider: 7 themes, tokens lifted from opentui.html             │
  │ ├─ Degraded <100x30 layout + resize hint ships here (§7)                 │
  │ └─ EXIT: mockup "Components Catalog" tab reproduced pixel-for-pixel      │
  ├──────────────────────────────────────────────────────────────────────────┤
@@ -542,7 +539,7 @@ v1 → v2 REVISION SUMMARY
   |----|-------------------------------------------|--------------------------------------------------|
   | D1 | JSON presets, not SQLite                  | Hand-editable, diff-friendly, no native deps     |
   | D2 | Bun runtime, pinned                       | OpenTUI TS bindings reach Zig via FFI            |
-  | D3 | ⚠ UNDER REVISION: pipes shipped; PTY never implemented. Ratify pipes (#63; live \r progress via #68) or schedule PTY work | Pipes: no native deps, \r via assembler; PTY: color fidelity |
+  | D3 | Pipes ratified | Pipes: no native deps, \r via assembler |
   | D4 | Single managed instance (v1)              | Scope control; schema ready for multi later      |
   | D5 | Headless core + UI shell + CLI            | Testability, free CLI, framework risk insurance  |
   | D6 | OSC 52 clipboard primary                  | Works over SSH; local tool fallbacks             |
