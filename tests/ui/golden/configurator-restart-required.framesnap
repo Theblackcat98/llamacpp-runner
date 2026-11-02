@@ -22,5 +22,5 @@
 ╭─Preview — restart required───────────────────────────────────────────────────────────────────────╮
 │ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gguf' -ngl 29 -c 8192 -ctk f16 -ctv f16 --host    │
 │127.0.0.1 --port 8080 --slots --metrics                                                           │
-│ no hardware data — run reprobe                                                                   │
+│ hardware probe failed — run reprobe                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

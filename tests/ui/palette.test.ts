@@ -21,6 +21,7 @@ function actions(): PaletteAction[] {
 		toggleTelemetry: () => {},
 		goToTab: () => {},
 		clearLog: () => {},
+		reprobeHardware: () => {},
 	});
 }
 
@@ -33,8 +34,8 @@ describe("action registry coverage (P5-FR-09)", () => {
 		);
 	});
 
-	it("has 18 actions: 7 themes + 7 singletons + 4 tabs (Issue #8, #49, #50)", () => {
-		expect(ACTIONS.length).toBe(18);
+	it("has 19 actions: 7 themes + 8 singletons + 4 tabs (Issue #8, #49, #50, #66)", () => {
+		expect(ACTIONS.length).toBe(19);
 	});
 
 	it("ships no orphan action until adopt lands (F4)", () => {
@@ -57,6 +58,7 @@ describe("action registry coverage (P5-FR-09)", () => {
 			goToTab: () => calls++,
 			clearLog: () => calls++,
 			autoFitNgl: () => calls++,
+			reprobeHardware: () => calls++,
 		});
 		for (const a of spy) a.run();
 		expect(calls).toBe(spy.length);
@@ -77,7 +79,7 @@ describe("fuzzy filter", () => {
 	});
 
 	it("empty query returns all", () => {
-		expect(filterActions(ACTIONS, "").length).toBe(18);
+		expect(filterActions(ACTIONS, "").length).toBe(19);
 	});
 
 	it("no match -> empty", () => {
