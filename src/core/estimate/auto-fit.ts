@@ -39,12 +39,13 @@ export function computeAutoFitNgl(
 	input: AutoFitInput,
 	vramBytes: number | null | undefined,
 	maxNgl: number = input.blockCount + 1,
+	noDataMessage: string = "hardware probe failed — run reprobe",
 ): AutoFitResult {
 	if (vramBytes === null || vramBytes === undefined || vramBytes <= 0) {
 		return {
 			ngl: maxNgl,
 			fits: false,
-			message: "no hardware data — run reprobe",
+			message: noDataMessage,
 		};
 	}
 	if (

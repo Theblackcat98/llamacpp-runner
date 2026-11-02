@@ -658,9 +658,26 @@ export function SessionApp({
 		});
 	}
 
+	function handleReprobeHardware(): void {
+		void getOrDetectHardware(paths.configDir, { reprobe: true })
+			.then((hw) => {
+				setHardware(hw);
+				bus.emitState("LOG_LINE", {
+					stream: "out",
+					text: `[SYS] hardware reprobed: ${hw.source}`,
+				});
+			})
+			.catch((err) => {
+				bus.emitState("LOG_LINE", {
+					stream: "out",
+					text: `[SYS] hardware probe failed: ${err.message}`,
+				});
+			});
+	}
+
 	function handleAutoFit(): void {
 		if (!config.model) return;
-		const res = solveAutoFitNgl(config, hardware?.vramBytes);
+		const res = solveAutoFitNgl(config, hardware);
 		setConfig((s) => setFlag(s, "n_gpu_layers", res.ngl));
 		bus.emitState("LOG_LINE", {
 			stream: "out",
@@ -743,6 +760,7 @@ export function SessionApp({
 					// direct service handling here (Issue #16).
 					setTelemetryEnabled((enabled) => !enabled);
 				},
+				reprobeHardware: handleReprobeHardware,
 			}}
 			serverRunning={serverIsRunning(procState)}
 			serverFailed={procState === "FAILED"}

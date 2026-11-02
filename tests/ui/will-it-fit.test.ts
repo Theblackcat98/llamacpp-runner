@@ -55,7 +55,7 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 			const state = createConfigurator(MODEL);
 			const verdictNull = willItFitVerdict(state, null);
 			expect(verdictNull.status).toBe("no-data");
-			expect(verdictNull.text).toBe("no hardware data — run reprobe");
+			expect(verdictNull.text).toBe("hardware probe failed — run reprobe");
 
 			const hwCpu: HardwareInfo = {
 				kind: "cpu",
@@ -65,14 +65,15 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 			};
 			const verdictCpu = willItFitVerdict(state, hwCpu);
 			expect(verdictCpu.status).toBe("no-data");
-			expect(verdictCpu.text).toBe("no hardware data — run reprobe");
+			expect(verdictCpu.text).toBe("no GPU detected (CPU-only system)");
 		});
 	});
 
 	describe("solveAutoFitNgl", () => {
 		it("returns nglMax when VRAM is abundant", () => {
 			const state = createConfigurator(MODEL);
-			const result = solveAutoFitNgl(state, 24 * GIB);
+			const hw = { kind: "nvidia", vramBytes: 24 * GIB } as HardwareInfo;
+			const result = solveAutoFitNgl(state, hw);
 			expect(result.fits).toBe(true);
 			expect(result.ngl).toBe(state.nglMax);
 		});
@@ -81,7 +82,8 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 			// ctx pinned: scenario targets the ngl solve, not the default (#9).
 			const state = setFlag(createConfigurator(MODEL), "ctx_size", 4096);
 			// 5.5 GiB is enough for partial offload but not full 29 layers
-			const result = solveAutoFitNgl(state, Math.floor(5.5 * GIB));
+			const hw = { kind: "nvidia", vramBytes: Math.floor(5.5 * GIB) } as HardwareInfo;
+			const result = solveAutoFitNgl(state, hw);
 			expect(result.fits).toBe(true);
 			expect(result.ngl).toBeGreaterThan(0);
 			expect(result.ngl).toBeLessThan(state.nglMax);
@@ -90,7 +92,8 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 		it("flags when even ngl=0 exceeds VRAM and suggests ctx reduction", () => {
 			const state = createConfigurator(MODEL);
 			// Very low VRAM (100 MiB) cannot even hold KV cache / overhead at default ctx
-			const result = solveAutoFitNgl(state, 100 * 1024 * 1024);
+			const hw = { kind: "nvidia", vramBytes: 100 * 1024 * 1024 } as HardwareInfo;
+			const result = solveAutoFitNgl(state, hw);
 			expect(result.fits).toBe(false);
 			expect(result.ngl).toBe(0);
 			expect(result.message).toContain("reduce context size");
@@ -101,7 +104,8 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 			// Test increasing VRAM levels; solved ngl must be monotonically non-decreasing
 			let prevNgl = 0;
 			for (let gib = 2; gib <= 16; gib += 1) {
-				const result = solveAutoFitNgl(state, gib * GIB);
+				const hw = { kind: "nvidia", vramBytes: gib * GIB } as HardwareInfo;
+				const result = solveAutoFitNgl(state, hw);
 				if (result.fits) {
 					expect(result.ngl).toBeGreaterThanOrEqual(prevNgl);
 					prevNgl = result.ngl;

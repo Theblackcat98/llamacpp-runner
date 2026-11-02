@@ -34,7 +34,7 @@ describe("computeAutoFitNgl (§3.2, Issue #8, Issue #10)", () => {
 		const result = computeAutoFitNgl(BASE_INPUT, null);
 		expect(result.fits).toBe(false);
 		expect(result.ngl).toBe(33);
-		expect(result.message).toContain("no hardware data");
+		expect(result.message).toContain("hardware probe failed");
 	});
 
 	it("handles missing model metadata gracefully", () => {

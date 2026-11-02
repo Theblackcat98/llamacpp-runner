@@ -9,6 +9,7 @@ export interface PaletteHandlers {
 	goToTab: (tab: number) => void;
 	clearLog: () => void;
 	autoFitNgl?: () => void;
+	reprobeHardware?: () => void;
 }
 
 export interface PaletteAction {
@@ -32,6 +33,7 @@ export const PALETTE_ACTION_IDS = [
 	"rescan-models",
 	"toggle-telemetry",
 	"auto-fit-ngl",
+	"reprobe-hardware",
 	"go-to-tab-1",
 	"go-to-tab-2",
 	"go-to-tab-3",
@@ -102,6 +104,12 @@ export function buildDefaultActions(h: PaletteHandlers): PaletteAction[] {
 			label: "Auto-fit GPU Offload (-ngl) to VRAM",
 			keywords: "autofit fit ngl gpu vram layers",
 			run: () => h.autoFitNgl?.(),
+		},
+		{
+			id: "reprobe-hardware",
+			label: "Re-probe Hardware",
+			keywords: "probe hardware gpu vram refresh detect",
+			run: () => h.reprobeHardware?.(),
 		},
 	);
 	for (const [tab, name] of TABS) {
