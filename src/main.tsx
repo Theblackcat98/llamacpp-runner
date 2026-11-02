@@ -725,6 +725,7 @@ export function SessionApp({
 				previewCommand: launchPreview,
 				hardware,
 				onAutoFit: handleAutoFit,
+				availability: capability?.availability,
 			}}
 			presetsControl={{
 				file: presetsFile,

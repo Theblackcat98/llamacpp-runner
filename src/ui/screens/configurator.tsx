@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import {
+	DEPRECATED_HINT,
+	UNAVAILABLE_HINT,
+} from "../../core/flags/availability";
 import { REGISTRY } from "../../core/flags/registry";
 import type { HardwareInfo } from "../../core/hardware/detect";
 import { TuiBox } from "../components/box";
@@ -99,16 +103,32 @@ export function Configurator({
 		onChange?.(next);
 	};
 
+	const availSuffix = (id: string) => {
+		if (!availability) return "";
+		const avail = availability[id];
+		if (!avail) return "";
+		if (!avail.supported) return UNAVAILABLE_HINT;
+		if (avail.deprecated) return DEPRECATED_HINT;
+		return "";
+	};
+
+	const isFieldDisabled = (id: string) => {
+		if (!availability) return false;
+		const avail = availability[id];
+		if (!avail) return false;
+		return !avail.supported;
+	};
+
 	const boolRow = (id: string) => {
 		const label = REGISTRY[id as keyof typeof REGISTRY]?.ui.label ?? id;
 		return (
 			<Checkbox
 				key={id}
 				theme={theme}
-				captureKeys={captureKeys && field === FIELD[id]}
+				captureKeys={captureKeys && !isFieldDisabled(id) && field === FIELD[id]}
 				focused={focused && field === FIELD[id]}
 				checked={state.values[id] === true}
-				label={label}
+				label={`${label}${availSuffix(id)}`}
 				onToggle={() => update((s) => setFlag(s, id, !(s.values[id] === true)))}
 			/>
 		);
@@ -137,7 +157,7 @@ export function Configurator({
 		if (fieldRef.current !== field) {
 			const flag = TEXT_FIELD_FLAG[fieldRef.current];
 			const mapped = keyEventToInputKey(key);
-			if (flag && mapped?.kind === "printable") {
+			if (flag && mapped?.kind === "printable" && !isFieldDisabled(flag)) {
 				if (flag !== "port" || /^[0-9]$/.test(mapped.ch)) {
 					update((s) => {
 						const current =
@@ -189,9 +209,11 @@ export function Configurator({
 					>
 						<Slider
 							theme={theme}
-							captureKeys={captureKeys && field === 0}
+							captureKeys={
+								captureKeys && !isFieldDisabled("n_gpu_layers") && field === 0
+							}
 							focused={focused && field === 0}
-							label="GPU Offload"
+							label={`GPU Offload${availSuffix("n_gpu_layers")}`}
 							min={0}
 							max={Math.max(state.nglMax, 1)}
 							value={ngl}
@@ -201,10 +223,13 @@ export function Configurator({
 						<box style={{ flexDirection: "column" }}>
 							<text fg={focused && field === 1 ? theme.fgBright : theme.muted}>
 								{focused && field === 1 ? "> Context Length" : "Context Length"}
+								{availSuffix("ctx_size")}
 							</text>
 							<ChipGroup
 								theme={theme}
-								captureKeys={captureKeys && field === 1}
+								captureKeys={
+									captureKeys && !isFieldDisabled("ctx_size") && field === 1
+								}
 								focused={focused && field === 1}
 								chips={CTX_CHIPS.map(String)}
 								activeIndex={nearestChip(ctx)}
@@ -215,9 +240,11 @@ export function Configurator({
 						</box>
 						<CyclingSelect
 							theme={theme}
-							captureKeys={captureKeys && field === 2}
+							captureKeys={
+								captureKeys && !isFieldDisabled("cache_type_k") && field === 2
+							}
 							focused={focused && field === 2}
-							label="K Cache"
+							label={`K Cache${availSuffix("cache_type_k")}`}
 							options={KV_OPTIONS.slice()}
 							index={kvIndex(state.values.cache_type_k)}
 							onChange={(i) =>
@@ -226,9 +253,11 @@ export function Configurator({
 						/>
 						<CyclingSelect
 							theme={theme}
-							captureKeys={captureKeys && field === 3}
+							captureKeys={
+								captureKeys && !isFieldDisabled("cache_type_v") && field === 3
+							}
 							focused={focused && field === 3}
-							label="V Cache"
+							label={`V Cache${availSuffix("cache_type_v")}`}
 							options={KV_OPTIONS.slice()}
 							index={kvIndex(state.values.cache_type_v)}
 							onChange={(i) =>
@@ -242,9 +271,11 @@ export function Configurator({
 						{boolRow("metrics")}
 						<Slider
 							theme={theme}
-							captureKeys={captureKeys && field === 9}
+							captureKeys={
+								captureKeys && !isFieldDisabled("batch_size") && field === 9
+							}
 							focused={focused && field === 9}
-							label="Batch Size"
+							label={`Batch Size${availSuffix("batch_size")}`}
 							min={1}
 							max={8192}
 							value={numValue(state.values.batch_size, 2048)}
@@ -253,9 +284,11 @@ export function Configurator({
 						/>
 						<Slider
 							theme={theme}
-							captureKeys={captureKeys && field === 10}
+							captureKeys={
+								captureKeys && !isFieldDisabled("ubatch_size") && field === 10
+							}
 							focused={focused && field === 10}
-							label="Micro-batch"
+							label={`Micro-batch${availSuffix("ubatch_size")}`}
 							min={1}
 							max={4096}
 							value={numValue(state.values.ubatch_size, 512)}
@@ -264,9 +297,11 @@ export function Configurator({
 						/>
 						<Slider
 							theme={theme}
-							captureKeys={captureKeys && field === 11}
+							captureKeys={
+								captureKeys && !isFieldDisabled("threads") && field === 11
+							}
 							focused={focused && field === 11}
-							label="Threads"
+							label={`Threads${availSuffix("threads")}`}
 							min={1}
 							max={256}
 							value={numValue(state.values.threads, 8)}
@@ -275,11 +310,13 @@ export function Configurator({
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 12}
+							captureKeys={
+								captureKeys && !isFieldDisabled("host") && field === 12
+							}
 							focused={focused && field === 12}
 							field={12}
 							activeFieldRef={fieldRef}
-							label="host"
+							label={`host${availSuffix("host")}`}
 							placeholder="127.0.0.1"
 							value={strValue(state.values.host)}
 							onChange={(st) =>
@@ -288,11 +325,13 @@ export function Configurator({
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 13}
+							captureKeys={
+								captureKeys && !isFieldDisabled("port") && field === 13
+							}
 							focused={focused && field === 13}
 							field={13}
 							activeFieldRef={fieldRef}
-							label="port"
+							label={`port${availSuffix("port")}`}
 							placeholder="8080"
 							numeric
 							value={strValue(state.values.port)}
@@ -305,21 +344,25 @@ export function Configurator({
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 14}
+							captureKeys={
+								captureKeys && !isFieldDisabled("alias") && field === 14
+							}
 							focused={focused && field === 14}
 							field={14}
 							activeFieldRef={fieldRef}
-							label="alias"
+							label={`alias${availSuffix("alias")}`}
 							value={strValue(state.values.alias)}
 							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
 						/>
 						<TextInput
 							theme={theme}
-							captureKeys={captureKeys && field === 15}
+							captureKeys={
+								captureKeys && !isFieldDisabled("chat_template") && field === 15
+							}
 							focused={focused && field === 15}
 							field={15}
 							activeFieldRef={fieldRef}
-							label="chat-template"
+							label={`chat-template${availSuffix("chat_template")}`}
 							value={strValue(state.values.chat_template)}
 							onChange={(st) =>
 								update((s) => setFlag(s, "chat_template", st.buffer))

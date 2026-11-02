@@ -12,6 +12,9 @@ import { getFlag } from "./registry";
 
 export type BlockReason = "unsupported" | "deprecated";
 
+export const UNAVAILABLE_HINT = " (unsupported by this binary)";
+export const DEPRECATED_HINT = " (deprecated)";
+
 export interface AvailabilityVerdict {
 	/** Flags that MUST be dropped before building argv. */
 	dropped: Array<{ id: string; reason: BlockReason; cli: string }>;
