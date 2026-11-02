@@ -98,6 +98,11 @@ export interface ConfiguratorControl {
 	previewCommand?: string;
 	hardware?: import("../core/hardware/detect").HardwareInfo | null;
 	onAutoFit?: () => void;
+	/** Capability map from the binary --help probe. */
+	availability?: Record<
+		string,
+		import("../core/flags/help-parser").FlagAvailability
+	>;
 }
 
 export interface PresetsControl {
@@ -445,6 +450,7 @@ export function App({
 						onAutoFit={configuratorControl.onAutoFit}
 						onChange={configuratorControl.setState}
 						previewCommand={configuratorControl.previewCommand}
+						availability={configuratorControl.availability}
 						focused={focusPane === 0}
 						captureKeys={focusPane === 0 && !importOpen}
 						onActiveFieldChange={(f) => {
