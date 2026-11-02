@@ -265,6 +265,33 @@ describe("supervisor vs fake-server.sh (§6)", () => {
 		await waitFor(async () => !(await pidAlive(pid)), 5000);
 		expect(await pidAlive(pid)).toBe(false);
 	});
+
+	it("emits throttled in-progress lines for high-frequency \\r updates", async () => {
+		const sv = new Supervisor({
+			command: "bash",
+			args: [FIXTURE, "--port", "18091", "--progress-steps", "5"],
+			port: 18091,
+			readyPattern: READY,
+			timings: FAST,
+		});
+		const partials: string[] = [];
+		sv.onPartial((line) => {
+			partials.push(line);
+		});
+		const states: string[] = [];
+		sv.onState((e) => states.push(e.state));
+		await sv.start();
+		expect(await waitFor(() => states.includes("READY"))).toBe(true);
+		await sv.kill();
+
+		const progressLines = partials.filter((l) => l.includes("load "));
+		expect(progressLines.length).toBeGreaterThan(0);
+		// Since there are 5 steps, without throttling we would get 5 or more partial emissions.
+		// With 50ms throttling and 20ms sleep per step in fake-server.sh, we expect 2 or 3 emissions.
+		expect(progressLines.length).toBeLessThan(10);
+		// The last emission should be an empty string, clearing the partial state
+		expect(partials[partials.length - 1]).toBe("");
+	});
 });
 
 afterAll(() => {});
