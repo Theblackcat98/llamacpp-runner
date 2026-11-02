@@ -114,9 +114,17 @@ export function Configurator({
 		);
 	};
 
+	const [resetArmedAt, setResetArmedAt] = useState<number | null>(null);
+
 	useScopedKeyboard(captureKeys, (key) => {
 		if (key.name === "escape") {
-			onChange?.(resetConfigurator(state));
+			const now = Date.now();
+			if (resetArmedAt !== null && now - resetArmedAt <= 2000) {
+				setResetArmedAt(null);
+				onChange?.(resetConfigurator(state));
+			} else {
+				setResetArmedAt(now);
+			}
 			return;
 		}
 		if (key.name === "a" && !isConfiguratorTextField(fieldRef.current)) {
