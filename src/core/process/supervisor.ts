@@ -53,7 +53,10 @@ export class Supervisor {
 	private readonly assembler = new LineAssembler();
 	private readonly lines = new RingBuffer<string>(TAIL_SIZE);
 	private logListeners = new Set<(line: string) => void>();
+	private partialListeners = new Set<(line: string) => void>();
 	private stateListeners = new Set<StateListener>();
+	private lastPartialMs = 0;
+	private partialTimeout: ReturnType<typeof setTimeout> | null = null;
 	private readonly timings: SupervisorTimings;
 	private readonly transportFactory: (opts: SpawnOptions) => Transport;
 	private readonly whichFn: (command: string) => string | null;
@@ -78,6 +81,11 @@ export class Supervisor {
 	onLog(cb: (line: string) => void): () => void {
 		this.logListeners.add(cb);
 		return () => this.logListeners.delete(cb);
+	}
+
+	onPartial(cb: (line: string) => void): () => void {
+		this.partialListeners.add(cb);
+		return () => this.partialListeners.delete(cb);
 	}
 
 	onState(cb: StateListener): () => void {
@@ -173,11 +181,46 @@ export class Supervisor {
 			await waitFor(() => this.exited, this.timings.sigkillGraceMs);
 		}
 		for (const line of this.assembler.flush()) this.recordLine(line);
+		if (this.partialTimeout) {
+			clearTimeout(this.partialTimeout);
+			this.partialTimeout = null;
+		}
+		this.emitPartial();
 		return this.exitInfo;
 	}
 
 	private ingest(chunk: string): void {
 		for (const line of this.assembler.push(chunk)) this.recordLine(line);
+
+		const current = this.assembler.currentLine();
+		if (current !== "") {
+			this.schedulePartial();
+		} else {
+			this.emitPartial();
+		}
+	}
+
+	private emitPartial = (): void => {
+		if (this.partialTimeout) {
+			clearTimeout(this.partialTimeout);
+			this.partialTimeout = null;
+		}
+		const line = this.assembler.currentLine();
+		for (const cb of this.partialListeners) cb(line);
+	};
+
+	private schedulePartial(): void {
+		const now = Date.now();
+		if (now - this.lastPartialMs > 50) {
+			this.lastPartialMs = now;
+			this.emitPartial();
+		} else if (!this.partialTimeout) {
+			this.partialTimeout = setTimeout(() => {
+				this.partialTimeout = null;
+				this.lastPartialMs = Date.now();
+				this.emitPartial();
+			}, 50);
+		}
 	}
 
 	private recordLine(line: string): void {

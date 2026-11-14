@@ -25,6 +25,10 @@ export class LineAssembler {
 		return [line];
 	}
 
+	currentLine(): string {
+		return this.chars.join("");
+	}
+
 	private reset(): void {
 		this.chars = [];
 		this.pos = 0;
