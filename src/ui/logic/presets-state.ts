@@ -76,6 +76,21 @@ export function markLastUsed(
 	);
 }
 
+/** Rename a preset (Tier 3): trimmed; a blank name is a no-op so a modal
+ * submitted empty never erases a preset's identity. */
+export function renamePreset(
+	file: PresetFile,
+	id: string,
+	newName: string,
+): PresetFile {
+	const name = newName.trim();
+	if (name.length === 0) return file;
+	return withPresets(
+		file,
+		file.presets.map((p) => (p.id === id ? { ...p, name } : p)),
+	);
+}
+
 /** Re-link a broken preset to a new model path (P4-FR-18). */
 export function relink(preset: Preset, newPath: string): Preset {
 	return { ...preset, model_path: newPath };

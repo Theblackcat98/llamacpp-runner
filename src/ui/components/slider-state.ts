@@ -61,6 +61,34 @@ export function applySliderKey(
 	}
 }
 
+/**
+ * Tier 3 mouse support: map a click offset inside the track (0-based
+ * column within the rendered track) to a value. The track renders
+ * `width` cells; offset 0 is the minimum end, width-1 the maximum end.
+ */
+export function valueAtTrackOffset(
+	offset: number,
+	width: number,
+	min: number,
+	max: number,
+): number {
+	if (width <= 1) return min;
+	const ratio = Math.min(Math.max(offset, 0), width - 1) / (width - 1);
+	return Math.min(Math.max(min + Math.round(ratio * (max - min)), min), max);
+}
+
+/** Inverse of valueAtTrackOffset: the track column a value renders at. */
+export function trackOffsetForValue(
+	value: number,
+	width: number,
+	min: number,
+	max: number,
+): number {
+	if (width <= 1 || max <= min) return 0;
+	const ratio = (Math.min(Math.max(value, min), max) - min) / (max - min);
+	return Math.round(ratio * (width - 1));
+}
+
 function clamp(state: SliderState, value: number): SliderState {
 	return { ...state, value: Math.min(Math.max(value, state.min), state.max) };
 }

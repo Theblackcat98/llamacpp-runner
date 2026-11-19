@@ -60,6 +60,16 @@ export function applyTableKey<T>(
 	return clampWindow({ ...state, selected: target }, data);
 }
 
+/** Select an absolute row index (mouse click, Tier 3): clamped into the
+ * data range and the window scrolled so the row is visible. */
+export function selectRow<T>(
+	state: TableState<T>,
+	data: T[],
+	index: number,
+): TableState<T> {
+	return clampWindow({ ...state, selected: index }, data);
+}
+
 export function clampSelection<T>(
 	state: TableState<T>,
 	data: T[],
