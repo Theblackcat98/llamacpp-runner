@@ -14,7 +14,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { act, useState } from "react";
 import { createBus } from "../../src/core/bus";
-import type { IntentMap, ProcState, StateMap } from "../../src/core/bus-contract";
+import type {
+	IntentMap,
+	ProcState,
+	StateMap,
+} from "../../src/core/bus-contract";
 import type { Supervisor } from "../../src/core/process/supervisor";
 import type { createSession } from "../../src/core/session";
 import {
