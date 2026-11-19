@@ -57,6 +57,14 @@ function decodeStream(
 	});
 }
 
+/**
+ * How long onExit waits for stdio 'close' after the process 'exit'
+ * before settling on the exit alone (#82). Long enough for 'close' to
+ * deliver trailing output in the normal case; far below any teardown
+ * grace, so a pipe-holding descendant cannot wedge the supervisor.
+ */
+const EXIT_CLOSE_GRACE_MS = 250;
+
 export class PipeTransport implements Transport {
 	readonly pid: number;
 
@@ -89,8 +97,36 @@ export class PipeTransport implements Transport {
 	}
 
 	onExit(cb: (info: ExitInfo) => void): void {
+		let settled = false;
+		let exitInfo: ExitInfo | null = null;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const settle = (info: ExitInfo) => {
+			if (settled) return;
+			settled = true;
+			if (timer) {
+				clearTimeout(timer);
+				timer = null;
+			}
+			cb(info);
+		};
+		// 'exit' fires when the process itself dies; 'close' additionally
+		// waits for every stdio stream to end. A descendant that inherited
+		// the pipes (llama-server helpers, a fixture's background sleep)
+		// can hold them open indefinitely after the leader is gone, so
+		// exit handling must not depend on 'close' alone (#82): give
+		// 'close' a brief window to win (it also flushes trailing output),
+		// then settle on 'exit' and drop the wedged pipes.
+		this.child.once("exit", (code, signal) => {
+			exitInfo = { code: code ?? -1, signal: signal ?? null };
+			timer = setTimeout(() => {
+				timer = null;
+				this.child.stdout?.destroy();
+				this.child.stderr?.destroy();
+				if (exitInfo) settle(exitInfo);
+			}, EXIT_CLOSE_GRACE_MS);
+		});
 		this.child.once("close", (code, signal) => {
-			cb({ code: code ?? -1, signal: signal ?? null });
+			settle(exitInfo ?? { code: code ?? -1, signal: signal ?? null });
 		});
 	}
 
