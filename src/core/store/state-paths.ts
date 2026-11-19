@@ -13,9 +13,17 @@ export function resolvePaths(
 	home: string = homedir(),
 ): AppPaths {
 	const stateBase = env.XDG_STATE_HOME || join(home, ".local", "state");
-	const defaultLocalConfig = existsSync(join(home, ".configs"))
-		? join(home, ".configs")
-		: join(home, ".config");
+	// #69: ~/.config is the standard/preferred base. ~/.configs is only a
+	// legacy fallback, used when ~/.config/llama-deck is absent AND a legacy
+	// ~/.configs/llama-deck install actually exists. A stray ~/.configs
+	// directory alone no longer hijacks new installs.
+	const preferredBase = join(home, ".config");
+	const legacyBase = join(home, ".configs");
+	const defaultLocalConfig =
+		!existsSync(join(preferredBase, "llama-deck")) &&
+		existsSync(join(legacyBase, "llama-deck"))
+			? legacyBase
+			: preferredBase;
 	const configBase = env.XDG_CONFIG_HOME || defaultLocalConfig;
 	const stateDir = join(stateBase, "llama-deck");
 	const configDir = join(configBase, "llama-deck");
