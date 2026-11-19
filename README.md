@@ -16,7 +16,7 @@
 - **Live Telemetry & Diagnostics**: Real-time Prometheus metrics scraping (`tokens/sec`, prompt/decode speeds, KV cache utilization, memory usage) and slot activity sparklines.
 - **Fail-Safe Persistence**: Atomic JSON storage (same-directory temporary file + fsync + rename) for presets and session state with forward-only schema migrations.
 - **Terminal Portability & Truecolor**: Full OSC 52 clipboard yanking, 1-column braille spinners, box borders, responsive degraded layouts for compact terminals (<100x30), and 7 themes (TokyoNight, Catppuccin, Gruvbox, Cyberpunk, RosePine, Nord, Everforest).
-- **Dual Interface**: Full interactive TUI alongside a fast headless CLI (`scan`, `list`, `quick`, `presets`, `export`, `import`, `start`, `kill`) with optional `--json` output.
+- **Dual Interface**: Full interactive TUI alongside a fast headless CLI (`scan`, `list`, `quick`, `presets`, `export`, `import`, `start`, `doctor`, `config`, `tui`, `kill`) with optional `--json` output.
 
 ---
 
@@ -37,7 +37,7 @@ These captures show the app's clean first-run state. Choose a directory containi
 ## Prerequisites
 
 - **Runtime**: [Bun](https://bun.sh) 1.3.2 or newer (pinned via the `packageManager` field in `package.json`)
-- **Server**: `llama-server` binary on `$PATH` or specified via `binary_path` configuration
+- **Server**: `llama-server` binary on `$PATH` or specified via app configuration (`llama-deck config set binary-path <path>`; stored as `binaryPath` in `config.json`)
 - **Operating System**: Linux (full `/proc` process inspection and signal tracking), macOS / POSIX supported
 
 ---
@@ -68,7 +68,15 @@ Launch the interactive terminal deck:
 
 ```bash
 bun run dev
+# equivalently, through the CLI entry:
+bun run cli tui
 ```
+
+> **Installed command**: `package.json` declares a `bin` entry
+> (`llama-deck` → `src/cli.ts`, with a Bun shebang), so an installed/linked
+> package exposes `llama-deck` directly. Bare `llama-deck` with no command
+> prints help; `llama-deck tui` launches the interactive TUI, and
+> `llama-deck -h` / `llama-deck <command> --help` print help for any command.
 
 #### Keybindings
 
@@ -132,6 +140,22 @@ bun run cli list /path/to/models [--json]
 # List saved presets
 bun run cli presets [--json]
 
+# Manage presets from the CLI (delete / rename / set the boot default)
+bun run cli presets delete <preset-id>
+bun run cli presets rename <preset-id> "New name"
+bun run cli presets set-default <preset-id>
+
+# App settings live in config.json (binary path, models dir, theme).
+# get prints the effective value and its source; set persists atomically.
+bun run cli config get [--json]
+bun run cli config get binary-path
+bun run cli config set binary-path /usr/local/bin/llama-server
+bun run cli config set models-dir ~/models/llm
+bun run cli config set theme nord
+
+# Diagnose a preset's launch readiness without starting a server
+bun run cli doctor <preset-id> [--json]
+
 # Export preset launch command (formats: cmd | sh | systemd)
 bun run cli export <preset-id> --format sh
 bun run cli export <preset-id> --format systemd
@@ -184,7 +208,7 @@ src/
 1. **Layer Separation**: `src/core` never imports from `src/ui` (enforced by import lint).
 2. **Single Instance**: Exactly one managed `llama-server` instance at a time (D4).
 3. **Idempotent Teardown**: All process spawn paths terminate through a unified graceful SIGINT → wait ≤ 5s → SIGKILL escalation (§6.2).
-4. **Data Durability**: Configuration lives under `$XDG_CONFIG_HOME/llama-deck/`, runtime state under `$XDG_STATE_HOME/llama-deck/`. Writes use temporary file fsync + atomic rename.
+4. **Data Durability**: Configuration lives under `$XDG_CONFIG_HOME/llama-deck/` (default `~/.config/llama-deck/`; a legacy `~/.configs/llama-deck/` is honoured only when `~/.config/llama-deck/` is absent), runtime state under `$XDG_STATE_HOME/llama-deck/`. Writes use temporary file fsync + atomic rename. App settings (binary path, models dir, theme, cached hardware probe) are owned by `config.json`; `presets.json` holds presets + `lastSession` (plus the first-run `default_model_dir` seed). Legacy `binary_path`/`theme` fields in `presets.json` are migrated into `config.json` once, with the pre-migration file preserved as `presets.json.bak`.
 5. **Memory Boundedness**: Ring buffers and sparkline history rings cap capacity (120 samples default), preventing unbounded memory growth during long-running sessions.
 
 ---

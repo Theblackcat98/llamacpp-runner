@@ -245,6 +245,36 @@ export function consolidateLegacyConfig(configDir: string): ConsolidateResult {
 		if (migrated.length > 0) saveConfig(configDir, next);
 		return { migrated, config: next };
 	}
+	// Peek at the raw document first: if it is unparseable or shape-invalid,
+	// bail WITHOUT calling loadPresets — that loader renames a corrupt file
+	// to `.corrupt-<ts>` (#59), and consuming that rename here would hide
+	// the corruption from the caller's own first load and its announcement.
+	try {
+		const raw = JSON.parse(
+			readFileSync(join(configDir, "presets.json"), "utf8"),
+		) as unknown;
+		if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+			return { migrated: [], config: owned };
+		}
+		const rawPresets = (raw as Record<string, unknown>).presets;
+		if (rawPresets !== undefined) {
+			if (!Array.isArray(rawPresets)) return { migrated: [], config: owned };
+			const loadable = rawPresets.every((p) => {
+				if (typeof p !== "object" || p === null) return false;
+				const entry = p as Record<string, unknown>;
+				return (
+					typeof entry.id === "string" &&
+					typeof entry.name === "string" &&
+					typeof entry.model_path === "string" &&
+					(entry.flags === undefined ||
+						(typeof entry.flags === "object" && entry.flags !== null))
+				);
+			});
+			if (!loadable) return { migrated: [], config: owned };
+		}
+	} catch {
+		return { migrated: [], config: owned };
+	}
 	const filePath = presetsFilePath(configDir);
 	const loaded = loadPresets(filePath);
 	if (loaded.corruptBackup || !loaded.data) {

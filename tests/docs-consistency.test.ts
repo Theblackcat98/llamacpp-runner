@@ -60,6 +60,9 @@ describe("README docs consistency", () => {
 			"export",
 			"import",
 			"start",
+			"doctor",
+			"config",
+			"tui",
 			"kill",
 		]) {
 			expect(

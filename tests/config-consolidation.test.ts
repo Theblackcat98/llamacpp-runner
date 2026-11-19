@@ -171,6 +171,22 @@ describe("config ownership consolidation (#69, §5)", () => {
 		expect(loadConfig(configDir).theme).toBeUndefined();
 	});
 
+	it("does not consume a corrupt presets.json — #59 backup stays for the caller's load", async () => {
+		const { writeFileSync } = await import("node:fs");
+		const configDir = scratch();
+		const path = presetsFilePath(configDir);
+		writeFileSync(path, '{"version":2,"presets":[{"id":"x"');
+		const result = consolidateLegacyConfig(configDir);
+		expect(result.migrated).toEqual([]);
+		// The corrupt original is untouched: no .corrupt rename, no rewrite.
+		const { readFileSync: read } = await import("node:fs");
+		expect(read(path, "utf8")).toContain('"presets"');
+		expect(existsSync(join(configDir, "config.json"))).toBe(false);
+		// And the caller's own load still performs the #59 preservation.
+		const loaded = loadPresets(path);
+		expect(loaded.corruptBackup).toBeDefined();
+	});
+
 	it("normalizeConfigKey accepts CLI and on-disk spellings", () => {
 		expect(normalizeConfigKey("binary-path")).toBe("binary-path");
 		expect(normalizeConfigKey("binary_path")).toBe("binary-path");

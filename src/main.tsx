@@ -18,7 +18,11 @@ import { createModelsService } from "./core/models/service";
 import type { ModelEntry } from "./core/models/types";
 import type { Supervisor } from "./core/process/supervisor";
 import { createSession, type LaunchPlan } from "./core/session";
-import { loadConfig, saveConfig } from "./core/store/config";
+import {
+	consolidateLegacyConfig,
+	loadConfig,
+	saveConfig,
+} from "./core/store/config";
 import type { PresetFile } from "./core/store/presets";
 import {
 	loadPresets,
@@ -132,6 +136,12 @@ export function SessionApp({
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [initialState] = useState(() => {
+		// #69 (core consolidation, minimal call-site): migrate legacy
+		// presets.json binary_path/theme into config.json before reading
+		// either store, so config.json is the boot source for both.
+		try {
+			consolidateLegacyConfig(paths.configDir);
+		} catch {}
 		const configFile = loadConfig(paths.configDir);
 		// #59: this is the FIRST presets load — its backup rename wins over
 		// every later load, so the corrupt path is captured here and
@@ -359,7 +369,10 @@ export function SessionApp({
 	// registry availability for every plan built afterwards. A failed or
 	// missing capture stays explicitly "unverified" — never silently
 	// presented as validated.
-	const configuredBinaryPath = presetsFile.binary_path;
+	// #69: binary path is owned by config.json; the presets file-level
+	// field is only the pre-migration fallback.
+	const configuredBinaryPath =
+		initialState.configFile.binaryPath ?? presetsFile.binary_path;
 	useEffect(() => {
 		let cancelled = false;
 		void probeBinaryAvailability({ configured: configuredBinaryPath }).then(

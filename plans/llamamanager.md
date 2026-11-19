@@ -74,7 +74,8 @@ v1 → v2 REVISION SUMMARY
                     │    cmd|json · import       │
                     │  llama-deck scan|list|kill │
                     │  llama-deck quick|presets  │
-                    │  llama-deck doctor         │
+                    │  llama-deck doctor|config  │
+                    │  llama-deck tui            │
                     └─────────────────────────────┘
 
  Rationale
@@ -117,10 +118,11 @@ v1 → v2 REVISION SUMMARY
     to be baked into the launch command when telemetry is enabled (§3.5).
 
    * Configuration & Preset Store: JSON at ~/.config/llama-deck/ — presets.json (presets,
-     lastSession, binary_path, legacy theme / default_model_dir) plus config.json (models
-     dir, theme, cached hardware probe) — with atomic writes (write temp + rename) and
-     forward migrations keyed by schema version (§5). Ownership consolidation tracked
-     in #69.
+     lastSession, plus the default_model_dir first-run seed) plus config.json (models
+     dir, binary path, theme, cached hardware probe) — with atomic writes (write temp +
+     rename) and forward migrations keyed by schema version (§5). Ownership consolidated
+     per #69: legacy presets.json binary_path/theme migrate into config.json once
+     (presets.json.bak preserved).
 
  1.3 Runtime Requirements
 
@@ -345,18 +347,26 @@ v1 → v2 REVISION SUMMARY
                   server.pid, models metadata cache, calibration history. State never
                   lives in the config dir.
 
-  App-level settings live in config.json (modelsDir, theme, cached hardware probe);
-  presets.json carries the preset store plus lastSession and binary_path. Consolidating
-  ownership (single home for binary path / theme, dropping dead fields, standard
-  ~/.config precedence) is tracked in #69.
+  App-level settings live in config.json (modelsDir, binaryPath, theme, cached
+  hardware probe) — config.json is the declared owner (#69). presets.json carries
+  the preset store plus lastSession and the default_model_dir first-run seed.
+  Standard ~/.config precedence applies: ~/.configs/llama-deck is honoured only
+  as a legacy fallback when ~/.config/llama-deck is absent. Manage settings with
+  `llama-deck config get|set <key>` (keys: binary-path, models-dir, theme).
+
+  config.json (app settings, #69):
+  {
+    "modelsDir": "~/models/llm",
+    "binaryPath": "/usr/local/bin/llama-server",
+    "theme": "tokyonight",
+    "hardware": { "kind": "nvidia", "vramBytes": 25769803776 }
+  }
 
   presets.json (schema version 2):
   {
     "$schema": "./schema.preset.json",
     "version": 2,
     "default_model_dir": "~/models/llm",
-    "theme": "tokyonight",
-    "binary_path": "/usr/local/bin/llama-server",
     "lastSession": { "preset_id": "qwen-32b-coding", "tab": 1 },
     "presets": [
       {
@@ -381,9 +391,13 @@ v1 → v2 REVISION SUMMARY
     migrations (version field); backups presets.json.bak on migration; unknown flags in a
     preset are preserved verbatim (round-trip safe) and flagged in the UI.
    * JSON over SQLite (decision D1): hand-editable, diff-friendly, no native deps.
-   * presets.json `theme` / `default_model_dir` are legacy inputs: theme falls back to
-     config.json's persisted theme; default_model_dir only seeds a first-run models dir.
-     Effective ownership moves to config.json per #69.
+   * presets.json file-level `binary_path` / `theme` are legacy inputs (#69): on
+     boot/CLI start they are migrated once into config.json (binaryPath / theme)
+     and stripped from presets.json, with the pre-migration file preserved as
+     presets.json.bak; until that migration runs, effective-config reads fall
+     back to them. `default_model_dir` remains only a first-run models-dir seed.
+     A per-preset `binary_path` entry is a separate launch override, not the
+     file-level setting.
 
 6. Process Lifecycle & Safety
 
@@ -423,7 +437,7 @@ v1 → v2 REVISION SUMMARY
  | Corrupt GGUF (bad magic)     | Parser                       | Flagged row in table; never crashes    |
  | Multi-part GGUF              | Filename pattern             | Grouped; summed size; metadata part 1  |
  | First run, no models dir     | Startup                      | Onboarding prompt to set directory     |
-  | llama-server not on PATH     | Startup `which`/probe | Boot warning + FAILED binary_not_found (no spawn); binary_path settable via `llama-deck config` (open: #69) |
+  | llama-server not on PATH     | Startup `which`/probe | Boot warning + FAILED binary_not_found (no spawn); binary path settable via `llama-deck config set binary-path <path>` (#69) |
   | Binary too old for a flag    | --help parse vs registry | Flag dropped from argv + UI marker / doctor warning (open: #65) |
  | Terminal below 100x30        | Resize event                 | Degraded single-column + resize hint   |
  | TUI crash mid-session        | Exit hooks                   | Teardown runs; pidfile enables recovery|
