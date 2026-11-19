@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noStaticElementInteractions: OpenTUI renderables are terminal cells, not DOM elements; every mouse action here mirrors an existing keyboard binding (Tier 3)
 import type { PaletteAction } from "../logic/action-registry";
 import { filterActions, type PaletteState } from "../logic/palette-state";
 import type { Theme } from "../themes";
@@ -10,6 +11,9 @@ export interface PaletteProps {
 	viewport?: number;
 	/** Current theme id — the matching theme action gets an (active) marker. */
 	activeTheme?: string;
+	/** Tier 3 mouse: clicking an action row runs it (the Enter
+	 * equivalent) — the shell owns run + close semantics. */
+	onRunAction?: (action: PaletteAction) => void;
 }
 
 /**
@@ -24,6 +28,7 @@ export function Palette({
 	actions,
 	viewport = 8,
 	activeTheme,
+	onRunAction,
 }: PaletteProps) {
 	if (!state.open) return null;
 	const results = filterActions(actions, state.query);
@@ -88,13 +93,22 @@ export function Palette({
 						const isActiveTheme =
 							activeTheme !== undefined && a.id === `theme-${activeTheme}`;
 						return (
-							<text
+							<box
 								key={a.id}
-								fg={isSelected ? theme.bg : theme.fg}
-								bg={isSelected ? theme.accent : undefined}
+								style={{ height: 1 }}
+								onMouseDown={(event) => {
+									if (event.button !== 0) return;
+									event.stopPropagation();
+									onRunAction?.(a);
+								}}
 							>
-								{` ${a.label}${isActiveTheme ? " (active)" : ""}`}
-							</text>
+								<text
+									fg={isSelected ? theme.bg : theme.fg}
+									bg={isSelected ? theme.accent : undefined}
+								>
+									{` ${a.label}${isActiveTheme ? " (active)" : ""}`}
+								</text>
+							</box>
 						);
 					})
 				)}

@@ -7,6 +7,7 @@ import {
 	loadPresets,
 	type PresetFile,
 	presetsFilePath,
+	renamePresetInFile,
 	savePresets,
 } from "../../core/store/presets";
 import type { AppPaths } from "../../core/store/state-paths";
@@ -35,7 +36,9 @@ export interface PresetStore {
 		id: string;
 		model_path: string;
 		flags: Record<string, unknown>;
-	}) => void;
+	}) => ConfiguratorState;
+	/** Tier 3: rename via the shell-owned modal — store-persisted. */
+	rename: (id: string, name: string) => void;
 	relinkPreset: (id: string, newPath: string) => void;
 	clone: (id: string) => void;
 	remove: (id: string) => void;
@@ -112,7 +115,7 @@ export function usePresetStore(opts: {
 		id: string;
 		model_path: string;
 		flags: Record<string, unknown>;
-	}): void {
+	}): ConfiguratorState {
 		const next = clampContext(
 			loadPresetInto(
 				config,
@@ -140,6 +143,17 @@ export function usePresetStore(opts: {
 		bus.emitState("LOG_LINE", {
 			stream: "out",
 			text: "[SYS] preset loaded into configurator",
+		});
+		return next;
+	}
+
+	function rename(id: string, name: string): void {
+		const { file, renamed } = renamePresetInFile(presetsFile, id, name.trim());
+		if (!renamed) return;
+		persistPresets(file);
+		bus.emitState("LOG_LINE", {
+			stream: "out",
+			text: `[SYS] preset renamed: ${name.trim()}`,
 		});
 	}
 
@@ -169,6 +183,7 @@ export function usePresetStore(opts: {
 		persistPresets,
 		savePreset,
 		loadPreset,
+		rename,
 		relinkPreset,
 		clone: (id) => persistPresets(clonePreset(presetsFile, id)),
 		remove: (id) => persistPresets(deletePreset(presetsFile, id)),

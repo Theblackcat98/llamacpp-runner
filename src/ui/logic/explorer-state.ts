@@ -1,6 +1,7 @@
 import { estimateVram, formatBytes } from "../../core/estimate/vram";
 import type { ModelEntry } from "../../core/models/types";
 import { type IconSet, iconFor } from "../glyphs";
+import { fuzzyScore } from "./palette-state";
 
 export interface ExplorerViewModel {
 	rows: ExplorerRow[];
@@ -44,6 +45,129 @@ export function buildRows(
 			entry,
 		};
 	});
+}
+
+/**
+ * Tier 3: Explorer filter + sort. The view is a pure derivation of the
+ * scanned entries — entry object identity is preserved (filter/sort copy
+ * the array, never the entries) so selection can track a model by its
+ * path across view changes instead of by row index.
+ */
+export type ExplorerSortMode = "scan" | "name" | "size" | "context";
+
+/** Cycle order for the `s` key: the resting "scan" mode (the scanner's
+ * own order — the pre-Tier-3 behaviour) leads into the three sorts and
+ * back. */
+export const EXPLORER_SORT_MODES: ExplorerSortMode[] = [
+	"name",
+	"size",
+	"context",
+	"scan",
+];
+
+export function cycleSortMode(mode: ExplorerSortMode): ExplorerSortMode {
+	const i = EXPLORER_SORT_MODES.indexOf(mode);
+	return EXPLORER_SORT_MODES[(i + 1) % EXPLORER_SORT_MODES.length] ?? "name";
+}
+
+export function sortModeLabel(mode: ExplorerSortMode): string {
+	return mode === "name"
+		? "Name"
+		: mode === "size"
+			? "Size"
+			: mode === "context"
+				? "Context"
+				: "Scan";
+}
+
+function compareEntries(
+	a: ModelEntry,
+	b: ModelEntry,
+	mode: ExplorerSortMode,
+): number {
+	const byName = a.name.localeCompare(b.name, undefined, {
+		sensitivity: "base",
+	});
+	if (mode === "scan") return 0;
+	if (mode === "name") return byName;
+	if (mode === "size") return b.totalBytes - a.totalBytes || byName;
+	// Context: largest first; models without a known context length sort
+	// last (an unknown length is not a small length).
+	const ac = a.contextLength ?? -1;
+	const bc = b.contextLength ?? -1;
+	return bc - ac || byName;
+}
+
+export function sortEntries(
+	entries: ModelEntry[],
+	mode: ExplorerSortMode,
+): ModelEntry[] {
+	return [...entries].sort((a, b) => compareEntries(a, b, mode));
+}
+
+/**
+ * Fuzzy/substring match on the filename, reusing the palette's scorer:
+ * a query matches when its characters appear in order (a contiguous
+ * substring is the tightest such match and ranks first).
+ */
+export function filterEntries(
+	entries: ModelEntry[],
+	query: string,
+): ModelEntry[] {
+	const q = query.trim();
+	if (q.length === 0) return [...entries];
+	return entries.filter((e) => fuzzyScore(e.name, q) !== null);
+}
+
+/** The Explorer's visible entries: filtered, then sorted. With a query,
+ * fuzzy rank wins (stable sort keeps the sort-mode order among ties). */
+export function viewEntries(
+	entries: ModelEntry[],
+	query: string,
+	mode: ExplorerSortMode,
+): ModelEntry[] {
+	const filtered = filterEntries(entries, query);
+	const sorted = sortEntries(filtered, mode);
+	const q = query.trim();
+	if (q.length === 0) return sorted;
+	return sorted.sort(
+		(a, b) => (fuzzyScore(a.name, q) ?? 0) - (fuzzyScore(b.name, q) ?? 0),
+	);
+}
+
+export interface FilterKeyOutcome {
+	query: string;
+	/** "confirm" keeps the query and exits filter mode; "cancel" (Esc)
+	 * clears the query and exits (audit Tier 3). */
+	done?: "confirm" | "cancel";
+}
+
+/**
+ * One keypress while the Explorer filter owns the keyboard. Returns null
+ * for keys that are not filter edits (arrows navigate the table; the
+ * caller handles them). Printable characters arrive via `sequence`
+ * (shifted characters included) or a single-character `name`.
+ */
+export function applyFilterKey(
+	query: string,
+	key: { name?: string; sequence?: string; shift?: boolean },
+): FilterKeyOutcome | null {
+	if (key.name === "escape") return { query: "", done: "cancel" };
+	if (key.name === "return" || key.name === "enter")
+		return { query, done: "confirm" };
+	if (key.name === "backspace") return { query: query.slice(0, -1) };
+	if (key.name === "space") return { query: `${query} ` };
+	if (key.name === "up" || key.name === "down") return null;
+	const ch =
+		key.sequence && key.sequence.length === 1 && !/[\p{Cc}]/u.test(key.sequence)
+			? key.sequence
+			: key.name && key.name.length === 1
+				? key.shift
+					? key.name.toUpperCase()
+					: key.name
+				: null;
+	if (ch === null) return null;
+	return { query: query + ch };
 }
 
 export interface InspectorLines {

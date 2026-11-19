@@ -9,20 +9,18 @@ export interface HelpOverlayProps {
 
 type Row = [key: string, action: string];
 
-/** Always-available shell bindings (mirrors the App keyboard handler). */
+/** Always-available shell bindings (mirrors the App keyboard handler).
+ * Kept compact: every added row pushes tab bindings off small terminals
+ * (the panel clamps at 24 rows), so related pairs share a row. */
 const GLOBAL_ROWS: Row[] = [
-	["[Tab]", "cycle focus (screen / console drawer)"],
-	["[1-4]", "switch tabs"],
+	["[Tab]/[1-4]", "cycle focus (screen / drawer) · switch tabs"],
 	["[Enter]", "Explorer: go to Config · Config: launch · Presets: default"],
-	["[x]", "kill server (confirms while running)"],
-	["[k]", "kill orphaned server (twice; not while a list is focused)"],
-	["[o]", "collapse / expand console"],
-	["[Ctrl+L]", "clear log"],
-	["[Ctrl+P]", "command palette"],
-	["[Ctrl+Y]", "confirm host-exposing launch (any tab)"],
+	["[x]/[k]", "kill server (x) · kill orphan (k, twice, unfocused)"],
+	["[o]/[Ctrl+L]", "collapse / expand console · clear log"],
+	["[Ctrl+P]/[Ctrl+Y]", "command palette · confirm host-exposing launch"],
 	["[q]/[Ctrl+C]", "quit (confirms while running)"],
-	["[j/k/g/G]", "move in lists (g = top, G = bottom)"],
-	["[drawer]", "scroll console (drawer focused): ↑↓/j/k · PgUp/PgDn · g/G"],
+	["[j/k/g/G]", "move in lists (g top, G bottom); drawer PgUp/PgDn"],
+	["[mouse]", "click tabs/rows/controls · wheel scroll · double-click Enter"],
 	["[?]", "toggle this legend (Esc also closes)"],
 ];
 
@@ -31,7 +29,9 @@ const TAB_ROWS: Record<string, Row[]> = {
 	"Model Explorer": [
 		["[m]", "set models directory"],
 		["[r]", "rescan models directory"],
-		["[↑↓/j/k]", "select model"],
+		["[/]", "filter models by name — Enter keeps, Esc clears"],
+		["[s]", "cycle sort: Name / Size / Context / Scan order"],
+		["[↑↓/j/k]", "select model (in filter: ↑↓ move, j/k type)"],
 		["[Enter]", "go to Launch Config (does not launch)"],
 	],
 	"Launch Config": [
@@ -52,6 +52,8 @@ const TAB_ROWS: Record<string, Row[]> = {
 		["[d]", "delete preset (press twice)"],
 		["[Enter]", "set default preset"],
 		["[l]", "load into Configurator and go there"],
+		["[L]", "load preset AND launch immediately"],
+		["[n]", "rename preset (prompt)"],
 		["[r]", "relink broken preset to Explorer pick"],
 		["[i]", "import shell command"],
 	],

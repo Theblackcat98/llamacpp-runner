@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import type { createBus } from "../../core/bus";
 import type { IntentMap, StateMap } from "../../core/bus-contract";
 import {
@@ -53,14 +53,25 @@ export interface LaunchPlanApi {
 export function useLaunchPlan(opts: {
 	bus: Bus;
 	config: ConfiguratorState;
+	configRef: RefObject<ConfiguratorState>;
 	capability: ProbeResult | null;
 	configuredBinaryPath: string | undefined;
 	setPlanSource?: (fn: () => LaunchPlan | null) => void;
 }): LaunchPlanApi {
-	const { bus, config, capability, configuredBinaryPath, setPlanSource } = opts;
+	const {
+		bus,
+		config,
+		configRef,
+		capability,
+		configuredBinaryPath,
+		setPlanSource,
+	} = opts;
 
 	function buildPlan(): LaunchPlan | null {
-		const cfg = config;
+		// Tier 3: read the LIVE config ref, not the render closure — Load &
+		// Launch updates configRef synchronously in the same tick it emits
+		// LAUNCH, and the resolver must see the preset just loaded.
+		const cfg = configRef.current;
 		// #18: an incomplete split group never resolves to a launch plan.
 		// #60: neither does a stale (vanished) model file.
 		if (!cfg.model || cfg.model.incomplete || cfg.model.stale) return null;

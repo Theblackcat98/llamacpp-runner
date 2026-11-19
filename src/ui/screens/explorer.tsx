@@ -11,9 +11,14 @@ import { createTextInputState } from "../components/text-input-state";
 import { type IconSet, iconFor } from "../glyphs";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
+	applyFilterKey,
 	buildRows,
+	cycleSortMode,
 	defaultVramRange,
+	type ExplorerSortMode,
 	inspectorFor,
+	sortModeLabel,
+	viewEntries,
 } from "../logic/explorer-state";
 import type { Theme } from "../themes";
 
@@ -39,6 +44,9 @@ export interface ExplorerProps {
 	validateDir?: (dir: string) => string | null;
 	/** Nerd Font icons when "nerd", ASCII glyphs otherwise. */
 	iconSet?: IconSet;
+	/** Double-click on a row (Tier 3 mouse): the Enter equivalent — the
+	 * shell navigates to Launch Config. */
+	onActivate?: () => void;
 }
 
 /**
@@ -57,12 +65,12 @@ export function Explorer({
 	onSelectIndex,
 	onSetModelsDir,
 	onEditingChange,
+	onActivate,
 	dirEditSignal = 0,
 	extraRows = 0,
 	validateDir,
 	iconSet = "ascii",
 }: ExplorerProps) {
-	const rows = buildRows(entries, iconSet);
 	const welcomeIcon = iconFor("empty-welcome", iconSet);
 	const emptyIcon = iconFor("empty-none", iconSet);
 	const withIcon = (icon: string, text: string) =>
@@ -74,7 +82,28 @@ export function Explorer({
 	// Drawer-aware: a collapsed console returns its rows to the table.
 	const tableViewport = Math.max(1, height - 12 + extraRows);
 	const [internalSelected, setSelected] = useState(0);
+	// Tier 3: filter + sort view state. The selection tracks the model's
+	// PATH (identity), never a row index, so filtering/sorting moves the
+	// cursor with its model instead of landing on whatever row inherited
+	// the old index.
+	const [filterQuery, setFilterQuery] = useState("");
+	const [filtering, setFiltering] = useState(false);
+	const [sortMode, setSortMode] = useState<ExplorerSortMode>("scan");
+	const [cursorPath, setCursorPath] = useState<string | null>(null);
+	const cursorPathRef = useRef<string | null>(null);
+	const setCursor = (path: string | null) => {
+		cursorPathRef.current = path;
+		setCursorPath(path);
+	};
+	const filteringRef = useRef(false);
+	// The `/` that opens the filter is dispatched to BOTH scoped handlers
+	// (registration order): the filter handler must not type it.
+	const filterOpenerRef = useRef(false);
+	const filterQueryRef = useRef("");
+	const sortModeRef = useRef<ExplorerSortMode>("scan");
+	const fullSelectedRef = useRef(0);
 	const [editingDir, setEditingDir] = useState(false);
+	const editingDirRef = useRef(false);
 	const [dirInput, setDirInput] = useState(() => createTextInputState());
 	const [dirError, setDirError] = useState<string | null>(null);
 	const seenSignal = useRef(dirEditSignal);
@@ -96,19 +125,67 @@ export function Explorer({
 	const editingChangeRef = useRef(onEditingChange);
 	editingChangeRef.current = onEditingChange;
 	const setEditing = (editing: boolean) => {
+		editingDirRef.current = editing;
 		setEditingDir(editing);
-		editingChangeRef.current?.(editing);
+		editingChangeRef.current?.(editing || filteringRef.current);
+	};
+	const setFilterQueryBoth = (query: string) => {
+		filterQueryRef.current = query;
+		setFilterQuery(query);
+	};
+	const setFilteringBoth = (next: boolean) => {
+		filteringRef.current = next;
+		setFiltering(next);
+		editingChangeRef.current?.(next || editingDir);
 	};
 	useEffect(() => {
-		editingChangeRef.current?.(editingDir);
+		editingChangeRef.current?.(editingDir || filteringRef.current);
 	}, [editingDir]);
 
 	useScopedKeyboard(captureKeys && !editingDir, (key) => {
+		// Event-time ownership (#42): a key batch can open the filter and
+		// deliver the next key before React commits `filtering`.
+		if (filteringRef.current) return;
 		if (key.name === "m" && !key.ctrl && onSetModelsDir) {
 			setDirInput(createTextInputState());
 			setEditing(true);
 			return;
 		}
+		// Tier 3: `/` opens the name filter, `s` cycles the sort mode.
+		// Both are free on this tab (the table owns j/k/g/G/arrows, the
+		// shell owns r/m/Ctrl-combos) and inert on the first-run panel.
+		if (key.name === "/" && !key.ctrl && modelsDir !== null) {
+			filterOpenerRef.current = true;
+			setFilteringBoth(true);
+			return;
+		}
+		if (key.name === "s" && !key.ctrl && modelsDir !== null) {
+			const next = cycleSortMode(sortModeRef.current);
+			sortModeRef.current = next;
+			setSortMode(next);
+			return;
+		}
+	});
+
+	// Tier 3: while the filter owns the keyboard, printable keys edit the
+	// query (j/k type — they do not navigate), arrows move the cursor,
+	// Enter keeps the filter and exits, Esc clears it and exits. The
+	// shell yields printables because filtering reports as editing.
+	useScopedKeyboard(captureKeys, (key) => {
+		if (!filteringRef.current || editingDirRef.current) return;
+		if (filterOpenerRef.current) {
+			filterOpenerRef.current = false;
+			if (key.name === "/") return;
+		}
+		if (key.ctrl || key.meta) return;
+		if (key.name === "up" || key.name === "down") {
+			moveViewCursor(key.name === "down" ? 1 : -1);
+			return;
+		}
+		const outcome = applyFilterKey(filterQueryRef.current, key);
+		if (!outcome) return;
+		setFilterQueryBoth(outcome.query);
+		if (outcome.done) setFilteringBoth(false);
 	});
 
 	useScopedKeyboard(captureKeys && editingDir, (key) => {
@@ -134,14 +211,72 @@ export function Explorer({
 		}
 	});
 
+	const viewList = viewEntries(entries, filterQuery, sortMode);
+	const rows = buildRows(viewList, iconSet);
+	const filterBarVisible =
+		filtering || filterQuery.length > 0 || sortMode !== "scan";
+
 	const select = (index: number) => {
 		if (onSelectIndex) onSelectIndex(index);
 		else setSelected(index);
 	};
-	const selected =
+	const fullSelected =
 		selectedIndex !== undefined ? selectedIndex : internalSelected;
-	const clamped = Math.min(selected, Math.max(rows.length - 1, 0));
-	const current = rows[clamped]?.entry;
+	const fullClamped = Math.min(fullSelected, Math.max(entries.length - 1, 0));
+	const propEntry = entries[fullClamped];
+	// External selection changes (boot restore, rescan auto-select) move
+	// the cursor identity with them. View-local navigation sets the
+	// cursor first, so this effect only fires on genuine outside changes.
+	const lastPropPath = useRef<string | undefined>(undefined);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: setCursor wraps stable setters + a ref
+	useEffect(() => {
+		const path = propEntry?.path;
+		if (path && path !== lastPropPath.current) {
+			lastPropPath.current = path;
+			setCursor(path);
+		}
+	}, [propEntry]);
+	let viewIdx = cursorPath
+		? viewList.findIndex((e) => e.path === cursorPath)
+		: -1;
+	if (viewIdx < 0 && propEntry)
+		viewIdx = viewList.findIndex((e) => e.path === propEntry.path);
+	if (viewIdx < 0) viewIdx = 0;
+	const viewClamped = Math.min(viewIdx, Math.max(viewList.length - 1, 0));
+	const current = viewList[viewClamped];
+	// Navigate within the VIEW: translate to the full-list index for the
+	// parent, but only when the model actually changes — a pure reorder
+	// (typing in the filter, cycling sort) must not reset the
+	// configurator (Tier 2 edit preservation).
+	fullSelectedRef.current = fullClamped;
+	const selectViewEntry = (e: ModelEntry | undefined) => {
+		if (!e) return;
+		setCursor(e.path);
+		lastPropPath.current = e.path;
+		const full = entries.indexOf(e);
+		if (full >= 0 && full !== fullSelectedRef.current) {
+			fullSelectedRef.current = full;
+			select(full);
+		}
+	};
+	const selectView = (vi: number) => {
+		selectViewEntry(viewList[vi]);
+	};
+	// Arrow navigation while filtering derives the view from the refs:
+	// the render-scope list can lag a same-batch query edit (#42).
+	const moveViewCursor = (delta: number) => {
+		const list = viewEntries(
+			entries,
+			filterQueryRef.current,
+			sortModeRef.current,
+		);
+		if (list.length === 0) return;
+		const cur = cursorPathRef.current
+			? list.findIndex((e) => e.path === cursorPathRef.current)
+			: -1;
+		const base = cur < 0 ? 0 : cur;
+		selectViewEntry(list[Math.min(Math.max(base + delta, 0), list.length - 1)]);
+	};
 
 	const inspector = current ? inspectorFor(current) : null;
 	const vram = current ? defaultVramRange(current) : null;
@@ -200,6 +335,16 @@ export function Explorer({
 						focused={focused}
 					>
 						<box style={{ flexDirection: "column", flexGrow: 1 }}>
+							{filterBarVisible ? (
+								<text fg={filtering ? theme.accent : theme.muted}>
+									{filtering
+										? ` /${filterQuery}_`
+										: filterQuery
+											? ` filter: "${filterQuery}"`
+											: ""}
+									{` · sort: ${sortModeLabel(sortMode)} · ${viewList.length}/${entries.length} models`}
+								</text>
+							) : null}
 							<VirtualizedTable
 								theme={theme}
 								columns={[
@@ -229,10 +374,16 @@ export function Explorer({
 									},
 								]}
 								data={rows}
-								viewport={tableViewport}
-								captureKeys={captureKeys}
+								viewport={
+									filterBarVisible
+										? Math.max(1, tableViewport - 1)
+										: tableViewport
+								}
+								captureKeys={captureKeys && !filtering}
 								focused={focused}
-								onSelectionChange={(index) => select(index)}
+								selectedIndex={viewClamped}
+								onSelect={() => onActivate?.()}
+								onSelectionChange={(index) => selectView(index)}
 							/>
 							{scanning ? <text fg={theme.accent}> scanning...</text> : null}
 							{scanError ? (
@@ -240,10 +391,12 @@ export function Explorer({
 							) : null}
 							{!scanning && rows.length === 0 && !scanError ? (
 								<text fg={theme.warn}>
-									{withIcon(
-										emptyIcon,
-										"no .gguf files found — add models, [r] rescan · [m] change dir",
-									)}
+									{filterQuery && entries.length > 0
+										? `no models match "${filterQuery}" — [Esc] clear filter`
+										: withIcon(
+												emptyIcon,
+												"no .gguf files found — add models, [r] rescan · [m] change dir",
+											)}
 								</text>
 							) : null}
 						</box>

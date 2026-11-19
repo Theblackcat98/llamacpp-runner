@@ -154,6 +154,7 @@ export function SessionApp({
 	const plan = useLaunchPlan({
 		bus,
 		config,
+		configRef,
 		capability,
 		configuredBinaryPath,
 		setPlanSource,
@@ -313,6 +314,33 @@ export function SessionApp({
 					// edit-preservation tracking starts fresh.
 					touchedKeysRef.current.clear();
 					presets.loadPreset(preset);
+				},
+				onRename: presets.rename,
+				onLoadAndLaunch: (preset) => {
+					// Tier 3: Load & Launch (`L`) — load the preset and emit
+					// LAUNCH in the same action. configRef is updated
+					// synchronously and buildPlan reads the ref, so the
+					// launch uses the preset just loaded, never the previous
+					// config. The usual launch guards still apply.
+					const next = presets.loadPreset(preset);
+					touchedKeysRef.current.clear();
+					configRef.current = next;
+					if (next.model?.stale) {
+						bus.emitState("LOG_LINE", {
+							stream: "out",
+							text: "[SYS] model file missing — relink in Explorer first",
+						});
+						return;
+					}
+					if (next.model?.incomplete) {
+						bus.emitState("LOG_LINE", {
+							stream: "out",
+							text: "[SYS] incomplete split group — add the missing parts and rescan [r]",
+						});
+						return;
+					}
+					presets.markLaunchUsed(preset.id);
+					bus.emitIntent("LAUNCH", { presetId: "ad-hoc" });
 				},
 				onRelink: presets.relinkPreset,
 			}}

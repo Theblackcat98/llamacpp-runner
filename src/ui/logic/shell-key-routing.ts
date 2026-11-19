@@ -34,6 +34,8 @@ export interface ShellKeyContext {
 	drawerCollapsed?: boolean;
 	/** The save-preset name modal owns keys while open. */
 	saveNameOpen?: boolean;
+	/** The rename-preset modal owns keys while open (Tier 3). */
+	renameOpen?: boolean;
 	serverRunning: boolean;
 	confirm: QuitState;
 	killArmedAt: number | null;
@@ -94,7 +96,7 @@ export function routeShellKey(
 	ctx: ShellKeyContext,
 	key: KeyRef,
 ): ShellAction[] {
-	if (ctx.importOpen || ctx.saveNameOpen) {
+	if (ctx.importOpen || ctx.saveNameOpen || ctx.renameOpen) {
 		return [];
 	}
 	// Audit #2: Help is modal — keys must not leak to the shell behind it

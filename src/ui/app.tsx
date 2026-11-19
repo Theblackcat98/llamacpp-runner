@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noStaticElementInteractions: OpenTUI renderables are terminal cells, not DOM elements; every mouse action here mirrors an existing keyboard binding (Tier 3)
 import {
 	useKeyboard,
 	useRenderer,
@@ -16,6 +17,7 @@ import { FooterHintBar } from "./components/footer-hint-bar";
 import { HelpOverlay } from "./components/help-overlay";
 import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
+import { RenamePresetModal } from "./components/rename-preset-modal";
 import { SavePresetModal } from "./components/save-preset-modal";
 import { ConsoleDrawer } from "./console-drawer";
 import { APP_VERSION, CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
@@ -48,6 +50,7 @@ import {
 import {
 	applyPaletteKey,
 	type PaletteState as CmdPaletteState,
+	close as closePalette,
 	createPaletteState,
 } from "./logic/palette-state";
 import { headerStatus } from "./logic/proc-status";
@@ -119,6 +122,10 @@ export interface PresetsControl {
 	onDelete?: (id: string) => void;
 	onSetDefault?: (id: string) => void;
 	onLoad?: (preset: import("../core/store/presets").Preset) => void;
+	/** Tier 3: load the preset and launch it in one action (`L`). */
+	onLoadAndLaunch?: (preset: import("../core/store/presets").Preset) => void;
+	/** Tier 3: persist a preset rename from the rename modal (`n`). */
+	onRename?: (id: string, name: string) => void;
 	onRelink?: (id: string, newPath: string) => void;
 }
 
@@ -221,6 +228,11 @@ export function App({
 	const [helpOpen, setHelpOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
 	const [saveNameOpen, setSaveNameOpen] = useState(false);
+	// Tier 3: the rename-preset modal's target (null = closed). Owned by
+	// the shell like the save-name modal so key routing can gate on it.
+	const [renameTarget, setRenameTarget] = useState<
+		import("../core/store/presets").Preset | null
+	>(null);
 	const [dirEditSignal, setDirEditSignal] = useState(0);
 	const numericEntryRef = useRef(false);
 	// Palette Kill reuses the x-key confirm state machine (audit #7):
@@ -327,6 +339,7 @@ export function App({
 				importOpen,
 				helpOpen,
 				saveNameOpen,
+				renameOpen: renameTarget !== null,
 				chipFieldActive: tab === 1 && activeConfiguratorField.current === 1,
 				numericEntryActive: numericEntryRef.current,
 				drawerCollapsed: collapsed,
@@ -491,11 +504,23 @@ export function App({
 					const icon = iconFor(TAB_ICON_KINDS[i] ?? "tab-explorer", ICON_SET);
 					const prefix = icon ? `${icon} ` : "";
 					return (
-						<text
+						<box
 							key={label}
-							fg={i === tab ? theme.bg : theme.muted}
-							bg={i === tab ? theme.accent : undefined}
-						>{` ${prefix}[${i + 1}] ${label} `}</text>
+							onMouseDown={(event) => {
+								// Tier 3 mouse (additive): clicking a tab is the
+								// mouse equivalent of its 1-4 key.
+								if (event.button !== 0) return;
+								event.stopPropagation();
+								numericEntryRef.current = false;
+								setTab(i);
+								setFocusPane(0);
+							}}
+						>
+							<text
+								fg={i === tab ? theme.bg : theme.muted}
+								bg={i === tab ? theme.accent : undefined}
+							>{` ${prefix}[${i + 1}] ${label} `}</text>
+						</box>
 					);
 				})}
 			</box>
@@ -520,6 +545,12 @@ export function App({
 						validateDir={explorerControl.validateDir}
 						onEditingChange={(editing) => {
 							explorerEditingRef.current = editing;
+						}}
+						onActivate={() => {
+							// Tier 3: double-click is the mouse Enter — same
+							// navigation the shell's Enter performs on tab 0.
+							setTab(CONFIGURATOR_TAB);
+							setFocusPane(0);
 						}}
 						dirEditSignal={dirEditSignal}
 						extraRows={collapsed ? 4 : 0}
@@ -592,11 +623,25 @@ export function App({
 							setTab(CONFIGURATOR_TAB);
 							setFocusPane(0);
 						}}
+						onLoadAndLaunch={(preset) => {
+							if (presetsControl.onLoadAndLaunch) {
+								presetsControl.onLoadAndLaunch(preset);
+							} else {
+								presetsControl.onLoad?.(preset);
+							}
+							setTab(CONFIGURATOR_TAB);
+							setFocusPane(0);
+						}}
+						onRequestRename={(preset) => setRenameTarget(preset)}
 						onRelink={presetsControl.onRelink}
 						relinkTarget={relinkTarget}
 						focused={focusPane === 0}
 						captureKeys={
-							focusPane === 0 && !importOpen && !helpOpen && !saveNameOpen
+							focusPane === 0 &&
+							!importOpen &&
+							!helpOpen &&
+							!saveNameOpen &&
+							renameTarget === null
 						}
 					/>
 				) : (
@@ -611,12 +656,31 @@ export function App({
 				focused={focusPane === 1}
 				collapsed={collapsed}
 				theme={theme}
+				onToggleCollapse={() => setCollapsed((c) => !c)}
+				onScrollBy={(by) => setDrawer((s) => scrollBy(s, by))}
 			/>
 			<Palette
 				theme={theme}
 				state={palette}
 				actions={paletteActions}
 				activeTheme={paletteControl?.activeTheme}
+				onRunAction={(action) => {
+					// Mouse Enter-equivalent: run + close, exactly what
+					// applyPaletteKey does for the Return key (kill-server
+					// still only arms on first activation).
+					action.run();
+					setPalette((prev) => closePalette(prev));
+				}}
+			/>
+			<RenamePresetModal
+				theme={theme}
+				open={renameTarget !== null}
+				currentName={renameTarget?.name ?? ""}
+				onClose={() => setRenameTarget(null)}
+				onRename={(name) => {
+					if (renameTarget) presetsControl?.onRename?.(renameTarget.id, name);
+					setRenameTarget(null);
+				}}
 			/>
 			<SavePresetModal
 				theme={theme}
