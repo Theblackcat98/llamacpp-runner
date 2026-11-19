@@ -13,14 +13,17 @@ type Row = [key: string, action: string];
 const GLOBAL_ROWS: Row[] = [
 	["[Tab]", "cycle focus (screen / console drawer)"],
 	["[1-4]", "switch tabs"],
-	["[Enter]", "launch (set-default on the Presets tab)"],
+	["[Enter]", "Explorer: go to Config · Config: launch · Presets: default"],
 	["[x]", "kill server (confirms while running)"],
 	["[k]", "kill orphaned server (twice; not while a list is focused)"],
 	["[o]", "collapse / expand console"],
 	["[Ctrl+L]", "clear log"],
 	["[Ctrl+P]", "command palette"],
-	["[q]", "quit (confirms while running)"],
-	["[?]", "toggle this legend"],
+	["[Ctrl+Y]", "confirm host-exposing launch (any tab)"],
+	["[q]/[Ctrl+C]", "quit (confirms while running)"],
+	["[j/k/g/G]", "move in lists (g = top, G = bottom)"],
+	["[drawer]", "scroll console (drawer focused): ↑↓/j/k · PgUp/PgDn · g/G"],
+	["[?]", "toggle this legend (Esc also closes)"],
 ];
 
 /** Tab-conditional bindings, keyed by the shell tab label. */
@@ -28,15 +31,19 @@ const TAB_ROWS: Record<string, Row[]> = {
 	"Model Explorer": [
 		["[m]", "set models directory"],
 		["[r]", "rescan models directory"],
-		["[↑↓]", "select model"],
+		["[↑↓/j/k]", "select model"],
+		["[Enter]", "go to Launch Config (does not launch)"],
 	],
 	"Launch Config": [
 		["[↑↓]", "move between fields"],
-		["[Ctrl+S]", "save preset"],
-		["[Esc]", "reset configurator"],
+		["[←→]", "adjust slider / cycle option (Shift = coarse step)"],
+		["[0-9]", "type a context size on the chip group, Enter commits"],
+		["[e]", "type a numeric value on a slider, Enter commits"],
+		["[Space/Enter]", "select the focused context chip"],
+		["[Ctrl+S]", "save preset (prompts for a name)"],
+		["[Esc]", "reset configurator (press twice)"],
 		["[a]", "auto-fit GPU layers to VRAM"],
 		["[y]", "yank launch command"],
-		["[Ctrl+Y]", "confirm host-exposing launch"],
 		["[i]", "import shell command"],
 	],
 	"Server Telemetry": [["[t]", "toggle telemetry on / off"]],
@@ -101,7 +108,8 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 		termWidth,
 		termHeight,
 		76,
-		GLOBAL_ROWS.length + tabRows.length + 7,
+		// border (2) + Global header + rows + tab header + rows + close line.
+		GLOBAL_ROWS.length + tabRows.length + 5,
 	);
 	return (
 		<box
@@ -142,7 +150,7 @@ export function HelpOverlay({ theme, open, tabName }: HelpOverlayProps) {
 						{`  ${key}  ${action}`}
 					</text>
 				))}
-				<text fg={theme.muted}>{" press [?] to close"}</text>
+				<text fg={theme.muted}>{" press [?] or [Esc] to close"}</text>
 			</box>
 		</box>
 	);

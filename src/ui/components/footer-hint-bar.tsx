@@ -8,6 +8,8 @@ export interface FooterHintBarProps {
 	width: number;
 	/** Confirm notice overrides the hints (rendered in warn). */
 	notice: string | null;
+	/** Console drawer owns focus — show its scroll keys (Tier 2). */
+	drawerFocused?: boolean;
 }
 
 /**
@@ -20,11 +22,12 @@ export function FooterHintBar({
 	tab,
 	width,
 	notice,
+	drawerFocused = false,
 }: FooterHintBarProps) {
 	return (
 		<text fg={notice ? theme.warn : theme.muted}>
 			{" "}
-			{footerHintLine(tab, width, notice)}
+			{footerHintLine(tab, width, notice, { drawerFocused })}
 		</text>
 	);
 }

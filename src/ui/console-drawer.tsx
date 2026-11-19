@@ -23,7 +23,9 @@ export function ConsoleDrawer({
 	collapsed,
 	theme,
 }: ConsoleDrawerProps) {
-	const height = collapsed ? 2 : viewportHeight;
+	// Tier 2: collapsed shows ONE truncated line — slicing `height` wrapped
+	// lines into a 2-row box squished them into garbled overlaps.
+	const height = collapsed ? 1 : viewportHeight;
 	return (
 		<box
 			title={collapsed ? "─ Console (o to expand)" : "Console"}
@@ -38,7 +40,7 @@ export function ConsoleDrawer({
 			{lines.slice(-height).map((entry) => (
 				<SgrLine
 					key={entry.id}
-					line={entry.text}
+					line={collapsed ? entry.text.slice(0, 160) : entry.text}
 					stream={entry.stream}
 					theme={theme}
 				/>

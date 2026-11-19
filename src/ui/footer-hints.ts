@@ -39,7 +39,7 @@ const HINTS: string[][] = [
 		"[m] Models dir",
 		"[r] Rescan",
 		"[↑↓] Select",
-		"[Enter] Launch",
+		"[Enter] Config",
 		"[x] Kill",
 		"[o] Console",
 		"[?] Help",
@@ -81,11 +81,29 @@ const HINTS: string[][] = [
  * The trailing `[?] Help` hint is pinned — it is the discovery key for the
  * rest, so middle parts are dropped before it.
  */
+const DRAWER_HINTS = [
+	"[↑↓/j/k] Scroll",
+	"[PgUp/PgDn] Page",
+	"[g] Top",
+	"[G] Tail",
+	"[Tab] Back to screen",
+	"[o] Collapse",
+	"[Ctrl+L] Clear",
+	"[?] Help",
+];
+
 export function footerHintLine(
 	tab: number,
 	width: number,
 	notice?: string | null,
+	opts?: { drawerFocused?: boolean },
 ): string {
+	if (opts?.drawerFocused && !notice) {
+		const line = DRAWER_HINTS.join(" | ");
+		return displayWidth(line) > width
+			? [...line].slice(0, width).join("")
+			: line;
+	}
 	if (notice)
 		return displayWidth(notice) > width
 			? [...notice].slice(0, width).join("")
