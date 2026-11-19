@@ -58,8 +58,14 @@ export function useLaunchPlan(opts: {
 	configuredBinaryPath: string | undefined;
 	setPlanSource?: (fn: () => LaunchPlan | null) => void;
 }): LaunchPlanApi {
-	const { bus, config, configRef, capability, configuredBinaryPath, setPlanSource } =
-		opts;
+	const {
+		bus,
+		config,
+		configRef,
+		capability,
+		configuredBinaryPath,
+		setPlanSource,
+	} = opts;
 
 	function buildPlan(): LaunchPlan | null {
 		// Tier 3: read the LIVE config ref, not the render closure — Load &

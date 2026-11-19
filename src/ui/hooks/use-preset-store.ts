@@ -148,11 +148,7 @@ export function usePresetStore(opts: {
 	}
 
 	function rename(id: string, name: string): void {
-		const { file, renamed } = renamePresetInFile(
-			presetsFile,
-			id,
-			name.trim(),
-		);
+		const { file, renamed } = renamePresetInFile(presetsFile, id, name.trim());
 		if (!renamed) return;
 		persistPresets(file);
 		bus.emitState("LOG_LINE", {
