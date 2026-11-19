@@ -15,6 +15,11 @@ export interface PresetsScreenProps {
 	onDelete?: (id: string) => void;
 	onSetDefault?: (id: string) => void;
 	onLoad?: (preset: Preset) => void;
+	/** Tier 3: `L` loads the preset AND launches it in one action. */
+	onLoadAndLaunch?: (preset: Preset) => void;
+	/** Tier 3: `n` asks the shell to open the rename prompt (the modal
+	 * lives in App so the shell can gate keys while it is open). */
+	onRequestRename?: (preset: Preset) => void;
 	onRelink?: (id: string, newPath: string) => void;
 	/** Explorer's selected healthy model: `r` re-links a broken preset to it. */
 	relinkTarget?: { path: string };
@@ -25,7 +30,10 @@ export interface PresetsScreenProps {
 /**
  * Viewport 4 — Presets (§2, P4-FR-19): list, clone (c), delete (d),
  * set-default (Enter), load into configurator + go there (l), re-link
- * broken to the Explorer selection (r).
+ * broken to the Explorer selection (r). Tier 3: rename (n, shell-owned
+ * modal), load & launch in one action (L = Shift+l; `l` alone keeps the
+ * load-only meaning). Both keys were free: the table owns j/k/g/G and
+ * the shell owns i (import) on this tab.
  */
 export function PresetsScreen({
 	theme,
@@ -35,6 +43,8 @@ export function PresetsScreen({
 	onDelete,
 	onSetDefault,
 	onLoad,
+	onLoadAndLaunch,
+	onRequestRename,
 	onRelink,
 	relinkTarget,
 	focused = false,
@@ -67,7 +77,18 @@ export function PresetsScreen({
 				setDeleteArmedAt(now);
 			}
 		} else if (key.name === "return") onSetDefault?.(id);
+		// OpenTUI reports Shift+L as name "l" + shift (sequence "L"),
+		// never as name "L" — accept every shape.
+		else if (
+			(key.name === "L" ||
+				(key.name === "l" && key.shift) ||
+				key.sequence === "L") &&
+			currentPreset
+		)
+			onLoadAndLaunch?.(currentPreset);
 		else if (key.name === "l" && currentPreset) onLoad?.(currentPreset);
+		else if (key.name === "n" && currentPreset)
+			onRequestRename?.(currentPreset);
 		else if (
 			key.name === "r" &&
 			currentPreset &&
@@ -106,6 +127,9 @@ export function PresetsScreen({
 					viewport={Math.max(4, termHeight - 18)}
 					captureKeys={captureKeys}
 					focused={focused}
+					onSelect={(_index, row) => {
+						if (row?.id) onSetDefault?.(row.id);
+					}}
 					onSelectionChange={setSelected}
 				/>
 			</TuiBox>
@@ -113,7 +137,7 @@ export function PresetsScreen({
 				<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 					<text fg={theme.muted}>
 						{
-							" [c] Clone   [d] Delete   [Enter] Set Default   [l] Load into Configurator   [i] Import"
+							" [c] Clone   [d] Delete   [Enter] Set Default   [l] Load   [L] Load+Launch   [n] Rename   [i] Import"
 						}
 					</text>
 					{text(

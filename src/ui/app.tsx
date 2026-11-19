@@ -16,6 +16,7 @@ import { FooterHintBar } from "./components/footer-hint-bar";
 import { HelpOverlay } from "./components/help-overlay";
 import { ImportModal } from "./components/import-modal";
 import { Palette } from "./components/palette";
+import { RenamePresetModal } from "./components/rename-preset-modal";
 import { SavePresetModal } from "./components/save-preset-modal";
 import { ConsoleDrawer } from "./console-drawer";
 import { APP_VERSION, CONFIGURATOR_TAB, DRAWER_HEIGHT } from "./constants";
@@ -119,6 +120,10 @@ export interface PresetsControl {
 	onDelete?: (id: string) => void;
 	onSetDefault?: (id: string) => void;
 	onLoad?: (preset: import("../core/store/presets").Preset) => void;
+	/** Tier 3: load the preset and launch it in one action (`L`). */
+	onLoadAndLaunch?: (preset: import("../core/store/presets").Preset) => void;
+	/** Tier 3: persist a preset rename from the rename modal (`n`). */
+	onRename?: (id: string, name: string) => void;
 	onRelink?: (id: string, newPath: string) => void;
 }
 
@@ -221,6 +226,11 @@ export function App({
 	const [helpOpen, setHelpOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
 	const [saveNameOpen, setSaveNameOpen] = useState(false);
+	// Tier 3: the rename-preset modal's target (null = closed). Owned by
+	// the shell like the save-name modal so key routing can gate on it.
+	const [renameTarget, setRenameTarget] = useState<
+		import("../core/store/presets").Preset | null
+	>(null);
 	const [dirEditSignal, setDirEditSignal] = useState(0);
 	const numericEntryRef = useRef(false);
 	// Palette Kill reuses the x-key confirm state machine (audit #7):
@@ -327,6 +337,7 @@ export function App({
 				importOpen,
 				helpOpen,
 				saveNameOpen,
+				renameOpen: renameTarget !== null,
 				chipFieldActive: tab === 1 && activeConfiguratorField.current === 1,
 				numericEntryActive: numericEntryRef.current,
 				drawerCollapsed: collapsed,
@@ -598,11 +609,25 @@ export function App({
 							setTab(CONFIGURATOR_TAB);
 							setFocusPane(0);
 						}}
+						onLoadAndLaunch={(preset) => {
+							if (presetsControl.onLoadAndLaunch) {
+								presetsControl.onLoadAndLaunch(preset);
+							} else {
+								presetsControl.onLoad?.(preset);
+							}
+							setTab(CONFIGURATOR_TAB);
+							setFocusPane(0);
+						}}
+						onRequestRename={(preset) => setRenameTarget(preset)}
 						onRelink={presetsControl.onRelink}
 						relinkTarget={relinkTarget}
 						focused={focusPane === 0}
 						captureKeys={
-							focusPane === 0 && !importOpen && !helpOpen && !saveNameOpen
+							focusPane === 0 &&
+							!importOpen &&
+							!helpOpen &&
+							!saveNameOpen &&
+							renameTarget === null
 						}
 					/>
 				) : (
@@ -623,6 +648,16 @@ export function App({
 				state={palette}
 				actions={paletteActions}
 				activeTheme={paletteControl?.activeTheme}
+			/>
+			<RenamePresetModal
+				theme={theme}
+				open={renameTarget !== null}
+				currentName={renameTarget?.name ?? ""}
+				onClose={() => setRenameTarget(null)}
+				onRename={(name) => {
+					if (renameTarget) presetsControl?.onRename?.(renameTarget.id, name);
+					setRenameTarget(null);
+				}}
 			/>
 			<SavePresetModal
 				theme={theme}
