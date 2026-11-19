@@ -5,6 +5,7 @@ import { shellQuote } from "../../core/export/quote";
 import type { ModelEntry } from "../../core/models/types";
 import { TuiBox } from "../components/box";
 import { VirtualizedTable } from "../components/table";
+import { truncateMiddle } from "../components/table-state";
 import { TextInput } from "../components/text-input";
 import { createTextInputState } from "../components/text-input-state";
 import { type IconSet, iconFor } from "../glyphs";
@@ -29,6 +30,13 @@ export interface ExplorerProps {
 	onSelectIndex?: (index: number) => void;
 	onSetModelsDir?: (dir: string) => void;
 	onEditingChange?: (editing: boolean) => void;
+	/** Increment to request the directory editor from outside (palette). */
+	dirEditSignal?: number;
+	/** Extra table rows available (e.g. console drawer collapsed). */
+	extraRows?: number;
+	/** Host validation for a candidate directory; an error string blocks
+	 * the submit BEFORE anything is persisted (Tier 2). */
+	validateDir?: (dir: string) => string | null;
 	/** Nerd Font icons when "nerd", ASCII glyphs otherwise. */
 	iconSet?: IconSet;
 }
@@ -49,6 +57,9 @@ export function Explorer({
 	onSelectIndex,
 	onSetModelsDir,
 	onEditingChange,
+	dirEditSignal = 0,
+	extraRows = 0,
+	validateDir,
 	iconSet = "ascii",
 }: ExplorerProps) {
 	const rows = buildRows(entries, iconSet);
@@ -60,10 +71,24 @@ export function Explorer({
 	// The table lives above the fixed command-preview strip. Keep the table
 	// virtualized, but derive its window from the terminal instead of imposing
 	// an arbitrary twelve-row ceiling.
-	const tableViewport = Math.max(1, height - 12);
+	// Drawer-aware: a collapsed console returns its rows to the table.
+	const tableViewport = Math.max(1, height - 12 + extraRows);
 	const [internalSelected, setSelected] = useState(0);
 	const [editingDir, setEditingDir] = useState(false);
 	const [dirInput, setDirInput] = useState(() => createTextInputState());
+	const [dirError, setDirError] = useState<string | null>(null);
+	const seenSignal = useRef(dirEditSignal);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: setEditing wraps stable setters + a ref
+	useEffect(() => {
+		if (dirEditSignal !== seenSignal.current) {
+			seenSignal.current = dirEditSignal;
+			if (onSetModelsDir) {
+				setDirInput(createTextInputState());
+				setDirError(null);
+				setEditing(true);
+			}
+		}
+	}, [dirEditSignal, onSetModelsDir]);
 
 	// #42: notify at event time (not only from the effect) so the shell's
 	// yield guard sees an open editor within the same key batch. The effect
@@ -90,12 +115,20 @@ export function Explorer({
 		if (key.name === "return") {
 			const trimmed = dirInput.buffer.trim();
 			if (trimmed.length > 0) {
+				// Validate BEFORE persisting: a bad path used to be written
+				// to config.json first and fail later (Tier 2).
+				const problem = validateDir?.(trimmed) ?? null;
+				if (problem) {
+					setDirError(problem);
+					return;
+				}
 				onSetModelsDir?.(trimmed);
 			}
 			setEditing(false);
 			return;
 		}
 		if (key.name === "escape") {
+			setDirError(null);
 			setEditing(false);
 			return;
 		}
@@ -141,6 +174,7 @@ export function Explorer({
 							width={60}
 							placeholder={modelsDir ?? "path/to/models"}
 						/>
+						{dirError ? <text fg={theme.error}>{` ${dirError}`}</text> : null}
 					</box>
 				</TuiBox>
 			) : modelsDir === null && !scanning ? (
@@ -160,7 +194,7 @@ export function Explorer({
 				<box style={{ flexDirection: "row", flexGrow: 1 }}>
 					<TuiBox
 						theme={theme}
-						title={`Models${modelsDir ? ` (${modelsDir})` : ""}`}
+						title={`Models${modelsDir ? ` (${truncateMiddle(modelsDir, 28)})` : ""}`}
 						width="60%"
 						flexGrow={1}
 						focused={focused}
@@ -247,7 +281,7 @@ export function Explorer({
 											{`${formatBytes(vram.low)}-${formatBytes(vram.high)}`}
 										</span>
 									</text>
-									<text fg={theme.muted}>(estimated range)</text>
+									<text fg={theme.muted}>(full-offload estimate)</text>
 								</box>
 							) : null}
 						</box>

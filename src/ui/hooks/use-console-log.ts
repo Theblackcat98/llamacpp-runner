@@ -29,10 +29,15 @@ export function useConsoleLog(
 ): {
 	drawer: DrawerState;
 	setDrawer: Dispatch<SetStateAction<DrawerState>>;
+	hostNotice: string | null;
+	clearHostNotice: () => void;
 } {
 	const [drawer, setDrawer] = useState<DrawerState>(() =>
 		createDrawerState(DRAWER_HEIGHT),
 	);
+	// Tier 2 (audit): the 0.0.0.0 confirm must surface in the footer even
+	// when the console drawer (its only previous home) is collapsed.
+	const [hostNotice, setHostNotice] = useState<string | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: subscriptions are bound on mount; boot announcements read the one-shot boot state
 	useEffect(() => {
@@ -57,6 +62,9 @@ export function useConsoleLog(
 			});
 		}
 		const offConfirm = bus.onState("CONFIRM_REQUIRED", (event) => {
+			setHostNotice(
+				`host ${event.host} binds ALL interfaces — press Ctrl+Y again to confirm launch`,
+			);
 			bus.emitState("LOG_LINE", {
 				stream: "out",
 				text: `[SYS] host ${event.host} binds ALL interfaces — press Ctrl+Y to confirm launch`,
@@ -82,5 +90,10 @@ export function useConsoleLog(
 		};
 	}, []);
 
-	return { drawer, setDrawer };
+	return {
+		drawer,
+		setDrawer,
+		hostNotice,
+		clearHostNotice: () => setHostNotice(null),
+	};
 }

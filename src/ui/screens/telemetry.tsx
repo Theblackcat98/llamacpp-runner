@@ -2,6 +2,7 @@ import { Badge } from "../components/badge";
 import { TuiBox } from "../components/box";
 import { Gauge } from "../components/gauge";
 import { VirtualizedTable } from "../components/table";
+import { truncateMiddle } from "../components/table-state";
 import type { IconSet } from "../glyphs";
 import type { TelemetryViewModel } from "../logic/telemetry-state";
 import type { Theme } from "../themes";
@@ -73,7 +74,9 @@ export function Telemetry({
 					label={vm.statusLabel}
 					iconSet={iconSet}
 				/>
-				<text fg={theme.fgBright}>{`  ${vm.modelLabel}`}</text>
+				<text
+					fg={theme.fgBright}
+				>{`  ${truncateMiddle(vm.modelLabel, Math.max(12, width - 48))}`}</text>
 				<text fg={theme.muted}>{`  up ${vm.uptime}`}</text>
 				<text fg={theme.accent}>{`  ${vm.endpointLabel}`}</text>
 			</box>
@@ -153,13 +156,13 @@ export function Telemetry({
 						gen: r[4],
 					}))}
 					viewport={6}
-					captureKeys={false}
+					captureKeys={focused}
 					focused={focused}
 				/>
 			</box>
 
 			{vm.failureSummary ? (
-				<TuiBox theme={theme} title="Failure (§6.4)" height={8}>
+				<TuiBox theme={theme} title="Failure" height={8}>
 					<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 						<text fg={theme.error}>{` ${vm.failureSummary}`}</text>
 						{vm.failureSuggestion ? (

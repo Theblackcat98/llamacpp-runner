@@ -30,7 +30,7 @@ type Bus = ReturnType<typeof createBus<IntentMap, StateMap>>;
 export interface PresetStore {
 	presetsFile: PresetFile;
 	persistPresets: (next: PresetFile) => void;
-	savePreset: () => void;
+	savePreset: (name?: string) => void;
 	loadPreset: (preset: {
 		id: string;
 		model_path: string;
@@ -70,7 +70,7 @@ export function usePresetStore(opts: {
 		});
 	}
 
-	function savePreset(): void {
+	function savePreset(name?: string): void {
 		if (!config.model) return;
 		const store = loadPresets(presetsFilePath(paths.configDir));
 		const file = store.data;
@@ -78,14 +78,18 @@ export function usePresetStore(opts: {
 		const id = `preset-${Date.now()}`;
 		// #58: the preset identity derives from the CONFIGURED model — the
 		// Explorer cursor is a navigation aid, not the save source.
-		const name = basename(config.model.path);
+		const modelName = basename(config.model.path);
 		const next: PresetFile = {
 			...file,
 			presets: [
 				...file.presets,
 				{
 					id,
-					name: `${name} (saved ${new Date().toISOString().slice(11, 19)})`,
+					// Tier 2 (audit): the Ctrl+S name prompt supplies the
+					// name; bare saves keep the timestamped default.
+					name:
+						name?.trim() ||
+						`${modelName} (saved ${new Date().toISOString().slice(11, 19)})`,
 					model_path: config.model.path,
 					flags: config.values,
 					env_vars: {},
