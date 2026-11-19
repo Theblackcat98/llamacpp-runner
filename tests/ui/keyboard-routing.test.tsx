@@ -222,10 +222,16 @@ describe("text field × global shortcut matrix (Launch Config)", () => {
 			for (let i = 0; i < field.downs; i++) {
 				await h.press("\x1b[B"); // down
 			}
-			// Seed the expected buffer with what the controlled input shows:
-			// strValue semantics — non-string values render as empty buffers.
+			// Seed the expected buffer with what the controlled input shows.
+			// Audit #4: the numeric port now displays its real value (8080)
+			// instead of a blank buffer, so typing appends to it.
 			const initial = h.getConfiguratorState().values[field.valueKey];
-			let expected = typeof initial === "string" ? initial : "";
+			let expected =
+				typeof initial === "string"
+					? initial
+					: typeof initial === "number"
+						? String(initial)
+						: "";
 			for (const key of YIELD_KEYS) {
 				await h.press(key);
 				expectNoShellSideEffects(h);
@@ -356,7 +362,13 @@ describe("inverse: global shortcuts still fire when no text field owns typing", 
 		expect(h.spies.enableTelemetry).toBe(1);
 
 		await h.press("1");
-		await h.press("\r"); // Enter launches outside Presets
+		// Audit #6: Enter on the Explorer navigates to Launch Config —
+		// it no longer launches the highlighted model directly.
+		await h.press("\r");
+		expect(h.spies.launch).toBe(0);
+		expect(h.frame()).toContain("Launch config");
+		// Enter on Launch Config (slider field focused) still launches.
+		await h.press("\r");
 		expect(h.spies.launch).toBe(1);
 	});
 

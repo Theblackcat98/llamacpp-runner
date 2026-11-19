@@ -293,6 +293,14 @@ describe("keyboard ownership (Phase 13)", () => {
 			setup.mockInput.pressKey("s", { ctrl: true });
 			await setup.flush();
 		});
+		// Tier 2: Ctrl+S opens the name prompt first — nothing saved yet,
+		// and the shell fired the prompt exactly once.
+		expect(saves).toBe(0);
+		expect(setup.captureCharFrame()).toContain("Save preset");
+		await act(async () => {
+			await setup.mockInput.pressKeys(["\r"]);
+			await setup.flush();
+		});
 		expect(saves).toBe(1);
 	});
 

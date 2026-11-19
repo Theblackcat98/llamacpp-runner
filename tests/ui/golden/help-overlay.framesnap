@@ -1,24 +1,24 @@
             ┌─Keyboard shortcuts — Launch Config───────────────────────────────────────┐            
-            │  Global                                                                  │            
-            │   [Tab]  cycle focus (screen / console drawer)                           │            
+            │  G[Tab]  cycle focus (screen / console drawer)                           │            
             │   [1-4]  switch tabs                                                     │            
-            │   [Enter]  launch (set-default on the Presets tab)                       │            
+            │   [Enter]  Explorer: go to Config · Config: launch · Presets: default    │            
             │   [x]  kill server (confirms while running)                              │            
             │   [k]  kill orphaned server (twice; not while a list is focused)         │            
-            │   [o]  collapse / expand console                                         │            
-            │   [Ctrl+L]  clear log                                                    │            
+            │   [Ctrl+L]laclear logand console                                         │            
             │   [Ctrl+P]  command palette                                              │            
-            │   [q]  quit (confirms while running)                                     │            
-            │   [?]  toggle this legend                                                │            
-            │  Launch Config                                                           │            
+            │   [Ctrl+Y]  confirm host-exposing launch (any tab)                       │            
+            │   [q]/[Ctrl+C]  quit (confirms while running)                            │            
+            │   [j/k/g/G]  move in lists (g = top, G = bottom)                         │            
+            │   [drawer]  scroll console (drawer focused): ↑↓/j/k · PgUp/PgDn · g/G    │            
+            │  LaunchtConfigthis legend (Esc also closes)                              │            
             │   [↑↓]  move between fields                                              │            
-            │   [Ctrl+S]  save preset                                                  │            
-            │   [Esc]  reset configurator                                              │            
+            │   [←→]  adjust slider / cycle option (Shift = coarse step)               │            
+            │   [0-9]  type a context size on the chip group, Enter commits            │            
+            │   [e]  type a numeric value on a slider, Enter commits                   │            
+            │   [Ctrl+S]ntsave preset (promptssforcanname)chip                         │            
+            │   [Esc]  reset configurator (press twice)                                │            
             │   [a]  auto-fit GPU layers to VRAM                                       │            
             │   [y]  yank launch command                                               │            
-            │   [Ctrl+Y]  confirm host-exposing launch                                 │            
             │   [i]  import shell command                                              │            
-            │  press [?] to close                                                      │            
-            │                                                                          │            
-            │                                                                          │            
+            │  press [?] or [Esc] to close                                             │            
             └──────────────────────────────────────────────────────────────────────────┘            

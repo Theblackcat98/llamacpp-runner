@@ -7,15 +7,15 @@
 │ [ ] Flash Attention                                 ││ [Enter] Launch                            │
 │ [ ] mlock                                           ││ [Ctrl+S] Save Preset   [Esc] Reset        │
 │ [ ] no-mmap                                         ││ [Tab] focus console/screen  [y] Yank cmd  │
-│ [ ] Slots endpoint                                  ││ [a] Auto-fit ngl       [i] Import shell   │
-│ [ ] Metrics endpoint                                ││ cmd                                       │
+│ [ ] Slots endpoint                                  ││ [a] Auto-fit ngl                          │
+│ [ ] Metrics endpoint                                ││ [i] Import shell cmd                      │
 │ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)       ││                                           │
 │ Micro-batch [██░░░░░░░░░░░░░░░░] 512/4096 (1)       ││                                           │
 │ Threads [░░░░░░░░░░░░░░░░░░] 8/256 (1)              ││                                           │
-│ host 127.0.0.1 INS                                  ││                                           │
-│ port 8080 INS                                       ││                                           │
-│ alias   INS                                         ││                                           │
-│ chat-template   INS                                 ││                                           │
+│ host 127.0.0.1                                      ││                                           │
+│ port 8080                                           ││                                           │
+│ alias                                               ││                                           │
+│ chat-template                                       ││                                           │
 │                                                     ││                                           │
 │                                                     ││                                           │
 ╰─────────────────────────────────────────────────────╯╰───────────────────────────────────────────╯

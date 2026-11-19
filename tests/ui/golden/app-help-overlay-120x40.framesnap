@@ -7,28 +7,28 @@
                                                                                                                         
                                                                                                                         
                                                                                                                         
-                                                                                                                        
                       ┌─Keyboard shortcuts — Model Explorer──────────────────────────────────────┐                      
                       │  Global                                                                  │                      
                       │   [Tab]  cycle focus (screen / console drawer)                           │                      
                       │   [1-4]  switch tabs                                                     │                      
-                      │   [Enter]  launch (set-default on the Presets tab)                       │                      
+                      │   [Enter]  Explorer: go to Config · Config: launch · Presets: default    │                      
                       │   [x]  kill server (confirms while running)                              │                      
                       │   [k]  kill orphaned server (twice; not while a list is focused)         │                      
                       │   [o]  collapse / expand console                                         │                      
                       │   [Ctrl+L]  clear log                                                    │                      
                       │   [Ctrl+P]  command palette                                              │                      
-                      │   [q]  quit (confirms while running)                                     │                      
-                      │   [?]  toggle this legend                                                │                      
+                      │   [Ctrl+Y]  confirm host-exposing launch (any tab)                       │                      
+                      │   [q]/[Ctrl+C]  quit (confirms while running)                            │                      
+                      │   [j/k/g/G]  move in lists (g = top, G = bottom)                         │                      
+                      │   [drawer]  scroll console (drawer focused): ↑↓/j/k · PgUp/PgDn · g/G    │                      
+                      │   [?]  toggle this legend (Esc also closes)                              │                      
                       │  Model Explorer                                                          │                      
                       │   [m]  set models directory                                              │                      
                       │   [r]  rescan models directory                                           │                      
-                      │   [↑↓]  select model                                                     │                      
-                      │  press [?] to close                                                      │                      
-                      │                                                                          │                      
-                      │                                                                          │                      
+                      │   [↑↓/j/k]  select model                                                 │                      
+                      │   [Enter]  go to Launch Config (does not launch)                         │                      
+                      │  press [?] or [Esc] to close                                             │                      
                       └──────────────────────────────────────────────────────────────────────────┘                      
-                                                                                                                        
                                                                                                                         
                                                                                                                         
                                                                                                                         

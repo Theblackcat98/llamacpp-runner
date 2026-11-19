@@ -7,20 +7,20 @@
 │ [ ] Flash Attention                                 ││ [Enter] Launch                            │
 │ [ ] mlock                                           ││ [Ctrl+S] Save Preset   [Esc] Reset        │
 │ [ ] no-mmap                                         ││ [Tab] focus console/screen  [y] Yank cmd  │
-│ [x] Slots endpoint                                  ││ [a] Auto-fit ngl       [i] Import shell   │
-│ [x] Metrics endpoint                                ││ cmd                                       │
+│ [x] Slots endpoint                                  ││ [a] Auto-fit ngl                          │
+│ [x] Metrics endpoint                                ││ [i] Import shell cmd                      │
 │ Batch Size [████░░░░░░░░░░░░░░] 2048/8192 (1)       ││                                           │
 │ Micro-batch [██░░░░░░░░░░░░░░░░] 512/4096 (1)       ││                                           │
 │ Threads [░░░░░░░░░░░░░░░░░░] 8/256 (1)              ││                                           │
-│ host 127.0.0.1  INS                                 ││                                           │
-│ port 8080 INS                                       ││                                           │
-│ alias   INS                                         ││                                           │
-│ chat-template   INS                                 ││                                           │
+│ host 127.0.0.1                                      ││                                           │
+│ port 8080                                           ││                                           │
+│ alias                                               ││                                           │
+│ chat-template                                       ││                                           │
 │                                                     ││                                           │
 │                                                     ││                                           │
 ╰─────────────────────────────────────────────────────╯╰───────────────────────────────────────────╯
 ╭─Preview — restart required───────────────────────────────────────────────────────────────────────╮
-│ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gguf' -ngl 29 -c 8192 -ctk f16 -ctv f16 --host    │
-│127.0.0.1 --port 8080 --slots --metrics                                                           │
-│ hardware probe failed — run reprobe                                                              │
+│ $ llama-server -m '~/models/llm/qwen25-7b-q4km.gg…--host 127.0.0.1 --port 8080 --slots --metrics │
+│ no hardware data — run reprobe                                                                   │
+│                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
