@@ -67,7 +67,7 @@ const HINTS: string[][] = [
 		"[Tab] Focus",
 		"[1-4] Tabs",
 		"[Enter] Set default",
-		"[l] Load+go",
+		"[l] Load",
 		"[c] Clone",
 		"[d] Delete",
 		"[r] Relink",

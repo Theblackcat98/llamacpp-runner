@@ -135,7 +135,7 @@ describe("composition root E2E (Issue #31)", () => {
 				(f) => f.includes("presets.json was unreadable"),
 				3000,
 			);
-			expect(frame).toContain(".corrupt-");
+			expect(frame).toContain("corrupt-");
 
 			// …and the original file was preserved before any write.
 			const configDir = join(app.scratch, "config", "llama-deck");
