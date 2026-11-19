@@ -27,7 +27,12 @@ export function FooterHintBar({
 	return (
 		<text fg={notice ? theme.warn : theme.muted}>
 			{" "}
-			{footerHintLine(tab, width, notice, { drawerFocused })}
+			{/* The leading space is part of the line: budget width - 1, or
+			    a hint line that exactly fills `width` wraps and corrupts
+			    the shell layout (Tier 3 — the tab-0 line reached 120). */}
+			{footerHintLine(tab, Math.max(1, width - 1), notice, {
+				drawerFocused,
+			})}
 		</text>
 	);
 }

@@ -7,28 +7,28 @@
                                                                                                                         
                                                                                                                         
                                                                                                                         
+                                                                                                                        
                       ┌─Keyboard shortcuts — Model Explorer──────────────────────────────────────┐                      
                       │  Global                                                                  │                      
-                      │   [Tab]  cycle focus (screen / console drawer)                           │                      
-                      │   [1-4]  switch tabs                                                     │                      
+                      │   [Tab]/[1-4]  cycle focus (screen / drawer) · switch tabs               │                      
                       │   [Enter]  Explorer: go to Config · Config: launch · Presets: default    │                      
-                      │   [x]  kill server (confirms while running)                              │                      
-                      │   [k]  kill orphaned server (twice; not while a list is focused)         │                      
-                      │   [o]  collapse / expand console                                         │                      
-                      │   [Ctrl+L]  clear log                                                    │                      
-                      │   [Ctrl+P]  command palette                                              │                      
-                      │   [Ctrl+Y]  confirm host-exposing launch (any tab)                       │                      
+                      │   [x]/[k]  kill server (x) · kill orphan (k, twice, unfocused)           │                      
+                      │   [o]/[Ctrl+L]  collapse / expand console · clear log                    │                      
+                      │   [Ctrl+P]/[Ctrl+Y]  command palette · confirm host-exposing launch      │                      
                       │   [q]/[Ctrl+C]  quit (confirms while running)                            │                      
-                      │   [j/k/g/G]  move in lists (g = top, G = bottom)                         │                      
-                      │   [drawer]  scroll console (drawer focused): ↑↓/j/k · PgUp/PgDn · g/G    │                      
+                      │   [j/k/g/G]  move in lists (g top, G bottom); drawer PgUp/PgDn           │                      
+                      │   [mouse]  click tabs/rows/controls · wheel scroll · double-click Enter  │                      
                       │   [?]  toggle this legend (Esc also closes)                              │                      
                       │  Model Explorer                                                          │                      
                       │   [m]  set models directory                                              │                      
                       │   [r]  rescan models directory                                           │                      
-                      │   [↑↓/j/k]  select model                                                 │                      
+                      │   [/]  filter models by name — Enter keeps, Esc clears                   │                      
+                      │   [s]  cycle sort: Name / Size / Context / Scan order                    │                      
+                      │   [↑↓/j/k]  select model (in filter: ↑↓ move, j/k type)                  │                      
                       │   [Enter]  go to Launch Config (does not launch)                         │                      
                       │  press [?] or [Esc] to close                                             │                      
                       └──────────────────────────────────────────────────────────────────────────┘                      
+                                                                                                                        
                                                                                                                         
                                                                                                                         
                                                                                                                         

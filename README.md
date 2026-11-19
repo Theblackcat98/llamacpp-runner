@@ -105,6 +105,8 @@ Press `?` anywhere in the TUI for the full contextual shortcut legend. The table
 | `↑` / `↓` / `j` / `k` / `PgUp` / `PgDn` | Console drawer (focused) | Scroll the log; `g` top, `G` tail |
 | `m` | Model Explorer | Set models directory |
 | `r` | Model Explorer | Trigger manual rescan of models directory |
+| `/` | Model Explorer | Filter models by filename (fuzzy match, reuses the palette scorer); `Enter` keeps the filter, `Esc` clears it; while filtering, `↑`/`↓` move the cursor and letter keys type |
+| `s` | Model Explorer | Cycle sort order: Name → Size → Context → Scan (scanner order, the default) |
 | `↑` / `↓` | Model Explorer | Select model |
 | `↑` / `↓` | Launch Config | Move between fields |
 | `Esc` | Launch Config | Reset configurator (press twice to confirm) |
@@ -119,7 +121,10 @@ Press `?` anywhere in the TUI for the full contextual shortcut legend. The table
 | `d` | Presets | Delete selected preset (press twice) |
 | `Enter` | Presets | Set default preset |
 | `l` | Presets | Load selected preset into Configurator |
+| `L` | Presets | Load selected preset into Configurator **and launch it immediately** |
+| `n` | Presets | Rename selected preset (name prompt, prefilled) |
 | `r` | Presets | Relink broken preset to Explorer pick |
+| Mouse | Global | Additive only — every action mirrors a key: click tabs to switch, click table rows to select (double-click = `Enter`), click checkboxes/chips/palette actions, click a slider's track to position its value, wheel-scroll tables and the console drawer, click the console drawer's title row to collapse/expand |
 
 ---
 
