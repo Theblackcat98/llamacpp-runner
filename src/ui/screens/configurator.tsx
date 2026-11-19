@@ -150,6 +150,7 @@ export function Configurator({
 				theme={theme}
 				captureKeys={captureKeys && !isFieldDisabled(id) && field === FIELD[id]}
 				focused={focused && field === FIELD[id]}
+				disabled={isFieldDisabled(id)}
 				checked={state.values[id] === true}
 				label={`${label}${availSuffix(id)}`}
 				onToggle={() => update((s) => setFlag(s, id, !(s.values[id] === true)))}
@@ -261,6 +262,7 @@ export function Configurator({
 						>
 							<Slider
 								theme={theme}
+								disabled={isFieldDisabled("n_gpu_layers")}
 								captureKeys={
 									captureKeys && !isFieldDisabled("n_gpu_layers") && field === 0
 								}
@@ -283,6 +285,7 @@ export function Configurator({
 									{availSuffix("ctx_size")}
 								</text>
 								<ChipGroup
+									disabled={isFieldDisabled("ctx_size")}
 									theme={theme}
 									captureKeys={
 										captureKeys && !isFieldDisabled("ctx_size") && field === 1
@@ -331,6 +334,7 @@ export function Configurator({
 							{boolRow("metrics")}
 							<Slider
 								theme={theme}
+								disabled={isFieldDisabled("batch_size")}
 								captureKeys={
 									captureKeys && !isFieldDisabled("batch_size") && field === 9
 								}
@@ -345,6 +349,7 @@ export function Configurator({
 							/>
 							<Slider
 								theme={theme}
+								disabled={isFieldDisabled("ubatch_size")}
 								captureKeys={
 									captureKeys && !isFieldDisabled("ubatch_size") && field === 10
 								}
@@ -359,6 +364,7 @@ export function Configurator({
 							/>
 							<Slider
 								theme={theme}
+								disabled={isFieldDisabled("threads")}
 								captureKeys={
 									captureKeys && !isFieldDisabled("threads") && field === 11
 								}
