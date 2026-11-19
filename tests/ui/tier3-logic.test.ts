@@ -81,10 +81,17 @@ describe("explorer filter (Tier 3)", () => {
 });
 
 describe("explorer sort (Tier 3)", () => {
-	it("cycles name -> size -> context -> name", () => {
+	it("cycles scan -> name -> size -> context -> scan", () => {
+		expect(cycleSortMode("scan")).toBe("name");
 		expect(cycleSortMode("name")).toBe("size");
 		expect(cycleSortMode("size")).toBe("context");
-		expect(cycleSortMode("context")).toBe("name");
+		expect(cycleSortMode("context")).toBe("scan");
+	});
+
+	it("scan mode preserves the scanner's order", () => {
+		expect(sortEntries(ENTRIES, "scan").map((e) => e.name)).toEqual(
+			ENTRIES.map((e) => e.name),
+		);
 	});
 
 	it("sorts by name ascending", () => {

@@ -53,12 +53,16 @@ export function buildRows(
  * the array, never the entries) so selection can track a model by its
  * path across view changes instead of by row index.
  */
-export type ExplorerSortMode = "name" | "size" | "context";
+export type ExplorerSortMode = "scan" | "name" | "size" | "context";
 
+/** Cycle order for the `s` key: the resting "scan" mode (the scanner's
+ * own order — the pre-Tier-3 behaviour) leads into the three sorts and
+ * back. */
 export const EXPLORER_SORT_MODES: ExplorerSortMode[] = [
 	"name",
 	"size",
 	"context",
+	"scan",
 ];
 
 export function cycleSortMode(mode: ExplorerSortMode): ExplorerSortMode {
@@ -67,7 +71,13 @@ export function cycleSortMode(mode: ExplorerSortMode): ExplorerSortMode {
 }
 
 export function sortModeLabel(mode: ExplorerSortMode): string {
-	return mode === "name" ? "Name" : mode === "size" ? "Size" : "Context";
+	return mode === "name"
+		? "Name"
+		: mode === "size"
+			? "Size"
+			: mode === "context"
+				? "Context"
+				: "Scan";
 }
 
 function compareEntries(
@@ -78,6 +88,7 @@ function compareEntries(
 	const byName = a.name.localeCompare(b.name, undefined, {
 		sensitivity: "base",
 	});
+	if (mode === "scan") return 0;
 	if (mode === "name") return byName;
 	if (mode === "size") return b.totalBytes - a.totalBytes || byName;
 	// Context: largest first; models without a known context length sort

@@ -521,6 +521,12 @@ export function App({
 						onEditingChange={(editing) => {
 							explorerEditingRef.current = editing;
 						}}
+						onActivate={() => {
+							// Tier 3: double-click is the mouse Enter — same
+							// navigation the shell's Enter performs on tab 0.
+							setTab(CONFIGURATOR_TAB);
+							setFocusPane(0);
+						}}
 						dirEditSignal={dirEditSignal}
 						extraRows={collapsed ? 4 : 0}
 						focused={focusPane === 0}
