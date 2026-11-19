@@ -20,8 +20,11 @@ export interface LastSession {
 export interface PresetFile {
 	version: number;
 	$schema?: string;
+	/** First-run seed for the models dir only (§5); owner is config.json (#69). */
 	default_model_dir?: string;
+	/** @deprecated Legacy fallback — owner is config.json `theme` (#69). Migrated by `consolidateLegacyConfig`. */
 	theme?: string;
+	/** @deprecated Legacy file-level fallback — owner is config.json `binaryPath` (#69). Per-preset `binary_path` on a Preset entry is a separate launch override and is NOT this field. Migrated by `consolidateLegacyConfig`. */
 	binary_path?: string;
 	lastSession?: LastSession;
 	presets: Preset[];
@@ -150,6 +153,68 @@ function isPresetFile(value: unknown): value is PresetFile {
 }
 /** Structural validation of a full PresetFile document (#11 portability). */
 export const isPresetFileShape = isPresetFile;
+
+// ---------------------------------------------------------------------------
+// Preset management helpers for the CLI (#69 parity with the TUI Presets
+// tab): pure PresetFile transforms; callers persist via savePresets.
+// ---------------------------------------------------------------------------
+
+/** Find a preset by id or exact name (the CLI's lookup rule). */
+export function findPresetInFile(
+	file: PresetFile,
+	idOrName: string,
+): Preset | undefined {
+	return file.presets.find((p) => p.id === idOrName || p.name === idOrName);
+}
+
+/** Delete a preset; clears lastSession when it pointed at the deleted one. */
+export function deletePresetFromFile(
+	file: PresetFile,
+	idOrName: string,
+): { file: PresetFile; removed?: Preset } {
+	const target = findPresetInFile(file, idOrName);
+	if (!target) return { file };
+	const next: PresetFile = {
+		...file,
+		presets: file.presets.filter((p) => p.id !== target.id),
+	};
+	if (next.lastSession?.preset_id === target.id) {
+		delete next.lastSession;
+	}
+	return { file: next, removed: target };
+}
+
+/** Rename a preset's display name (its id is stable). */
+export function renamePresetInFile(
+	file: PresetFile,
+	idOrName: string,
+	newName: string,
+): { file: PresetFile; renamed?: Preset } {
+	const target = findPresetInFile(file, idOrName);
+	if (!target) return { file };
+	const renamed: Preset = { ...target, name: newName };
+	return {
+		file: {
+			...file,
+			presets: file.presets.map((p) => (p.id === target.id ? renamed : p)),
+		},
+		renamed,
+	};
+}
+
+/** Set the default preset: the one lastSession restores on boot (§5). */
+export function setDefaultPresetInFile(
+	file: PresetFile,
+	idOrName: string,
+	tab = 3,
+): { file: PresetFile; preset?: Preset } {
+	const target = findPresetInFile(file, idOrName);
+	if (!target) return { file };
+	return {
+		file: { ...file, lastSession: { preset_id: target.id, tab } },
+		preset: target,
+	};
+}
 export function splitFlags(flags: Record<string, unknown>): {
 	known: Record<string, unknown>;
 	unknown: Record<string, unknown>;

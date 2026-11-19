@@ -62,9 +62,47 @@ exec llama-server -m model.gguf
 		expect(tokens.argv).toEqual(["llama-server", "-m", "foo'bar.gguf"]);
 	});
 
-	it("hard-rejects double quotes with clear token error", () => {
-		expect(() => tokenizeShellScript('llama-server -m "test.gguf"')).toThrow(
-			/double quote/i,
+	it("accepts safe double-quoted strings (pasted HF/Docker snippets)", () => {
+		const tokens = tokenizeShellScript(
+			'llama-server -m "my models/test model.gguf" -c 4096 --alias "my model"',
+		);
+		expect(tokens.argv).toEqual([
+			"llama-server",
+			"-m",
+			"my models/test model.gguf",
+			"-c",
+			"4096",
+			"--alias",
+			"my model",
+		]);
+		const parsed = parseShellCommand('llama-server -m "/tmp/m.gguf" -c 8192');
+		expect(parsed.modelPath).toBe("/tmp/m.gguf");
+		expect(parsed.values.ctx_size).toBe(8192);
+	});
+
+	it("accepts double-quoted export values and escaped quotes", () => {
+		const tokens = tokenizeShellScript(
+			'export GREETING="hello world"\nllama-server -m "a\\"b.gguf"',
+		);
+		expect(tokens.envVars).toEqual({ GREETING: "hello world" });
+		expect(tokens.argv).toEqual(["llama-server", "-m", 'a"b.gguf']);
+	});
+
+	it("hard-rejects $ and backticks inside double quotes (no expansion)", () => {
+		expect(() =>
+			tokenizeShellScript('llama-server -m "$HOME/test.gguf"'),
+		).toThrow(/variable expansion/i);
+		expect(() =>
+			tokenizeShellScript('llama-server -m "${MODEL}/test.gguf"'),
+		).toThrow(/variable expansion/i);
+		expect(() =>
+			tokenizeShellScript('llama-server -m "$(whoami).gguf"'),
+		).toThrow(/variable expansion/i);
+		expect(() =>
+			tokenizeShellScript('llama-server -m "`whoami`.gguf"'),
+		).toThrow(/backtick/i);
+		expect(() => tokenizeShellScript('llama-server -m "unterminated')).toThrow(
+			/unterminated/i,
 		);
 	});
 

@@ -78,14 +78,33 @@ describe("scanner recursion bounds (§3.1)", () => {
 	});
 });
 
-describe("state paths ~/.configs fallback", () => {
-	it("uses ~/.configs when it exists and XDG_CONFIG_HOME is unset", () => {
-		const fakeHome = scratch("home");
-		const configsDir = join(fakeHome, ".configs");
-		mkdirSync(configsDir, { recursive: true });
-
+describe("state paths ~/.configs fallback (#69)", () => {
+	it("prefers ~/.config by default when neither deck dir exists", () => {
+		const fakeHome = scratch("home-default");
 		const paths = resolvePaths({}, fakeHome);
-		expect(paths.configDir).toBe(join(configsDir, "llama-deck"));
+		expect(paths.configDir).toBe(join(fakeHome, ".config", "llama-deck"));
+	});
+
+	it("a stray ~/.configs directory alone does NOT hijack new installs", () => {
+		const fakeHome = scratch("home-stray");
+		mkdirSync(join(fakeHome, ".configs"), { recursive: true });
+		const paths = resolvePaths({}, fakeHome);
+		expect(paths.configDir).toBe(join(fakeHome, ".config", "llama-deck"));
+	});
+
+	it("uses ~/.configs only as fallback when ~/.config/llama-deck is absent and a legacy ~/.configs/llama-deck exists", () => {
+		const fakeHome = scratch("home-legacy");
+		mkdirSync(join(fakeHome, ".configs", "llama-deck"), { recursive: true });
+		const paths = resolvePaths({}, fakeHome);
+		expect(paths.configDir).toBe(join(fakeHome, ".configs", "llama-deck"));
+	});
+
+	it("prefers ~/.config/llama-deck when both deck dirs exist", () => {
+		const fakeHome = scratch("home-both");
+		mkdirSync(join(fakeHome, ".configs", "llama-deck"), { recursive: true });
+		mkdirSync(join(fakeHome, ".config", "llama-deck"), { recursive: true });
+		const paths = resolvePaths({}, fakeHome);
+		expect(paths.configDir).toBe(join(fakeHome, ".config", "llama-deck"));
 	});
 });
 

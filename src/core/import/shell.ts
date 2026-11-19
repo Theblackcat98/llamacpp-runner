@@ -28,6 +28,10 @@ export interface ParsedShellCommand {
 /**
  * Tokenize a strict subset of POSIX shell:
  * - Bare words and single-quoted strings (including `'\''` single-quote escapes)
+ * - Safe double-quoted strings: literal text only — no variable expansion
+ *   and no command substitution (a `$` or backtick inside double quotes is
+ *   hard-rejected, so pasted HF/Docker snippets using `"..."` for paths
+ *   with spaces parse, while `"$HOME/..."` never silently expands)
  * - Comment lines starting with `#`
  * - Trailing `\` line continuations
  * - Optional leading `$` prompt marker
@@ -35,10 +39,9 @@ export interface ParsedShellCommand {
  * - Optional `exec` prefix before command
  *
  * Hard-rejects any ambiguous or executable shell syntax:
- * - Double quotes (`"`)
- * - Variable expansions (`$var`, `${var}`)
+ * - Variable expansions (`$var`, `${var}`, `$(...)` — bare or double-quoted)
  * - Control operators (`&&`, `||`, `;`, `&`, `|`, `>`, `<`, `(`, `)`)
- * - Backticks (`` ` ``)
+ * - Backticks (`` ` `` — bare or double-quoted)
  */
 export function tokenizeShellScript(input: string): TokenizedScript {
 	const envVars: Record<string, string> = {};
@@ -106,12 +109,47 @@ function tokenizeWords(str: string): string[] {
 		while (i < str.length && !/\s/.test(str[i] ?? "")) {
 			const ch = str[i] ?? "";
 
-			// Hard-rejected characters
 			if (ch === '"') {
-				throw new ShellImportError(
-					'Double quotes (") are not permitted in strict shell import',
-				);
+				// Safe double-quoted block: literal characters only. `$` and
+				// backticks are rejected (no expansion / substitution), as is
+				// an unterminated quote. `\"` and `\\` are the only escapes.
+				i++; // Skip opening "
+				let closed = false;
+				while (i < str.length) {
+					const qc = str[i] ?? "";
+					if (qc === '"') {
+						i++;
+						closed = true;
+						break;
+					}
+					if (qc === "`") {
+						throw new ShellImportError(
+							"Backticks (`) are not permitted inside double quotes",
+						);
+					}
+					if (qc === "$") {
+						throw new ShellImportError(
+							"Variable expansion ($) is not permitted inside double quotes",
+						);
+					}
+					if (
+						qc === "\\" &&
+						i + 1 < str.length &&
+						(str[i + 1] === '"' || str[i + 1] === "\\")
+					) {
+						currentWord += str[i + 1];
+						i += 2;
+						continue;
+					}
+					currentWord += qc;
+					i++;
+				}
+				if (!closed) {
+					throw new ShellImportError("Unterminated double-quoted string");
+				}
+				continue;
 			}
+			// Hard-rejected characters
 			if (ch === "`") {
 				throw new ShellImportError("Backticks (`) are not permitted");
 			}
