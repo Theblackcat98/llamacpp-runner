@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noStaticElementInteractions: OpenTUI renderables are terminal cells, not DOM elements; every mouse action here mirrors an existing keyboard binding (Tier 3)
 import {
 	useKeyboard,
 	useRenderer,
@@ -49,6 +50,7 @@ import {
 import {
 	applyPaletteKey,
 	type PaletteState as CmdPaletteState,
+	close as closePalette,
 	createPaletteState,
 } from "./logic/palette-state";
 import { headerStatus } from "./logic/proc-status";
@@ -502,11 +504,23 @@ export function App({
 					const icon = iconFor(TAB_ICON_KINDS[i] ?? "tab-explorer", ICON_SET);
 					const prefix = icon ? `${icon} ` : "";
 					return (
-						<text
+						<box
 							key={label}
-							fg={i === tab ? theme.bg : theme.muted}
-							bg={i === tab ? theme.accent : undefined}
-						>{` ${prefix}[${i + 1}] ${label} `}</text>
+							onMouseDown={(event) => {
+								// Tier 3 mouse (additive): clicking a tab is the
+								// mouse equivalent of its 1-4 key.
+								if (event.button !== 0) return;
+								event.stopPropagation();
+								numericEntryRef.current = false;
+								setTab(i);
+								setFocusPane(0);
+							}}
+						>
+							<text
+								fg={i === tab ? theme.bg : theme.muted}
+								bg={i === tab ? theme.accent : undefined}
+							>{` ${prefix}[${i + 1}] ${label} `}</text>
+						</box>
 					);
 				})}
 			</box>
@@ -642,12 +656,21 @@ export function App({
 				focused={focusPane === 1}
 				collapsed={collapsed}
 				theme={theme}
+				onToggleCollapse={() => setCollapsed((c) => !c)}
+				onScrollBy={(by) => setDrawer((s) => scrollBy(s, by))}
 			/>
 			<Palette
 				theme={theme}
 				state={palette}
 				actions={paletteActions}
 				activeTheme={paletteControl?.activeTheme}
+				onRunAction={(action) => {
+					// Mouse Enter-equivalent: run + close, exactly what
+					// applyPaletteKey does for the Return key (kill-server
+					// still only arms on first activation).
+					action.run();
+					setPalette((prev) => closePalette(prev));
+				}}
 			/>
 			<RenamePresetModal
 				theme={theme}
