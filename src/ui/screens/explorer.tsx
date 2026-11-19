@@ -255,7 +255,7 @@ export function Explorer({
 				</box>
 			)}
 
-			<TuiBox theme={theme} title="QUICK LAUNCH COMMAND PREVIEW">
+			<TuiBox theme={theme} title="Model launch target">
 				{current?.incomplete ? (
 					<text fg={theme.warn}>
 						{`incomplete split group — add the missing parts and rescan [r]`}

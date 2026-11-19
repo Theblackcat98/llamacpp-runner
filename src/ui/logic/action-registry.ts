@@ -69,7 +69,7 @@ export function buildDefaultActions(h: PaletteHandlers): PaletteAction[] {
 	actions.push(
 		{
 			id: "set-port",
-			label: "Set Port (Configurator)",
+			label: "Go to Launch Config",
 			keywords: "port network",
 			run: () => h.setPort(),
 		},
