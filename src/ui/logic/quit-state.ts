@@ -32,7 +32,7 @@ function armed(kind: ConfirmKind, now: number): ConfirmAction {
 		action: "confirm",
 		message:
 			kind === "quit"
-				? "server running — Ctrl+C again within 2s to quit"
+				? "server running — press q / Ctrl+C again within 2s to quit"
 				: kind === "kill"
 					? "kill running server — press x again to confirm"
 					: "host binds ALL interfaces — press Ctrl+Y again to confirm",

@@ -76,9 +76,20 @@ export function visibleRows<T>(state: TableState<T>, data: T[]): T[] {
 
 export function formatCell<T>(col: TableColumn<T>, row: T): string {
 	const raw = String(row[col.key] ?? "");
-	const pad = Math.max(0, col.width - raw.length);
+	const clipped = truncateMiddle(raw, col.width);
+	const pad = Math.max(0, col.width - clipped.length);
 	const spaces = " ".repeat(pad);
-	return col.align === "right" ? spaces + raw : raw + spaces;
+	return col.align === "right" ? spaces + clipped : clipped + spaces;
+}
+
+/** Middle-truncate an over-wide cell so the tail (often the distinctive
+ * part of a path) survives and the row never wraps (audit #9). */
+export function truncateMiddle(raw: string, width: number): string {
+	if (width <= 0 || raw.length <= width) return raw;
+	if (width <= 3) return raw.slice(0, width);
+	const head = Math.ceil((width - 1) / 2);
+	const tail = Math.floor((width - 1) / 2);
+	return `${raw.slice(0, head)}…${raw.slice(raw.length - tail)}`;
 }
 
 export function formatRow<T>(columns: TableColumn<T>[], row: T): string {

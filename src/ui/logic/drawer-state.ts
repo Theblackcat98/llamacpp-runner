@@ -57,6 +57,11 @@ export function pinToTail(state: DrawerState): DrawerState {
 	return { ...state, scrollTop: null };
 }
 
+/** Jump to the oldest line — `g` means TOP everywhere (tables included). */
+export function scrollToTop(state: DrawerState): DrawerState {
+	return { ...state, scrollTop: 0 };
+}
+
 export function isFollowing(state: DrawerState): boolean {
 	return state.scrollTop === null;
 }

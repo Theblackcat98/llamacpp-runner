@@ -22,6 +22,8 @@ export interface PaletteKey {
 	ctrl?: boolean;
 	shift?: boolean;
 	meta?: boolean;
+	/** Raw sequence — carries the shifted character OpenTUI already resolved. */
+	sequence?: string;
 }
 
 /** Subsequence match with compactness ranking: earlier + tighter wins. */
@@ -94,7 +96,20 @@ export function close(state: PaletteState): PaletteState {
 }
 
 function printable(key: PaletteKey): string | null {
-	if (key.ctrl || key.meta || key.shift) return null;
+	if (key.ctrl || key.meta) return null;
+	// Audit #7: shifted characters arrive in `sequence` (e.g. "T"); dropping
+	// every shift keypress turned "Theme" into "hem".
+	if (
+		key.sequence &&
+		key.sequence.length === 1 &&
+		!/[\p{Cc}]/u.test(key.sequence)
+	) {
+		return key.sequence;
+	}
+	if (key.shift) {
+		const name = key.name ?? "";
+		return name.length === 1 ? name.toUpperCase() : null;
+	}
 	const name = key.name ?? "";
 	return name.length === 1 ? name : null;
 }

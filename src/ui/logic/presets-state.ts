@@ -80,11 +80,3 @@ export function markLastUsed(
 export function relink(preset: Preset, newPath: string): Preset {
 	return { ...preset, model_path: newPath };
 }
-
-/** Inputs for loading a preset into the Configurator. */
-export function loadIntoConfigurator(preset: Preset): {
-	modelPath: string;
-	values: Record<string, unknown>;
-} {
-	return { modelPath: preset.model_path, values: { ...preset.flags } };
-}

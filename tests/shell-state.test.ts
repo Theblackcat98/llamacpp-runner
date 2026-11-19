@@ -1,15 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import {
-	cycleFocus,
-	isQuitKey,
-	nextTab,
-	TAB_COUNT,
-} from "../src/ui/logic/shell-state";
+import { cycleFocus, isQuitKey, TAB_COUNT } from "../src/ui/logic/shell-state";
 
 describe("shell state logic (P1-FR-02,03)", () => {
-	it("cycles tabs forward with wraparound", () => {
-		expect(nextTab(0)).toBe(1);
-		expect(nextTab(TAB_COUNT - 1)).toBe(0);
+	it("exposes the tab count", () => {
+		expect(TAB_COUNT).toBe(4);
 	});
 
 	it("cycles focus forward and backward among panes", () => {

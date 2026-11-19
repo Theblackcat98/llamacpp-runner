@@ -141,11 +141,13 @@ describe("one-owner rule: text fields swallow plain printables", () => {
 		expect(
 			routeShellKey(ctx({ tab: 1, textFieldActive: true }), { name: "up" }),
 		).toEqual([]);
+		// Audit #6: Enter inside a text field yields to the field (it
+		// advances focus there) — it never launches.
 		expect(
 			routeShellKey(ctx({ tab: 1, textFieldActive: true }), {
 				name: "return",
 			}),
-		).toEqual([{ type: "launch" }]);
+		).toEqual([{ type: "yieldToField" }]);
 	});
 });
 
@@ -180,7 +182,7 @@ describe("quit key (q / Ctrl+C) confirmation windows", () => {
 			},
 			{
 				type: "setNotice",
-				notice: "server running — Ctrl+C again within 2s to quit",
+				notice: "server running — press q / Ctrl+C again within 2s to quit",
 			},
 		]);
 	});
@@ -210,11 +212,15 @@ describe("quit key (q / Ctrl+C) confirmation windows", () => {
 });
 
 describe("Enter ownership", () => {
-	it("launches when a handler exists outside Presets and the dir editor", () => {
+	it("Explorer Enter navigates to Launch Config; Config Enter launches", () => {
+		// Audit #6: Enter on the Explorer no longer launches directly.
 		expect(routeShellKey(ctx({ tab: 0 }), { name: "return" })).toEqual([
-			{ type: "launch" },
+			{ type: "goToConfigurator" },
 		]);
 		expect(routeShellKey(ctx({ tab: 1 }), { name: "return" })).toEqual([
+			{ type: "launch" },
+		]);
+		expect(routeShellKey(ctx({ tab: 2 }), { name: "return" })).toEqual([
 			{ type: "launch" },
 		]);
 	});
@@ -231,10 +237,13 @@ describe("Enter ownership", () => {
 		).toEqual([]);
 	});
 
-	it("no launch handler -> falls through", () => {
+	it("no launch handler -> Configurator falls through; Explorer still navigates", () => {
+		expect(
+			routeShellKey(ctx({ tab: 1, hasLaunch: false }), { name: "return" }),
+		).toEqual([]);
 		expect(
 			routeShellKey(ctx({ tab: 0, hasLaunch: false }), { name: "return" }),
-		).toEqual([]);
+		).toEqual([{ type: "goToConfigurator" }]);
 	});
 });
 
@@ -476,7 +485,7 @@ describe("digit tab switching", () => {
 });
 
 describe("drawer keys when the console pane owns focus", () => {
-	it("up/down scroll, g/end pin to tail", () => {
+	it("up/down scroll, g scrolls to top, G/end pin to tail", () => {
 		const base = { focusPane: 1 };
 		expect(routeShellKey(ctx(base), { name: "up" })).toEqual([
 			{ type: "drawerScroll", by: -1 },
@@ -485,6 +494,9 @@ describe("drawer keys when the console pane owns focus", () => {
 			{ type: "drawerScroll", by: 1 },
 		]);
 		expect(routeShellKey(ctx(base), { name: "g" })).toEqual([
+			{ type: "drawerScrollTop" },
+		]);
+		expect(routeShellKey(ctx(base), { name: "G" })).toEqual([
 			{ type: "drawerPinTail" },
 		]);
 		expect(routeShellKey(ctx(base), { name: "end" })).toEqual([
