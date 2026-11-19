@@ -106,6 +106,10 @@ describe("composition root E2E (Issue #31)", () => {
 				app.setup.mockInput.pressKey("s", { ctrl: true });
 				await app.setup.flush();
 			});
+			// Tier 2: Ctrl+S prompts for a name first; Enter accepts the
+			// blank (timestamp) name and saves.
+			await waitForFrame(app, (f) => f.includes("Save preset"));
+			await app.press(["\r"]);
 			await waitForFrame(app, (f) => f.includes("preset saved"));
 
 			// Switch to the Presets tab — no restart allowed here. The tight
@@ -210,6 +214,10 @@ describe("preset last_used tracking (#64)", () => {
 				app.setup.mockInput.pressKey("s", { ctrl: true });
 				await app.setup.flush();
 			});
+			// Tier 2: Ctrl+S prompts for a name first; Enter accepts the
+			// blank (timestamp) name and saves.
+			await waitForFrame(app, (f) => f.includes("Save preset"));
+			await app.press(["\r"]);
 			await waitForFrame(app, (f) => f.includes("preset saved"));
 
 			// Load it back ("l" = Load+go), then launch with Enter. The

@@ -34,8 +34,8 @@ describe("action registry coverage (P5-FR-09)", () => {
 		);
 	});
 
-	it("has 19 actions: 7 themes + 8 singletons + 4 tabs (Issue #8, #49, #50, #66)", () => {
-		expect(ACTIONS.length).toBe(19);
+	it("has 25 actions: 7 themes + 14 singletons + 4 tabs (Issue #8, #49, #50, #66; Tier 2 palette coverage)", () => {
+		expect(ACTIONS.length).toBe(25);
 	});
 
 	it("ships no orphan action until adopt lands (F4)", () => {
@@ -59,6 +59,12 @@ describe("action registry coverage (P5-FR-09)", () => {
 			clearLog: () => calls++,
 			autoFitNgl: () => calls++,
 			reprobeHardware: () => calls++,
+			savePreset: () => calls++,
+			openImport: () => calls++,
+			setModelsDir: () => calls++,
+			launchServer: () => calls++,
+			toggleDrawer: () => calls++,
+			openHelp: () => calls++,
 		});
 		for (const a of spy) a.run();
 		expect(calls).toBe(spy.length);
@@ -79,7 +85,8 @@ describe("fuzzy filter", () => {
 	});
 
 	it("empty query returns all", () => {
-		expect(filterActions(ACTIONS, "").length).toBe(19);
+		// 24 audit actions + #66's reprobe-hardware = 25.
+		expect(filterActions(ACTIONS, "").length).toBe(25);
 	});
 
 	it("no match -> empty", () => {
