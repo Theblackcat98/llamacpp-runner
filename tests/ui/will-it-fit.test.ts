@@ -82,7 +82,10 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 			// ctx pinned: scenario targets the ngl solve, not the default (#9).
 			const state = setFlag(createConfigurator(MODEL), "ctx_size", 4096);
 			// 5.5 GiB is enough for partial offload but not full 29 layers
-			const hw = { kind: "nvidia", vramBytes: Math.floor(5.5 * GIB) } as HardwareInfo;
+			const hw = {
+				kind: "nvidia",
+				vramBytes: Math.floor(5.5 * GIB),
+			} as HardwareInfo;
 			const result = solveAutoFitNgl(state, hw);
 			expect(result.fits).toBe(true);
 			expect(result.ngl).toBeGreaterThan(0);
@@ -92,7 +95,10 @@ describe("will-it-fit verdict and auto-fit ngl (Issue #8)", () => {
 		it("flags when even ngl=0 exceeds VRAM and suggests ctx reduction", () => {
 			const state = createConfigurator(MODEL);
 			// Very low VRAM (100 MiB) cannot even hold KV cache / overhead at default ctx
-			const hw = { kind: "nvidia", vramBytes: 100 * 1024 * 1024 } as HardwareInfo;
+			const hw = {
+				kind: "nvidia",
+				vramBytes: 100 * 1024 * 1024,
+			} as HardwareInfo;
 			const result = solveAutoFitNgl(state, hw);
 			expect(result.fits).toBe(false);
 			expect(result.ngl).toBe(0);

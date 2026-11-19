@@ -352,7 +352,10 @@ export function willItFitVerdict(
 		hardware.vramBytes <= 0
 	) {
 		return {
-			text: hardware?.kind === "cpu" ? "no GPU detected (CPU-only system)" : "hardware probe failed — run reprobe",
+			text:
+				hardware?.kind === "cpu"
+					? "no GPU detected (CPU-only system)"
+					: "hardware probe failed — run reprobe",
 			status: "no-data",
 		};
 	}
@@ -393,7 +396,10 @@ export function solveAutoFitNgl(
 		return {
 			ngl: state.nglMax,
 			fits: false,
-			message: hardware?.kind === "cpu" ? "no GPU detected (CPU-only system)" : "hardware probe failed — run reprobe",
+			message:
+				hardware?.kind === "cpu"
+					? "no GPU detected (CPU-only system)"
+					: "hardware probe failed — run reprobe",
 		};
 	}
 	const m = state.model;
@@ -426,6 +432,8 @@ export function solveAutoFitNgl(
 		},
 		hardware?.vramBytes,
 		state.nglMax,
-		hardware?.kind === "cpu" ? "no GPU detected (CPU-only system)" : "hardware probe failed — run reprobe",
+		hardware?.kind === "cpu"
+			? "no GPU detected (CPU-only system)"
+			: "hardware probe failed — run reprobe",
 	);
 }
