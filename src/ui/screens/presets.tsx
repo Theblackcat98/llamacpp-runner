@@ -76,10 +76,13 @@ export function PresetsScreen({
 			} else {
 				setDeleteArmedAt(now);
 			}
-		} else if (key.name === "return") onSetDefault?.(id);
+		}
+		// Enter is NOT handled here: the table owns it via onSelect
+		// (set-default), which double-click shares — one owner per key
+		// (F3). A second `return` case here fired set-default twice.
 		// OpenTUI reports Shift+L as name "l" + shift (sequence "L"),
 		// never as name "L" — accept every shape.
-		else if (
+		if (
 			(key.name === "L" ||
 				(key.name === "l" && key.shift) ||
 				key.sequence === "L") &&
