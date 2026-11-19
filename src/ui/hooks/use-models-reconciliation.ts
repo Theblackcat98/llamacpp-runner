@@ -50,8 +50,11 @@ export function useModelsReconciliation(opts: {
 	initialModelsDir: string | null;
 	configRef: RefObject<ConfiguratorState>;
 	setConfig: Dispatch<SetStateAction<ConfiguratorState>>;
+	/** Tier 2 (audit): flag keys the user has actually edited — moving the
+	 * Explorer cursor preserves them instead of clobbering the config. */
+	touchedKeysRef: RefObject<Set<string>>;
 }): ModelsReconciliation {
-	const { bus, configRef, setConfig } = opts;
+	const { bus, configRef, setConfig, touchedKeysRef } = opts;
 	const [entries, setEntries] = useState<ModelEntry[]>([]);
 	const [scanning, setScanning] = useState(false);
 	const [scanError, setScanError] = useState<string | undefined>(undefined);
@@ -66,20 +69,40 @@ export function useModelsReconciliation(opts: {
 		// #18: parse errors and incomplete split groups surface as inspector
 		// diagnostics only — they never construct a launch-ready Configurator.
 		if (!entry || entryLaunchBlocker(entry)) return;
-		setConfig(
-			clampContext(
-				createConfigurator({
-					path: entry.path,
-					blockCount: entry.blockCount,
-					contextLength: entry.contextLength,
-					fileSize: entry.totalBytes,
-					headCount: entry.headCount,
-					headCountKv: entry.headCountKv,
-					embeddingLength: entry.embeddingLength,
-					keyLength: entry.keyLength,
-				}),
-			),
-		);
+		const meta = {
+			path: entry.path,
+			blockCount: entry.blockCount,
+			contextLength: entry.contextLength,
+			fileSize: entry.totalBytes,
+			headCount: entry.headCount,
+			headCountKv: entry.headCountKv,
+			embeddingLength: entry.embeddingLength,
+			keyLength: entry.keyLength,
+		};
+		const prev = configRef.current;
+		// Tier 2 (audit): moving the Explorer cursor used to silently
+		// replace ALL unsaved Configurator edits with the new model's
+		// defaults. When the user has edited flags for a DIFFERENT model,
+		// carry the edited values onto the new model (untouched flags
+		// take its defaults).
+		if (
+			prev.model &&
+			prev.model.path !== entry.path &&
+			touchedKeysRef.current.size > 0
+		) {
+			const fresh = createConfigurator(meta);
+			const values = { ...fresh.values };
+			for (const key of touchedKeysRef.current) {
+				if (key in prev.values) values[key] = prev.values[key];
+			}
+			setConfig(clampContext({ ...fresh, values }));
+			bus.emitState("LOG_LINE", {
+				stream: "out",
+				text: "[SYS] model switched — your unsaved Launch Config edits were kept",
+			});
+			return;
+		}
+		setConfig(clampContext(createConfigurator(meta)));
 	}
 
 	function selectModel(index: number): void {

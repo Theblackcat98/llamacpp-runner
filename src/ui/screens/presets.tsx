@@ -1,3 +1,4 @@
+import { useTerminalDimensions } from "@opentui/react";
 import { useState } from "react";
 import type { Preset, PresetFile } from "../../core/store/presets";
 import { TuiBox } from "../components/box";
@@ -46,7 +47,12 @@ export function PresetsScreen({
 	const clamped = Math.min(selected, Math.max(rows.length - 1, 0));
 	const currentRow = rows[clamped];
 	const currentPreset = file.presets.find((p) => p.id === currentRow?.id);
-	const isDefault = file.lastSession?.preset_id === currentRow?.id;
+	// Audit #9: undefined === undefined used to banner an EMPTY list as
+	// "default preset" — require a real row.
+	const isDefault = Boolean(
+		currentRow && file.lastSession?.preset_id === currentRow.id,
+	);
+	const { height: termHeight } = useTerminalDimensions();
 
 	useScopedKeyboard(captureKeys, (key) => {
 		const id = currentPreset?.id;
@@ -97,13 +103,13 @@ export function PresetsScreen({
 								? "never"
 								: r.lastUsed.slice(0, 16).replace("T", " "),
 					}))}
-					viewport={12}
+					viewport={Math.max(4, termHeight - 18)}
 					captureKeys={captureKeys}
 					focused={focused}
 					onSelectionChange={setSelected}
 				/>
 			</TuiBox>
-			<TuiBox theme={theme} title="ACTIONS" height={5}>
+			<TuiBox theme={theme} title="ACTIONS">
 				<box style={{ flexDirection: "column", paddingLeft: 1 }}>
 					<text fg={theme.muted}>
 						{

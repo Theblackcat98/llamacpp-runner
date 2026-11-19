@@ -10,6 +10,12 @@ export interface PaletteHandlers {
 	clearLog: () => void;
 	autoFitNgl?: () => void;
 	reprobeHardware?: () => void;
+	savePreset?: () => void;
+	openImport?: () => void;
+	setModelsDir?: () => void;
+	launchServer?: () => void;
+	toggleDrawer?: () => void;
+	openHelp?: () => void;
 }
 
 export interface PaletteAction {
@@ -39,6 +45,12 @@ export const PALETTE_ACTION_IDS = [
 	"go-to-tab-3",
 	"go-to-tab-4",
 	"clear-log",
+	"save-preset",
+	"import-command",
+	"set-models-dir",
+	"launch-server",
+	"toggle-drawer",
+	"open-help",
 ] as const;
 
 const THEMES: [string, string][] = [
@@ -120,6 +132,44 @@ export function buildDefaultActions(h: PaletteHandlers): PaletteAction[] {
 			run: () => h.goToTab(tab),
 		});
 	}
+	actions.push(
+		{
+			id: "save-preset",
+			label: "Save Preset (prompt for name)",
+			keywords: "save preset ctrl+s",
+			run: () => h.savePreset?.(),
+		},
+		{
+			id: "import-command",
+			label: "Import Shell Command",
+			keywords: "import shell command paste",
+			run: () => h.openImport?.(),
+		},
+		{
+			id: "set-models-dir",
+			label: "Set Models Directory",
+			keywords: "models directory folder path",
+			run: () => h.setModelsDir?.(),
+		},
+		{
+			id: "launch-server",
+			label: "Launch Server",
+			keywords: "launch start run server enter",
+			run: () => h.launchServer?.(),
+		},
+		{
+			id: "toggle-drawer",
+			label: "Toggle Console Drawer",
+			keywords: "console drawer log toggle",
+			run: () => h.toggleDrawer?.(),
+		},
+		{
+			id: "open-help",
+			label: "Help / Keyboard Legend",
+			keywords: "help keys shortcuts legend",
+			run: () => h.openHelp?.(),
+		},
+	);
 	actions.push({
 		id: "clear-log",
 		label: "Clear Log Window",

@@ -28,6 +28,10 @@ describe("issue #70 pins — save / load / rescan / failure", () => {
 				app.setup.mockInput.pressKey("s", { ctrl: true });
 				await app.setup.flush();
 			});
+			// Audit Tier 2: Ctrl+S prompts for a name first; Enter accepts
+			// the blank (timestamp) name and saves.
+			await waitForFrame(app, (f) => f.includes("Save preset"));
+			await app.press(["\r"]);
 			await waitForFrame(app, (f) => f.includes("preset saved"));
 
 			await app.press(["4"]);
@@ -65,6 +69,10 @@ describe("issue #70 pins — save / load / rescan / failure", () => {
 				app.setup.mockInput.pressKey("s", { ctrl: true });
 				await app.setup.flush();
 			});
+			// Audit Tier 2: Ctrl+S prompts for a name first; Enter accepts
+			// the blank (timestamp) name and saves.
+			await waitForFrame(app, (f) => f.includes("Save preset"));
+			await app.press(["\r"]);
 			await waitForFrame(app, (f) => f.includes("preset saved"));
 
 			// Move the configurator back to alpha via the Explorer. The
@@ -131,6 +139,10 @@ describe("issue #70 pins — save / load / rescan / failure", () => {
 
 			// Launch: no llama-server binary exists in the test env, so the
 			// supervisor fails fast and PROC_STATE lands on FAILED.
+			// Audit Tier 1 #6: Enter on the Explorer navigates to Launch
+			// Config instead of launching — Enter there launches.
+			await app.press(["\r"]);
+			expect(app.frame()).toContain("Launch config");
 			await app.press(["\r"]);
 			const frame = await waitForFrame(
 				app,

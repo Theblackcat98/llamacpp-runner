@@ -5,7 +5,7 @@
 │! corrupt.gguf                        - UNKNOWN -         ││Params (exact): 6.52B                 │
 │                                                          ││Quant: Q4_K_M (~5.8 bpw)              │
 │                                                          ││Est. VRAM: 13.7 GiB-14.1 GiB          │
-│                                                          ││(estimated range)                     │
+│                                                          ││(full-offload estimate)               │
 │                                                          ││                                      │
 │                                                          ││                                      │
 │                                                          ││                                      │

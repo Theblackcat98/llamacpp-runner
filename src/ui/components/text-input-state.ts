@@ -19,6 +19,9 @@ export type TextInputKey =
 	| { kind: "home" }
 	| { kind: "end" }
 	| { kind: "insert-toggle" }
+	| { kind: "kill-line" }
+	| { kind: "kill-word" }
+	| { kind: "clear-before" }
 	| { kind: "reset"; value: string };
 
 export function createTextInputState(
@@ -70,6 +73,27 @@ export function applyKey(
 			return { ...state, cursor: state.buffer.length };
 		case "insert-toggle":
 			return { ...state, overwrite: !state.overwrite };
+		case "kill-line":
+			// Ctrl+K: delete from the caret to end of line.
+			return { ...state, buffer: state.buffer.slice(0, state.cursor) };
+		case "clear-before":
+			// Ctrl+U: delete everything before the caret.
+			return {
+				...state,
+				buffer: state.buffer.slice(state.cursor),
+				cursor: 0,
+			};
+		case "kill-word": {
+			// Ctrl+W: delete the word (and trailing spaces) before the caret.
+			const before = state.buffer.slice(0, state.cursor);
+			const trimmed = before.replace(/\s+$/, "");
+			const cut = trimmed.replace(/\S+$/, "").length;
+			return {
+				...state,
+				buffer: state.buffer.slice(0, cut) + state.buffer.slice(state.cursor),
+				cursor: cut,
+			};
+		}
 		case "reset":
 			// Phase 13: external value sync (preset load / model change) replaces
 			// the buffer wholesale and moves the caret to the end.

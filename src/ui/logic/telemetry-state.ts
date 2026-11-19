@@ -20,6 +20,9 @@ export interface TelemetryInputs {
 	slots: SlotSample[];
 	failure: { summary: string; suggestion?: string } | null;
 	tailLines: string[];
+	/** Audit #3: the supervisor reported FAILED even when the telemetry
+	 * snapshot never left IDLE — the failure must still surface. */
+	procFailed?: boolean;
 }
 
 export interface TelemetryViewModel {
@@ -68,8 +71,9 @@ function gb(bytes: number): string {
 export function buildTelemetryViewModel(
 	inputs: TelemetryInputs,
 ): TelemetryViewModel {
+	const phase: TelemetryPhase = inputs.procFailed ? "FAILED" : inputs.phase;
 	const {
-		phase,
+		phase: _snapshotPhase,
 		model,
 		endpoint,
 		startedAtMs,
@@ -84,6 +88,7 @@ export function buildTelemetryViewModel(
 		failure,
 		tailLines,
 	} = inputs;
+	void _snapshotPhase;
 
 	let vramFraction = 0;
 	let vramLabel = "no VRAM data";

@@ -170,6 +170,19 @@ export function loadPresetInto(
 	}
 	const nglMax = model?.blockCount === undefined ? 0 : model.blockCount + 1;
 	const merged = { ...effectiveValues(state), ...values };
+	// Audit #8: switching to a model whose blockCount is unknown must not
+	// silently inherit the PREVIOUS model's n_gpu_layers — the old value
+	// described different hardware geometry. An explicit value in the
+	// incoming preset/import wins; an inherited one is dropped.
+	const switchedModel =
+		modelPath !== undefined && state.model?.path !== modelPath;
+	if (
+		switchedModel &&
+		model?.blockCount === undefined &&
+		typeof values.n_gpu_layers !== "number"
+	) {
+		delete merged.n_gpu_layers;
+	}
 	// #60: with unknown blockCount there is no honest ngl default — leave
 	// the preset's explicit value (or nothing) instead of writing 0.
 	if (typeof merged.n_gpu_layers !== "number" && nglMax > 0) {
@@ -218,12 +231,6 @@ export function effectiveValues(
 		}
 	}
 	return { ...merged, ...state.values };
-}
-
-/** Deterministic argv for the live preview strip (P4-FR-06, NFR-01). */
-export function previewArgs(state: ConfiguratorState): string[] {
-	if (!state.model) return [];
-	return previewCommand(state).args;
 }
 
 export interface PreviewOptions {
@@ -311,6 +318,35 @@ export function vramRangeText(state: ConfiguratorState): string | null {
 	const range = vramRangeBytes(state);
 	if (!range) return null;
 	return `${formatBytes(range.low)} – ${formatBytes(range.high)} (estimated range)`;
+}
+
+export const PORT_MIN = 1024;
+export const PORT_MAX = 65535;
+
+/** Clamp a port into the registry's valid range (mirrors the builder). */
+export function clampPort(port: number): number {
+	if (!Number.isFinite(port)) return 8080;
+	return Math.min(Math.max(Math.trunc(port), PORT_MIN), PORT_MAX);
+}
+
+/**
+ * #67: inline feedback for the port field — when the typed value will be
+ * clamped at build time, say so AT the field instead of silently launching
+ * on a different port. Returns null when the value is in range / empty.
+ */
+export function portFeedback(raw: string): string | null {
+	if (raw.trim() === "") return null;
+	const n = Number.parseInt(raw, 10);
+	if (!Number.isFinite(n)) return "not a number — 8080 will be used";
+	const clamped = clampPort(n);
+	return clamped !== n
+		? `will use ${clamped} (valid ${PORT_MIN}-${PORT_MAX})`
+		: null;
+}
+
+/** Display string for the numeric port value (audit #4: never blank for a number). */
+export function portDisplayValue(v: unknown): string {
+	return typeof v === "number" ? String(v) : typeof v === "string" ? v : "";
 }
 
 export type KvQuant = "f16" | "q8_0" | "q4_0";

@@ -118,5 +118,3 @@ export function defaultVramRange(
 		gpuLayers: entry.blockCount + 1,
 	}).range;
 }
-
-export const CORRUPT_GLYPH = "!";

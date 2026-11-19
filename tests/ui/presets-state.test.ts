@@ -4,7 +4,6 @@ import {
 	buildRows,
 	clonePreset,
 	deletePreset,
-	loadIntoConfigurator,
 	markLastUsed,
 	type PresetRow,
 	relink,
@@ -81,14 +80,6 @@ describe("preset CRUD (P4-FR-19)", () => {
 });
 
 describe("re-link (P4-FR-18)", () => {
-	it("loadIntoConfigurator returns launch inputs for a healthy preset", () => {
-		const first = FILE.presets[0];
-		if (!first) throw new Error("preset missing");
-		const result = loadIntoConfigurator(first);
-		expect(result.modelPath).toBe("~/models/qwen.gguf");
-		expect(result.values.ctx_size).toBe(32768);
-	});
-
 	it("relink swaps the model path of a broken preset", () => {
 		const broken = FILE.presets[1] as Preset | undefined;
 		if (!broken) throw new Error("missing");

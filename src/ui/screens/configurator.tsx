@@ -1,3 +1,4 @@
+import { useTerminalDimensions } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
 import {
 	DEPRECATED_HINT,
@@ -10,6 +11,7 @@ import { Checkbox } from "../components/checkbox";
 import { ChipGroup } from "../components/chip-group";
 import { CyclingSelect } from "../components/cycling-select";
 import { Slider } from "../components/slider";
+import { truncateMiddle } from "../components/table-state";
 import { keyEventToInputKey, TextInput } from "../components/text-input";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import {
@@ -18,6 +20,8 @@ import {
 	clampContext,
 	type KvQuant,
 	nglDefaultLabel,
+	portDisplayValue,
+	portFeedback,
 	previewLine,
 	resetConfigurator,
 	setFlag,
@@ -39,6 +43,8 @@ export interface ConfiguratorProps {
 	/** Phase 13: reports the focused field index so the shell can yield global
 	 * printable keys (digits, o/k/q/…) while a text field owns typing. */
 	onActiveFieldChange?: (field: number) => void;
+	/** Reports slider direct-entry mode so the shell yields digit keys. */
+	onNumericEntryChange?: (editing: boolean) => void;
 	/** Issue #15: availability map from the resolved binary's --help. */
 	availability?: Record<
 		string,
@@ -64,11 +70,28 @@ export function Configurator({
 	captureKeys = true,
 	onAutoFit,
 	onActiveFieldChange,
+	onNumericEntryChange,
 	availability,
 	previewCommand,
 	resolvedBinary,
 }: ConfiguratorProps) {
 	const [field, setField] = useState(0);
+	const { width: termWidth } = useTerminalDimensions();
+	// Audit #4/#67: the port field edits RAW text locally; the numeric
+	// flag only follows parseable input, so external resets/preset loads
+	// (which change the number) re-sync the field instead of leaving a
+	// stale/blank string behind.
+	const [portText, setPortText] = useState<string | null>(null);
+	const portExternal = portDisplayValue(state.values.port);
+	const shownPort = portText ?? portExternal;
+	// External changes (reset / preset load) re-sync the raw text.
+	const lastExternalPort = useRef(portExternal);
+	useEffect(() => {
+		if (lastExternalPort.current !== portExternal) {
+			lastExternalPort.current = portExternal;
+			setPortText(null);
+		}
+	}, [portExternal]);
 	// #42: event-time mirror of `field`. A key batch (fast typing, paste,
 	// tmux bursts) can move focus and deliver the next key before React
 	// commits; handlers below consult this ref so ownership is correct
@@ -137,6 +160,12 @@ export function Configurator({
 	const [resetArmedAt, setResetArmedAt] = useState<number | null>(null);
 
 	useScopedKeyboard(captureKeys, (key) => {
+		// Audit #6: Enter in a text field advances to the next field; the
+		// shell yields the key (it never launches from a text field).
+		if (key.name === "return" && isConfiguratorTextField(fieldRef.current)) {
+			moveField((fieldRef.current + 1) % FIELD_COUNT);
+			return;
+		}
 		if (key.name === "escape") {
 			const now = Date.now();
 			if (resetArmedAt !== null && now - resetArmedAt <= 2000) {
@@ -180,6 +209,19 @@ export function Configurator({
 		// single keypress causes exactly one action (Phase 13).
 	});
 
+	// Audit #1: the form lives in a scrollbox; keep the focused field in
+	// view by scrolling to its row offset (chip block = 2 rows, the rest 1,
+	// plus the port feedback row when visible).
+	// biome-ignore lint/suspicious/noExplicitAny: ScrollBoxRenderable ref
+	const scrollRef = useRef<any>(null);
+	useEffect(() => {
+		const sb = scrollRef.current;
+		if (!sb) return;
+		const extra = portFeedback(shownPort) && field >= 14 ? 1 : 0;
+		const offset = field + (field >= 2 ? 1 : 0) + extra;
+		sb.scrollTop = Math.max(0, offset - 1);
+	}, [field, shownPort]);
+
 	const ngl = numValue(state.values.n_gpu_layers, state.nglMax);
 	const ctx = numValue(state.values.ctx_size, CTX_CHIPS[0] ?? 4096);
 	const vram = vramRangeText(state);
@@ -206,181 +248,208 @@ export function Configurator({
 					theme={theme}
 					title="LAUNCH CONFIG"
 					width="55%"
+					flexGrow={1}
 					focused={focused}
 				>
-					<box
-						style={{
-							flexDirection: "column",
-							paddingLeft: 1,
-							gap: 0,
-						}}
-					>
-						<Slider
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("n_gpu_layers") && field === 0
-							}
-							focused={focused && field === 0}
-							label={`GPU Offload${availSuffix("n_gpu_layers")}`}
-							min={0}
-							max={Math.max(state.nglMax, 1)}
-							value={ngl}
-							width={24}
-							onChange={(v) => update((s) => setFlag(s, "n_gpu_layers", v))}
-						/>
-						<box style={{ flexDirection: "column" }}>
-							<text fg={focused && field === 1 ? theme.fgBright : theme.muted}>
-								{focused && field === 1 ? "> Context Length" : "Context Length"}
-								{availSuffix("ctx_size")}
-							</text>
-							<ChipGroup
+					<scrollbox ref={scrollRef} style={{ flexGrow: 1 }}>
+						<box
+							style={{
+								flexDirection: "column",
+								paddingLeft: 1,
+								gap: 0,
+							}}
+						>
+							<Slider
 								theme={theme}
 								captureKeys={
-									captureKeys && !isFieldDisabled("ctx_size") && field === 1
+									captureKeys && !isFieldDisabled("n_gpu_layers") && field === 0
 								}
-								focused={focused && field === 1}
-								chips={CTX_CHIPS.map(String)}
-								activeIndex={nearestChip(ctx)}
-								onSelect={(i) =>
-									update((s) => setFlag(s, "ctx_size", CTX_CHIPS[i]))
+								focused={focused && field === 0}
+								label={`GPU Offload${availSuffix("n_gpu_layers")}`}
+								min={0}
+								max={Math.max(state.nglMax, 1)}
+								value={ngl}
+								width={24}
+								onEditChange={onNumericEntryChange}
+								onChange={(v) => update((s) => setFlag(s, "n_gpu_layers", v))}
+							/>
+							<box style={{ flexDirection: "column" }}>
+								<text
+									fg={focused && field === 1 ? theme.fgBright : theme.muted}
+								>
+									{focused && field === 1
+										? "> Context Length"
+										: "Context Length"}
+									{availSuffix("ctx_size")}
+								</text>
+								<ChipGroup
+									theme={theme}
+									captureKeys={
+										captureKeys && !isFieldDisabled("ctx_size") && field === 1
+									}
+									focused={focused && field === 1}
+									chips={CTX_CHIPS.map(String)}
+									activeIndex={nearestChip(ctx)}
+									onSelect={(i) =>
+										update((s) => setFlag(s, "ctx_size", CTX_CHIPS[i]))
+									}
+									onSelectValue={(v) =>
+										update((s) => setFlag(s, "ctx_size", v))
+									}
+								/>
+							</box>
+							<CyclingSelect
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("cache_type_k") && field === 2
+								}
+								focused={focused && field === 2}
+								label={`K Cache${availSuffix("cache_type_k")}`}
+								options={KV_OPTIONS.slice()}
+								index={kvIndex(state.values.cache_type_k)}
+								onChange={(i) =>
+									update((s) => setFlag(s, "cache_type_k", KV_OPTIONS[i]))
+								}
+							/>
+							<CyclingSelect
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("cache_type_v") && field === 3
+								}
+								focused={focused && field === 3}
+								label={`V Cache${availSuffix("cache_type_v")}`}
+								options={KV_OPTIONS.slice()}
+								index={kvIndex(state.values.cache_type_v)}
+								onChange={(i) =>
+									update((s) => setFlag(s, "cache_type_v", KV_OPTIONS[i]))
+								}
+							/>
+							{boolRow("flash_attn")}
+							{boolRow("mlock")}
+							{boolRow("no_mmap")}
+							{boolRow("slots")}
+							{boolRow("metrics")}
+							<Slider
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("batch_size") && field === 9
+								}
+								focused={focused && field === 9}
+								label={`Batch Size${availSuffix("batch_size")}`}
+								min={1}
+								max={8192}
+								value={numValue(state.values.batch_size, 2048)}
+								width={18}
+								onEditChange={onNumericEntryChange}
+								onChange={(v) => update((s) => setFlag(s, "batch_size", v))}
+							/>
+							<Slider
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("ubatch_size") && field === 10
+								}
+								focused={focused && field === 10}
+								label={`Micro-batch${availSuffix("ubatch_size")}`}
+								min={1}
+								max={4096}
+								value={numValue(state.values.ubatch_size, 512)}
+								width={18}
+								onEditChange={onNumericEntryChange}
+								onChange={(v) => update((s) => setFlag(s, "ubatch_size", v))}
+							/>
+							<Slider
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("threads") && field === 11
+								}
+								focused={focused && field === 11}
+								label={`Threads${availSuffix("threads")}`}
+								min={1}
+								max={256}
+								value={numValue(state.values.threads, 8)}
+								width={18}
+								onEditChange={onNumericEntryChange}
+								onChange={(v) => update((s) => setFlag(s, "threads", v))}
+							/>
+							<TextInput
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("host") && field === 12
+								}
+								focused={focused && field === 12}
+								field={12}
+								activeFieldRef={fieldRef}
+								label={`host${availSuffix("host")}`}
+								placeholder="127.0.0.1"
+								value={strValue(state.values.host)}
+								onChange={(st) =>
+									update((s) => ({ ...setFlag(s, "host", st.buffer) }))
+								}
+							/>
+							<TextInput
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("port") && field === 13
+								}
+								focused={focused && field === 13}
+								field={13}
+								activeFieldRef={fieldRef}
+								label={`port${availSuffix("port")}`}
+								placeholder="8080"
+								numeric
+								value={shownPort}
+								onChange={(st) => {
+									setPortText(st.buffer);
+									if (st.buffer === "") {
+										update((s) => setFlag(s, "port", 8080));
+										return;
+									}
+									const port = Number.parseInt(st.buffer, 10);
+									if (Number.isFinite(port)) {
+										update((s) => setFlag(s, "port", port));
+									}
+								}}
+							/>
+							{portFeedback(shownPort) ? (
+								<text fg={theme.warn}>{`  ${portFeedback(shownPort)}`}</text>
+							) : null}
+							<TextInput
+								theme={theme}
+								captureKeys={
+									captureKeys && !isFieldDisabled("alias") && field === 14
+								}
+								focused={focused && field === 14}
+								field={14}
+								activeFieldRef={fieldRef}
+								label={`alias${availSuffix("alias")}`}
+								value={strValue(state.values.alias)}
+								onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
+							/>
+							<TextInput
+								theme={theme}
+								captureKeys={
+									captureKeys &&
+									!isFieldDisabled("chat_template") &&
+									field === 15
+								}
+								focused={focused && field === 15}
+								field={15}
+								activeFieldRef={fieldRef}
+								label={`chat-template${availSuffix("chat_template")}`}
+								value={strValue(state.values.chat_template)}
+								onChange={(st) =>
+									update((s) => setFlag(s, "chat_template", st.buffer))
 								}
 							/>
 						</box>
-						<CyclingSelect
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("cache_type_k") && field === 2
-							}
-							focused={focused && field === 2}
-							label={`K Cache${availSuffix("cache_type_k")}`}
-							options={KV_OPTIONS.slice()}
-							index={kvIndex(state.values.cache_type_k)}
-							onChange={(i) =>
-								update((s) => setFlag(s, "cache_type_k", KV_OPTIONS[i]))
-							}
-						/>
-						<CyclingSelect
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("cache_type_v") && field === 3
-							}
-							focused={focused && field === 3}
-							label={`V Cache${availSuffix("cache_type_v")}`}
-							options={KV_OPTIONS.slice()}
-							index={kvIndex(state.values.cache_type_v)}
-							onChange={(i) =>
-								update((s) => setFlag(s, "cache_type_v", KV_OPTIONS[i]))
-							}
-						/>
-						{boolRow("flash_attn")}
-						{boolRow("mlock")}
-						{boolRow("no_mmap")}
-						{boolRow("slots")}
-						{boolRow("metrics")}
-						<Slider
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("batch_size") && field === 9
-							}
-							focused={focused && field === 9}
-							label={`Batch Size${availSuffix("batch_size")}`}
-							min={1}
-							max={8192}
-							value={numValue(state.values.batch_size, 2048)}
-							width={18}
-							onChange={(v) => update((s) => setFlag(s, "batch_size", v))}
-						/>
-						<Slider
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("ubatch_size") && field === 10
-							}
-							focused={focused && field === 10}
-							label={`Micro-batch${availSuffix("ubatch_size")}`}
-							min={1}
-							max={4096}
-							value={numValue(state.values.ubatch_size, 512)}
-							width={18}
-							onChange={(v) => update((s) => setFlag(s, "ubatch_size", v))}
-						/>
-						<Slider
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("threads") && field === 11
-							}
-							focused={focused && field === 11}
-							label={`Threads${availSuffix("threads")}`}
-							min={1}
-							max={256}
-							value={numValue(state.values.threads, 8)}
-							width={18}
-							onChange={(v) => update((s) => setFlag(s, "threads", v))}
-						/>
-						<TextInput
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("host") && field === 12
-							}
-							focused={focused && field === 12}
-							field={12}
-							activeFieldRef={fieldRef}
-							label={`host${availSuffix("host")}`}
-							placeholder="127.0.0.1"
-							value={strValue(state.values.host)}
-							onChange={(st) =>
-								update((s) => ({ ...setFlag(s, "host", st.buffer) }))
-							}
-						/>
-						<TextInput
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("port") && field === 13
-							}
-							focused={focused && field === 13}
-							field={13}
-							activeFieldRef={fieldRef}
-							label={`port${availSuffix("port")}`}
-							placeholder="8080"
-							numeric
-							value={strValue(state.values.port)}
-							onChange={(st) => {
-								const port = Number.parseInt(st.buffer || "8080", 10);
-								update((s) =>
-									setFlag(s, "port", Number.isFinite(port) ? port : 8080),
-								);
-							}}
-						/>
-						<TextInput
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("alias") && field === 14
-							}
-							focused={focused && field === 14}
-							field={14}
-							activeFieldRef={fieldRef}
-							label={`alias${availSuffix("alias")}`}
-							value={strValue(state.values.alias)}
-							onChange={(st) => update((s) => setFlag(s, "alias", st.buffer))}
-						/>
-						<TextInput
-							theme={theme}
-							captureKeys={
-								captureKeys && !isFieldDisabled("chat_template") && field === 15
-							}
-							focused={focused && field === 15}
-							field={15}
-							activeFieldRef={fieldRef}
-							label={`chat-template${availSuffix("chat_template")}`}
-							value={strValue(state.values.chat_template)}
-							onChange={(st) =>
-								update((s) => setFlag(s, "chat_template", st.buffer))
-							}
-						/>
-					</box>
+					</scrollbox>
 				</TuiBox>
 				<TuiBox theme={theme} title="RUNTIME" width="45%">
 					<box style={{ flexDirection: "column", paddingLeft: 1 }}>
-						{text(`Model: ${state.model?.path ?? "<none>"}`, theme.muted)}
+						{text(
+							`Model: ${truncateMiddle(state.model?.path ?? "<none>", 36)}`,
+							theme.muted,
+						)}
 						{text(`ngl max: ${nglDefaultLabel(state.nglMax)}`, theme.muted)}
 						{text(vram ?? "VRAM: n/a (missing model metadata)", theme.warn)}
 						{state.ctxWarning
@@ -401,7 +470,8 @@ export function Configurator({
 						{text("[Enter] Launch", theme.fgBright)}
 						{text("[Ctrl+S] Save Preset   [Esc] Reset", theme.muted)}
 						{text("[Tab] focus console/screen  [y] Yank cmd", theme.muted)}
-						{text("[a] Auto-fit ngl       [i] Import shell cmd", theme.muted)}
+						{text("[a] Auto-fit ngl", theme.muted)}
+						{text("[i] Import shell cmd", theme.muted)}
 					</box>
 				</TuiBox>
 			</box>
@@ -416,7 +486,7 @@ export function Configurator({
 			>
 				<text fg={state.restartRequired ? theme.warn : theme.success}>
 					{preview.length > 0
-						? ` $ ${preview}`
+						? ` $ ${truncateMiddle(preview, Math.max(20, termWidth - 6))}`
 						: " <select a model in the Explorer>"}
 				</text>
 				{verdict.text ? (

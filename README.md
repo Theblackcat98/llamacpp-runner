@@ -96,17 +96,23 @@ Press `?` anywhere in the TUI for the full contextual shortcut legend. The table
 | `k` | Global | Kill orphaned server (press twice within 2s; only when an orphan exists and no list is focused) |
 | `o` | Global | Collapse / expand console drawer |
 | `Ctrl+L` | Global | Clear log |
-| `Enter` | Global | Launch configured `llama-server` instance (on Presets: set default preset) |
+| `Enter` | Global | Model Explorer: go to **Launch Config** (never launches directly) · Launch Config: launch configured `llama-server` instance · Presets: set default preset |
 | `j` / `k` or `↓` / `↑` | Lists | Navigate rows / options |
+| `g` / `G` | Lists / Console | Jump to top / bottom (same meaning everywhere) |
+| `Space` / `Enter` | Launch Config (chip group) | Select the focused context-length chip; typing digits + `Enter` sets an arbitrary context size |
+| `Shift` + `←` / `→` | Launch Config (sliders) | Coarse step (power-of-two sized on wide ranges) |
+| `e` | Launch Config (sliders) | Type a numeric value directly, `Enter` commits, `Esc` cancels |
+| `↑` / `↓` / `j` / `k` / `PgUp` / `PgDn` | Console drawer (focused) | Scroll the log; `g` top, `G` tail |
 | `m` | Model Explorer | Set models directory |
 | `r` | Model Explorer | Trigger manual rescan of models directory |
 | `↑` / `↓` | Model Explorer | Select model |
 | `↑` / `↓` | Launch Config | Move between fields |
-| `Esc` | Launch Config | Reset configurator |
+| `Esc` | Launch Config | Reset configurator (press twice to confirm) |
+| `Esc` | Help Overlay | Close the legend (same as `?`) |
 | `a` | Launch Config | Auto-fit GPU layers to VRAM |
-| `Ctrl+S` | Launch Config | Save current configuration as a Preset |
+| `Ctrl+S` | Launch Config | Save current configuration as a Preset (prompts for a name) |
 | `y` | Launch Config | Yank command line to system clipboard (via OSC 52 / xclip / xsel). Set `LLAMA_DECK_CLIPBOARD` to a tool name (e.g. `xclip`) to skip the unconfirmed OSC 52 write |
-| `Ctrl+Y` | Launch Config | Confirm host-exposing launch |
+| `Ctrl+Y` | Global | Confirm host-exposing launch |
 | `i` | Launch Config / Presets | Import shell command |
 | `t` | Server Telemetry | Toggle telemetry on / off |
 | `c` | Presets | Clone selected preset |

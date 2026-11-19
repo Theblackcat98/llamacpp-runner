@@ -8,10 +8,6 @@ export interface KeyRef {
 	sequence?: string;
 }
 
-export function nextTab(current: number): number {
-	return (current + 1) % TAB_COUNT;
-}
-
 export function cycleFocus(
 	count: number,
 	current: number,

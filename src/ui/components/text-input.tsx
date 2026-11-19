@@ -35,7 +35,24 @@ export function keyEventToInputKey(key: {
 	meta?: boolean;
 	shift?: boolean;
 }): TextInputKey | null {
-	if (key.ctrl || key.meta) return null;
+	if (key.meta) return null;
+	if (key.ctrl) {
+		// Tier 2 editing ergonomics: readline-style chords.
+		switch (key.name) {
+			case "a":
+				return { kind: "home" };
+			case "e":
+				return { kind: "end" };
+			case "u":
+				return { kind: "clear-before" };
+			case "w":
+				return { kind: "kill-word" };
+			case "k":
+				return { kind: "kill-line" };
+			default:
+				return null;
+		}
+	}
 	switch (key.name) {
 		case "backspace":
 			return { kind: "backspace" };
@@ -147,13 +164,39 @@ export function TextInput({
 	const shown = state.buffer.length === 0 ? (placeholder ?? "") : state.buffer;
 	const cursorAtPlaceholder = state.buffer.length === 0;
 	const cursor = cursorAtPlaceholder ? 0 : state.cursor;
-	const before = shown.slice(0, cursor);
-	const at = shown[cursor] ?? " ";
-	const after = shown.slice(cursor + 1);
+	// Tier 2: horizontal window — long values scroll around the caret
+	// instead of wrapping onto extra rows and squashing the form.
+	// The block cursor + INS/OVR badge belong to the input that owns the
+	// keyboard — in the Configurator that is exactly the focused field
+	// (the only one with captureKeys on); standalone inputs with
+	// captureKeys are their own owner.
+	const ownsKeys = focused || captureKeys;
+	const chrome =
+		(label ? label.length + 1 : 0) + (ownsKeys ? 2 : 0) + (ownsKeys ? 4 : 0);
+	const vis = Math.max(4, width - chrome);
+	let start = 0;
+	if (shown.length > vis) {
+		start = Math.min(Math.max(cursor - vis + 1, 0), shown.length - vis);
+	}
+	const windowed = shown.slice(start, start + vis);
+	const localCursor = cursor - start;
+	const before = windowed.slice(0, localCursor);
+	const at = windowed[localCursor] ?? " ";
+	const after = windowed.slice(localCursor + 1);
 
+	// Tier 2: fields that do not own the keyboard render as plain text —
+	// no more four simultaneous block cursors + INS badges.
+	if (!ownsKeys) {
+		return (
+			<text fg={cursorAtPlaceholder ? theme.muted : theme.fg} width={width}>
+				{label ? <span fg={theme.muted}>{label} </span> : null}
+				<span>{windowed}</span>
+			</text>
+		);
+	}
 	return (
 		<text fg={cursorAtPlaceholder ? theme.muted : theme.fg} width={width}>
-			{focused ? <span fg={theme.accent}>{"> "}</span> : null}
+			<span fg={theme.accent}>{"> "}</span>
 			{label ? <span fg={theme.muted}>{label} </span> : null}
 			<span>{before}</span>
 			<span bg={theme.accent} fg={theme.bg}>

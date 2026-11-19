@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useTerminalDimensions } from "@opentui/react";
+import { useEffect, useRef, useState } from "react";
 import {
 	type ParsedShellCommand,
 	parseShellCommand,
@@ -6,6 +7,7 @@ import {
 } from "../../core/import/shell";
 import { useScopedKeyboard } from "../hooks/use-scoped-keyboard";
 import type { Theme } from "../themes";
+import { overlayGeometry } from "./help-overlay";
 import { TextInput } from "./text-input";
 
 export interface ImportModalProps {
@@ -33,11 +35,23 @@ export function ImportModal({
 	width = 72,
 	height = 12,
 }: ImportModalProps) {
+	const { width: termWidth, height: termHeight } = useTerminalDimensions();
 	const [commandText, setCommandText] = useState("");
 	const [parseResult, setParseResult] = useState<ParsedShellCommand | null>(
 		null,
 	);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+	// #67: reopening the modal must not resurrect the last command.
+	const wasOpen = useRef(false);
+	useEffect(() => {
+		if (open && !wasOpen.current) {
+			setCommandText("");
+			setParseResult(null);
+			setErrorMessage(null);
+		}
+		wasOpen.current = open;
+	}, [open]);
 
 	useEffect(() => {
 		if (!commandText.trim()) {
@@ -77,16 +91,20 @@ export function ImportModal({
 
 	const flagCount = parseResult ? Object.keys(parseResult.values).length : 0;
 	const unknownCount = parseResult ? parseResult.unknownFlags.length : 0;
+	// #67: unified modal placement — centered like Help/Save, sized to the
+	// terminal instead of a fixed 72-col box at a fixed offset.
+	const modalWidth = Math.min(width, Math.max(40, termWidth - 4));
+	const geometry = overlayGeometry(termWidth, termHeight, modalWidth, height);
 
 	return (
 		<box
 			title="Import shell command"
 			style={{
 				position: "absolute",
-				left: 6,
-				top: 4,
-				width,
-				height,
+				left: geometry.left,
+				top: geometry.top,
+				width: geometry.width,
+				height: geometry.height,
 				border: true,
 				borderColor: errorMessage ? theme.error : theme.accent,
 				backgroundColor: theme.bg,
@@ -101,11 +119,16 @@ export function ImportModal({
 			<TextInput
 				theme={theme}
 				captureKeys={open}
+				focused
 				label="cmd"
 				placeholder="llama-server -m model.gguf -c 4096..."
 				value={commandText}
+				width={geometry.width - 4}
 				onChange={(st) => setCommandText(st.buffer)}
 			/>
+			<text fg={theme.muted}>
+				{"Tip: use 'single quotes' for paths with spaces."}
+			</text>
 			<text>{""}</text>
 			{errorMessage ? (
 				<text fg={theme.error}>{`Error: ${errorMessage}`}</text>

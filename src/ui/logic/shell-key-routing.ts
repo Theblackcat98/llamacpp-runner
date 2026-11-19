@@ -24,6 +24,16 @@ export interface ShellKeyContext {
 	dirEditorOpen: boolean;
 	paletteOpen: boolean;
 	importOpen: boolean;
+	/** Audit #2: while Help is open it owns every key. */
+	helpOpen?: boolean;
+	/** The Launch Config chip group owns return/space/digits. */
+	chipFieldActive?: boolean;
+	/** A slider's direct numeric entry is in progress. */
+	numericEntryActive?: boolean;
+	/** Tab must not cycle focus into a collapsed console drawer. */
+	drawerCollapsed?: boolean;
+	/** The save-preset name modal owns keys while open. */
+	saveNameOpen?: boolean;
 	serverRunning: boolean;
 	confirm: QuitState;
 	killArmedAt: number | null;
@@ -43,6 +53,10 @@ export type ShellAction =
 	| { type: "yieldToField" }
 	| { type: "paletteKey"; key: KeyRef }
 	| { type: "toggleHelp" }
+	| { type: "closeHelp" }
+	| { type: "goToConfigurator" }
+	| { type: "drawerScrollTop" }
+	| { type: "drawerPage"; by: number }
 	| { type: "setConfirm"; state: QuitState }
 	| { type: "setNotice"; notice: string | null }
 	| { type: "quit" }
@@ -80,7 +94,16 @@ export function routeShellKey(
 	ctx: ShellKeyContext,
 	key: KeyRef,
 ): ShellAction[] {
-	if (ctx.importOpen) {
+	if (ctx.importOpen || ctx.saveNameOpen) {
+		return [];
+	}
+	// Audit #2: Help is modal — keys must not leak to the shell behind it
+	// (digits switched tabs, Enter launched, q quit). Only its own close
+	// keys (? / Esc) are honoured.
+	if (ctx.helpOpen) {
+		if (key.name === "?" || key.name === "escape") {
+			return [{ type: "closeHelp" }];
+		}
 		return [];
 	}
 	if ((key.ctrl && key.name === "p") || ctx.paletteOpen) {
@@ -91,6 +114,33 @@ export function routeShellKey(
 	// trigger shell actions (Phase 13 one-owner rule). Ctrl combos still
 	// pass: Ctrl+C/P/S/Y/L are non-printable shell bindings.
 	if (ctx.textFieldActive && key.name && key.name.length === 1 && !key.ctrl) {
+		return [{ type: "yieldToField" }];
+	}
+	// Audit #6: Enter inside a text field confirms/advances the field —
+	// it never launches. The Configurator's own handler advances focus.
+	if (ctx.textFieldActive && key.name === "return") {
+		return [{ type: "yieldToField" }];
+	}
+	// Audit #5: the chip group owns return/space (and digits while typing
+	// a custom context size) whenever it is the focused field.
+	if (
+		ctx.chipFieldActive &&
+		(key.name === "return" ||
+			key.name === "space" ||
+			key.name === "backspace" ||
+			/^[0-9]$/.test(key.name ?? ""))
+	) {
+		return [{ type: "yieldToField" }];
+	}
+	// Direct numeric entry on a slider owns digits/commit/cancel keys.
+	if (
+		ctx.numericEntryActive &&
+		(/^[0-9]$/.test(key.name ?? "") ||
+			key.name === "backspace" ||
+			key.name === "return" ||
+			key.name === "escape" ||
+			key.name === ".")
+	) {
 		return [{ type: "yieldToField" }];
 	}
 	if (key.name === "?" && !key.ctrl) {
@@ -113,15 +163,17 @@ export function routeShellKey(
 		}
 		return [{ type: "setConfirm", state: result.state }];
 	}
-	// The Explorer's dir editor owns Enter while open (confirm path);
-	// on the Configurator, Enter=Launch is the advertised binding (#42).
-	if (
-		key.name === "return" &&
-		ctx.hasLaunch &&
-		ctx.tab !== PRESETS_TAB &&
-		!ctx.dirEditorOpen
-	) {
-		return [{ type: "launch" }];
+	// The Explorer's dir editor owns Enter while open (confirm path).
+	// Audit #6: Enter on the Explorer NAVIGATES to Launch Config — it no
+	// longer launches the highlighted model sight-unseen. On Launch
+	// Config (non-text, non-chip fields) Enter still launches (#42).
+	if (key.name === "return" && !ctx.dirEditorOpen) {
+		if (ctx.tab === 0 && ctx.focusPane === 0) {
+			return [{ type: "goToConfigurator" }];
+		}
+		if (ctx.hasLaunch && ctx.tab !== PRESETS_TAB) {
+			return [{ type: "launch" }];
+		}
 	}
 	if (key.name === "x" && !key.ctrl) {
 		return confirmActions(
@@ -150,7 +202,9 @@ export function routeShellKey(
 			},
 		];
 	}
-	if (key.ctrl && key.name === "l") {
+	// Ctrl+L, including the raw form-feed sequence terminals send when the
+	// parser omits the key name (audit Tier 2, mirroring the Ctrl+S fix).
+	if ((key.ctrl && key.name === "l") || key.sequence === "\x0c") {
 		return [{ type: "clearLog" }];
 	}
 	if (key.name === "o") {
@@ -190,6 +244,10 @@ export function routeShellKey(
 		return [{ type: "enableTelemetry" }];
 	}
 	if (key.name === "tab") {
+		// Audit Tier 2: never cycle focus into a collapsed drawer.
+		if (ctx.focusPane === 0 && ctx.drawerCollapsed && !key.shift) {
+			return [];
+		}
 		return [{ type: "cycleFocusPane", forward: !key.shift }];
 	}
 	const digit = Number.parseInt(key.name ?? "", 10);
@@ -198,9 +256,15 @@ export function routeShellKey(
 		return [{ type: "switchTab", tab: digit - 1 }];
 	}
 	if (ctx.focusPane === 1) {
-		if (key.name === "up") return [{ type: "drawerScroll", by: -1 }];
-		if (key.name === "down") return [{ type: "drawerScroll", by: 1 }];
-		if (key.name === "g" || key.name === "end")
+		if (key.name === "up" || key.name === "k")
+			return [{ type: "drawerScroll", by: -1 }];
+		if (key.name === "down" || key.name === "j")
+			return [{ type: "drawerScroll", by: 1 }];
+		if (key.name === "pageup") return [{ type: "drawerPage", by: -1 }];
+		if (key.name === "pagedown") return [{ type: "drawerPage", by: 1 }];
+		// `g` = top everywhere (tables agree); `G`/`End` pin to the tail.
+		if (key.name === "g") return [{ type: "drawerScrollTop" }];
+		if (key.name === "G" || key.name === "end")
 			return [{ type: "drawerPinTail" }];
 	}
 	return [];

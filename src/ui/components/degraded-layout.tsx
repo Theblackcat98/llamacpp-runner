@@ -39,6 +39,7 @@ export function DegradedLayout({ width, height, theme }: DegradedLayoutProps) {
 					<text fg={theme.accent}>
 						{`Resize to at least ${MIN_WIDTH}x${MIN_HEIGHT} to continue.`}
 					</text>
+					<text fg={theme.muted}>{"[q] Quit"}</text>
 				</box>
 			</box>
 		</box>

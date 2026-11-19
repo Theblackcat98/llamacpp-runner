@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { useRef, useState } from "react";
@@ -111,6 +112,11 @@ export function SessionApp({
 	});
 	const configRef = useRef(config);
 	configRef.current = config;
+	// Tier 2 (audit): configurator flag keys the user has actually edited —
+	// moving the Explorer cursor preserves them instead of clobbering the
+	// config (tracked by the configuratorControl.setState wrapper below,
+	// consumed by useModelsReconciliation).
+	const touchedKeysRef = useRef<Set<string>>(new Set());
 	const [themeName, setThemeName] = useState<ThemeName>(() => {
 		const saved =
 			initialState.configFile.theme ?? initialState.presetStore?.theme;
@@ -120,13 +126,17 @@ export function SessionApp({
 
 	// Hook order matters: useConsoleLog subscribes LOG_LINE before
 	// useModelsReconciliation emits the boot RESCAN (#59).
-	const { drawer, setDrawer } = useConsoleLog(bus, initialState);
+	const { drawer, setDrawer, hostNotice, clearHostNotice } = useConsoleLog(
+		bus,
+		initialState,
+	);
 	const proc = useProcState(bus, session);
 	const models = useModelsReconciliation({
 		bus,
 		initialModelsDir: initialState.configFile.modelsDir ?? null,
 		configRef,
 		setConfig,
+		touchedKeysRef,
 	});
 	const presets = usePresetStore({
 		paths,
@@ -187,6 +197,7 @@ export function SessionApp({
 
 	function handleConfirmHost(): void {
 		if (plan.launchSplitDiagnostic()) return;
+		clearHostNotice();
 		bus.emitIntent("LAUNCH", { presetId: "ad-hoc", confirmedHost: true });
 	}
 
@@ -226,7 +237,20 @@ export function SessionApp({
 				selectedIndex: models.selectedIndex,
 				onSelectIndex: models.selectModel,
 				onRescan: models.rescan,
-				onSetModelsDir: models.setModelsDir,
+				validateDir: (dir: string) =>
+					existsSync(dir) ? null : `directory does not exist: ${dir}`,
+				onSetModelsDir: (dir: string) => {
+					// Validate BEFORE the intent reaches the persisting
+					// service — a bad path never lands in config.json.
+					if (!existsSync(dir)) {
+						bus.emitState("LOG_LINE", {
+							stream: "err",
+							text: `[SYS] models directory does not exist: ${dir}`,
+						});
+						return;
+					}
+					models.setModelsDir(dir);
+				},
 			}}
 			telemetryControl={{
 				onEnableTelemetry: () => {
@@ -250,13 +274,29 @@ export function SessionApp({
 					promptHistory: telemetryBinding.promptHistory(),
 					decodeHistory: telemetryBinding.decodeHistory(),
 					slots: telemetry.slots,
+					procFailed: proc.procState === "FAILED",
 					failure: proc.failure,
 					tailLines: proc.tailLines,
 				}),
 			}}
 			configuratorControl={{
 				state: config,
-				setState: (next) => setConfig(next),
+				setState: (next) => {
+					// Tier 2 (audit): track which flag keys the user actually
+					// edited so an Explorer cursor move can preserve them; a
+					// model switch resets the tracking.
+					const prev = configRef.current;
+					if (next.model?.path !== prev.model?.path) {
+						touchedKeysRef.current.clear();
+					} else {
+						for (const key of Object.keys(next.values)) {
+							if (next.values[key] !== prev.values[key]) {
+								touchedKeysRef.current.add(key);
+							}
+						}
+					}
+					setConfig(next);
+				},
 				previewCommand: plan.launchPreview,
 				hardware,
 				onAutoFit: handleAutoFit,
@@ -268,7 +308,12 @@ export function SessionApp({
 				onClone: presets.clone,
 				onDelete: presets.remove,
 				onSetDefault: presets.setDefaultPreset,
-				onLoad: presets.loadPreset,
+				onLoad: (preset) => {
+					// Loading a preset replaces the config wholesale — the
+					// edit-preservation tracking starts fresh.
+					touchedKeysRef.current.clear();
+					presets.loadPreset(preset);
+				},
 				onRelink: presets.relinkPreset,
 			}}
 			paletteControl={{
@@ -279,10 +324,12 @@ export function SessionApp({
 					setTelemetryEnabled((enabled) => !enabled);
 				},
 				reprobeHardware,
+				activeTheme: themeName,
 			}}
 			serverRunning={serverIsRunning(proc.procState)}
 			serverFailed={proc.procState === "FAILED"}
 			foundOrphanPid={session.foundOrphanPid ?? null}
+			externalNotice={hostNotice}
 		/>
 	);
 }
