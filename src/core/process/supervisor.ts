@@ -229,7 +229,10 @@ export class Supervisor {
 		for (const cb of this.logListeners) cb(line);
 		const ready = this.opts.readyPattern;
 		if (ready) ready.lastIndex = 0;
-		if (ready?.test(line)) {
+		// Once teardown is requested the server is going away: a late
+		// ready line (startup output racing a kill during LOADING) must
+		// not flip the state back to READY (#82).
+		if (ready?.test(line) && !this.teardownRequested) {
 			this.emitState({ state: "READY" });
 		}
 	}
