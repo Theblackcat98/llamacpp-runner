@@ -138,6 +138,51 @@ function portUsable(port: number): Promise<boolean> {
 	});
 }
 
+describe("kill during LOADING (#82)", () => {
+	it("kill during LOADING settles and a later launch is not LAUNCH_BLOCKED", async () => {
+		const port = 18112;
+		const bus = createBus<IntentMap, StateMap>();
+		let blocked = 0;
+		bus.onState("LAUNCH_BLOCKED", () => {
+			blocked++;
+		});
+		const session = createSession({
+			paths: resolvePaths(),
+			bus,
+			resolveLaunch: () => ({
+				command: "bash",
+				args: [FIXTURE, "--port", String(port), "--http", "0"],
+				port,
+				host: "127.0.0.1",
+				presetId: "adhoc-82",
+				timings: { sigintGraceMs: 1000, sigkillGraceMs: 1000 },
+			}),
+		});
+		try {
+			await session.boot();
+			bus.emitIntent("LAUNCH", { presetId: "adhoc-82" });
+			expect(await waitFor(() => session.supervisor?.isRunning === true)).toBe(
+				true,
+			);
+			// Kill while the fixture is still in LOADING (its startup
+			// takes ~170 ms; the SIGINT is lost before its trap installs,
+			// so only the SIGKILL escalation stops it — see #82).
+			await Bun.sleep(150);
+			bus.emitIntent("KILL", {});
+			const settled = await waitFor(
+				() => session.supervisor !== null && !session.supervisor.isRunning,
+				8000,
+			);
+			expect(settled).toBe(true);
+			bus.emitIntent("LAUNCH", { presetId: "adhoc-82" });
+			await Bun.sleep(300);
+			expect(blocked).toBe(0);
+		} finally {
+			await session.shutdown();
+		}
+	}, 30000);
+});
+
 describe("pidfile hygiene (#61)", () => {
 	it("KILL clears the pidfile only after the kill settles", async () => {
 		const port = 18095;

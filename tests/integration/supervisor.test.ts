@@ -5,6 +5,10 @@ import { isPidAlive } from "../../src/core/process/identity";
 import { Supervisor } from "../../src/core/process/supervisor";
 
 const FIXTURE = resolve(import.meta.dir, "../fixtures/fake-server.sh");
+const PIPE_HOLDER = resolve(
+	import.meta.dir,
+	"../fixtures/pipe-holding-server.sh",
+);
 const FAST = { sigintGraceMs: 400, sigkillGraceMs: 400 };
 const READY = /listening on/;
 
@@ -265,6 +269,55 @@ describe("supervisor vs fake-server.sh (§6)", () => {
 		await waitFor(async () => !(await pidAlive(pid)), 5000);
 		expect(await pidAlive(pid)).toBe(false);
 	});
+
+	it("kill registers exit when an orphaned descendant holds the stdio pipes (#82)", async () => {
+		const sv = new Supervisor({
+			command: "bash",
+			args: [PIPE_HOLDER],
+			readyPattern: READY,
+			timings: FAST,
+		});
+		const states: string[] = [];
+		sv.onState((e) => states.push(e.state));
+		await sv.start();
+		expect(await waitFor(() => states.includes("READY"))).toBe(true);
+		// The fixture ignores SIGINT, so teardown escalates to SIGKILL.
+		// The leader dies, but its `sleep` child is orphaned holding the
+		// inherited stdout/stderr pipes: stdio 'close' cannot fire for
+		// ~300 s, yet the exit must still register promptly (#82).
+		const info = await sv.kill();
+		expect(info).not.toBeNull();
+		expect(info?.signal).toBe("SIGKILL");
+		expect(sv.isRunning).toBe(false);
+		expect(states[states.length - 1]).toBe("IDLE");
+	}, 15000);
+
+	it("kill during LOADING settles instead of wedging the supervisor (#82)", async () => {
+		const port = 18111;
+		const sv = new Supervisor({
+			command: "bash",
+			args: [FIXTURE, "--port", String(port), "--http", "0"],
+			port,
+			readyPattern: READY,
+			timings: { sigintGraceMs: 1000, sigkillGraceMs: 1000 },
+		});
+		const states: string[] = [];
+		sv.onState((e) => states.push(e.state));
+		await sv.start();
+		expect(states).toContain("LOADING");
+		expect(states).not.toContain("READY");
+		// Kill ~150 ms after launch, while the fixture is still loading:
+		// the SIGINT lands before its INT trap is installed and is lost,
+		// so the server runs on to READY and only the SIGKILL stops it —
+		// leaving its `sleep 300` child holding the stdio pipes.
+		await bunSleep(150);
+		const info = await sv.kill();
+		expect(info).not.toBeNull();
+		expect(sv.isRunning).toBe(false);
+		// READY must never be emitted once teardown was requested.
+		expect(states).not.toContain("READY");
+		expect(states[states.length - 1]).toBe("IDLE");
+	}, 15000);
 
 	it("emits throttled in-progress lines for high-frequency \\r updates", async () => {
 		const sv = new Supervisor({
